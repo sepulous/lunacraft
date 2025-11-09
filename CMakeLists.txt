@@ -18,6 +18,8 @@ pkg_search_module(GLFW REQUIRED glfw3)
 # Main executable
 add_executable(Lunacraft
     src/main.cpp
+    src/shader.cpp
+    src/ui.cpp
 )
 
 # Include directories
