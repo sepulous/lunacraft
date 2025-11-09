@@ -49,6 +49,8 @@ int main()
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+    ShaderManager::CompileAllShaders();
+
     UIMainMenu ui_main_menu;
     // UIPauseMenu ui_pause_menu;
 

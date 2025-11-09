@@ -3,6 +3,8 @@
 
 #include <glm/glm.hpp>
 
+#define SHADER_SCREEN_IMAGE 0
+
 class Shader
 {
     private:
@@ -20,6 +22,17 @@ class Shader
         void SetVec4(const char *name, glm::vec4 vec);
         void SetMat3(const char *name, glm::mat3 mat);
         void SetMat4(const char *name, glm::mat4 mat);
+};
+
+class ShaderManager
+{
+    private:
+        static Shader _screen_image_shader;
+
+    public:
+        ShaderManager() = delete;
+        static void CompileAllShaders();
+        static Shader GetShader(int shader);
 };
 
 #endif

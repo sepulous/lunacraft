@@ -3,6 +3,13 @@
 
 #include "shader.h"
 
+class UIScreenImage
+{
+    private:
+        unsigned int _vao;
+        unsigned int _texture;
+};
+
 class UIButton
 {
     // ...
@@ -30,7 +37,6 @@ class UIMainMenu
         unsigned int _lunacraft_text_texture;
         unsigned int _bg_textures[5];
         unsigned int _bg_vao;
-        Shader _bg_shader;
         int _current_bg = 0;
         float _current_bg_time = 0;
         // UIMoonSettingsMenu _moon_settings_menu;

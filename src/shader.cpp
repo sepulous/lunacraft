@@ -11,6 +11,30 @@
 
 #include "shader.h"
 
+//
+// Shader manager
+//
+
+Shader ShaderManager::_screen_image_shader;
+
+void ShaderManager::CompileAllShaders()
+{
+    ShaderManager::_screen_image_shader.MakeProgram("../shaders/screen_image.vert", "../shaders/screen_image.frag");
+}
+
+Shader ShaderManager::GetShader(int shader)
+{
+    switch (shader)
+    {
+        case SHADER_SCREEN_IMAGE: return _screen_image_shader;
+        default: return _screen_image_shader; // TODO: Special error shader if invalid shader is requested
+    }
+}
+
+//
+// Shaders
+//
+
 Shader::Shader(const char *vertexShaderPath, const char *fragmentShaderPath)
 {
     MakeProgram(vertexShaderPath, fragmentShaderPath);

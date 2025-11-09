@@ -15,8 +15,6 @@
 
 UIMainMenu::UIMainMenu()
 {
-    _bg_shader.MakeProgram("../shaders/image_shader.vert", "../shaders/image_shader.frag");
-
     //
     // Lunacraft text
     //
@@ -141,7 +139,7 @@ void UIMainMenu::Render(float delta_time)
     // Render background images
     //
     
-    _bg_shader.Use();
+    Shader screen_image_shader = ShaderManager::GetShader(SHADER_SCREEN_IMAGE);
 
     // Fully visible for 8 seconds, fades out in 1 second
     const float opaque_time = 8.0f;
@@ -151,8 +149,8 @@ void UIMainMenu::Render(float delta_time)
     if (_current_bg_time < opaque_time) // Current background is fully opaque
     {
         float scale = scale_speed * _current_bg_time + 1.0f;
-        _bg_shader.SetFloat("scale", scale);
-        _bg_shader.SetFloat("opacity", 1.0f);
+        screen_image_shader.SetFloat("scale", scale);
+        screen_image_shader.SetFloat("opacity", 1.0f);
 
         glBindVertexArray(_bg_vao);
         glActiveTexture(GL_TEXTURE0);
@@ -167,8 +165,8 @@ void UIMainMenu::Render(float delta_time)
         // Current
         scale = scale_speed * _current_bg_time + 1.0f;
         opacity = (opaque_time + fade_time) - _current_bg_time;
-        _bg_shader.SetFloat("scale", scale);
-        _bg_shader.SetFloat("opacity", opacity);
+        screen_image_shader.SetFloat("scale", scale);
+        screen_image_shader.SetFloat("opacity", opacity);
 
         glBindVertexArray(_bg_vao);
         glActiveTexture(GL_TEXTURE0);
@@ -179,8 +177,8 @@ void UIMainMenu::Render(float delta_time)
         // Next
         scale = scale_speed * (_current_bg_time - opaque_time) + 1.0f;
         opacity = (_current_bg_time - opaque_time) / fade_time;
-        _bg_shader.SetFloat("scale", scale);
-        _bg_shader.SetFloat("opacity", opacity);
+        screen_image_shader.SetFloat("scale", scale);
+        screen_image_shader.SetFloat("opacity", opacity);
 
         glBindVertexArray(_bg_vao);
         glActiveTexture(GL_TEXTURE0);
@@ -201,9 +199,9 @@ void UIMainMenu::Render(float delta_time)
     // Render Lunacraft text
     //
 
-    _bg_shader.Use();
-    _bg_shader.SetFloat("scale", 1.0f);
-    _bg_shader.SetFloat("opacity", 1.0f);
+    screen_image_shader.Use();
+    screen_image_shader.SetFloat("scale", 1.0f);
+    screen_image_shader.SetFloat("opacity", 1.0f);
     glBindVertexArray(_lunacraft_text_vao);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, _lunacraft_text_texture);
