@@ -4,7 +4,7 @@ project(Lunacraft)
 set(CMAKE_CXX_STANDARD 17)
 
 # Add GLAD
-add_library(glad STATIC src/glad.c)
+add_library(glad STATIC third_party/glad.c)
 target_include_directories(glad PUBLIC include)
 
 # Add GLFW (system-installed)
@@ -26,6 +26,7 @@ add_executable(Lunacraft
 target_include_directories(Lunacraft
     PUBLIC
     include
+    third_party
     ${GLFW_INCLUDE_DIRS}
 )
 
