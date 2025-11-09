@@ -9,5 +9,6 @@ uniform float opacity;
 
 void main()
 {
-    FragColor = vec4(texture(tex, uv).rgb, opacity);
+    vec4 tex_color = texture(tex, uv);
+    FragColor = vec4(tex_color.rgb, tex_color.a * opacity);
 }

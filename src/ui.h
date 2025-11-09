@@ -26,6 +26,8 @@ class UIDeleteMoonMenu
 class UIMainMenu
 {
     private:
+        unsigned int _lunacraft_text_vao;
+        unsigned int _lunacraft_text_texture;
         unsigned int _bg_textures[5];
         unsigned int _bg_vao;
         Shader _bg_shader;

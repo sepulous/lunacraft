@@ -7,13 +7,57 @@
 #include "stbi.h"
 #include "ui.h"
 
+// TODO: Let's write some UI helpers. Every image is basically treated the same way, so let's declutter this.
+
 //
 // Main Menu
 //
 
 UIMainMenu::UIMainMenu()
 {
-    _bg_shader.MakeProgram("../shaders/main_menu_bg.vert", "../shaders/main_menu_bg.frag");
+    _bg_shader.MakeProgram("../shaders/image_shader.vert", "../shaders/image_shader.frag");
+
+    //
+    // Lunacraft text
+    //
+
+    int width, height, nrChannels;
+    stbi_set_flip_vertically_on_load(true);
+    unsigned char *lc_text_data = stbi_load("../assets/images/lunacraft.png", &width, &height, &nrChannels, 0);
+
+    glGenTextures(1, &_lunacraft_text_texture);
+    glBindTexture(GL_TEXTURE_2D, _lunacraft_text_texture);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, lc_text_data);
+
+    stbi_image_free(lc_text_data);
+
+    float lc_text_vertices[] = {
+    //  Position----------  UV--------
+        -0.95f, 0.7f, 0.0f, 0.0f, 0.0f, // Bottom left
+        -0.15f, 0.7f, 0.0f, 1.0f, 0.0f, // Bottom right
+        -0.15f, 0.9f,  0.0f, 1.0f, 1.0f, // Top right
+        -0.15f, 0.9f,  0.0f, 1.0f, 1.0f, // Top right
+        -0.95f, 0.9f,  0.0f, 0.0f, 1.0f, // Top left
+        -0.95f, 0.7f, 0.0f, 0.0f, 0.0f, // Bottom left
+    };
+
+    glGenVertexArrays(1, &_lunacraft_text_vao);
+    glBindVertexArray(_lunacraft_text_vao);
+
+    unsigned int lunacraft_text_vbo;
+    glGenBuffers(1, &lunacraft_text_vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, lunacraft_text_vbo);
+    glBufferData(GL_ARRAY_BUFFER, 5 * 6 * sizeof(float), lc_text_vertices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
 
     //
     // Generate background textures
@@ -53,12 +97,12 @@ UIMainMenu::UIMainMenu()
 
     float bg_vertices[] = {
     //  Position----------  UV--------
-        -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, // Bottom right triangle
-        1.0f,  -1.0f, 0.0f, 1.0f, 0.0f, //
-        1.0f,  1.0f,  0.0f, 1.0f, 1.0f, //
-        1.0f,  1.0f,  0.0f, 1.0f, 1.0f, // Top left triangle
-        -1.0f, 1.0f,  0.0f, 0.0f, 1.0f, //
-        -1.0f, -1.0f, 0.0f, 0.0f, 0.0f  //
+        -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, // Bottom left
+        1.0f,  -1.0f, 0.0f, 1.0f, 0.0f, // Bottom right
+        1.0f,  1.0f,  0.0f, 1.0f, 1.0f, // Top right
+        1.0f,  1.0f,  0.0f, 1.0f, 1.0f, // Top right
+        -1.0f, 1.0f,  0.0f, 0.0f, 1.0f, // Top left
+        -1.0f, -1.0f, 0.0f, 0.0f, 0.0f  // Bottom left
     };
 
     glGenVertexArrays(1, &_bg_vao);
@@ -152,6 +196,19 @@ void UIMainMenu::Render(float delta_time)
     }
 
     _current_bg_time += delta_time;
+
+    //
+    // Render Lunacraft text
+    //
+
+    _bg_shader.Use();
+    _bg_shader.SetFloat("scale", 1.0f);
+    _bg_shader.SetFloat("opacity", 1.0f);
+    glBindVertexArray(_lunacraft_text_vao);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, _lunacraft_text_texture);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glBindVertexArray(0);
     
 
 
