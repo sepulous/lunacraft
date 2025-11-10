@@ -3,6 +3,8 @@ project(Lunacraft)
 
 set(CMAKE_CXX_STANDARD 17)
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
+
 # Add GLAD
 add_library(glad STATIC third_party/glad.c)
 target_include_directories(glad PUBLIC include)
