@@ -1,6 +1,8 @@
 #ifndef UI_H
 #define UI_H
 
+#include <glm/glm.hpp>
+
 #include "shader.h"
 
 class UIScreenImage
@@ -9,11 +11,15 @@ class UIScreenImage
         unsigned int _vao;
         unsigned int _vbo;
         unsigned int _texture;
+        glm::vec2 _position;
+        glm::vec2 _dimensions;
 
     public:
         UIScreenImage();
         UIScreenImage(const char *image_path, float x, float y, float width, float height);
         void SetImage(const char *image_path);
+        void SetPosition(float x, float y);
+        void SetDimensions(float width, float height);
         void Render();
 };
 
@@ -40,8 +46,8 @@ class UIDeleteMoonMenu
 class UIMainMenu
 {
     private:
-        UIScreenImage _lunacraft_text;
-        UIScreenImage _background_images[5];
+        UIScreenImage *_lunacraft_text;
+        UIScreenImage *_background_images;
         int _current_bg = 0;
         float _current_bg_time = 0;
         // UIMoonSettingsMenu _moon_settings_menu;
