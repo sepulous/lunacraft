@@ -80,7 +80,7 @@ UIScreenImage::UIScreenImage(const char *image_path, float x, float y, float wid
     glm::vec2 tl_ndc = glm::vec2(2*x - 1, 2*(y + height) - 1);
     glm::vec2 tr_ndc = glm::vec2(2*(x + width) - 1, 2*(y + height) - 1);
     float vertices[] = {
-    //  Position----------  UV--------
+    //  Position----------------  UV--------
         bl_ndc.x, bl_ndc.y, 0.0f, 0.0f, 0.0f, // Bottom left
         br_ndc.x, br_ndc.y, 0.0f, 1.0f, 0.0f, // Bottom right
         tr_ndc.x, tr_ndc.y, 0.0f, 1.0f, 1.0f, // Top right
@@ -123,7 +123,7 @@ void UIScreenImage::SetPosition(float x, float y)
     glm::vec2 tl_ndc = glm::vec2(2*x - 1, 2*(y + _dimensions.y) - 1);
     glm::vec2 tr_ndc = glm::vec2(2*(x + _dimensions.x) - 1, 2*(y + _dimensions.y) - 1);
     float vertices[] = {
-    //  Position----------  UV--------
+    //  Position----------------  UV--------
         bl_ndc.x, bl_ndc.y, 0.0f, 0.0f, 0.0f, // Bottom left
         br_ndc.x, br_ndc.y, 0.0f, 1.0f, 0.0f, // Bottom right
         tr_ndc.x, tr_ndc.y, 0.0f, 1.0f, 1.0f, // Top right
@@ -145,7 +145,7 @@ void UIScreenImage::SetDimensions(float width, float height)
     glm::vec2 tl_ndc = glm::vec2(2*_position.x - 1, 2*(_position.y + height) - 1);
     glm::vec2 tr_ndc = glm::vec2(2*(_position.x + width) - 1, 2*(_position.y + height) - 1);
     float vertices[] = {
-    //  Position----------  UV--------
+    //  Position----------------  UV--------
         bl_ndc.x, bl_ndc.y, 0.0f, 0.0f, 0.0f, // Bottom left
         br_ndc.x, br_ndc.y, 0.0f, 1.0f, 0.0f, // Bottom right
         tr_ndc.x, tr_ndc.y, 0.0f, 1.0f, 1.0f, // Top right
@@ -208,11 +208,11 @@ void UIMainMenu::Update()
 
 void UIMainMenu::Render(float delta_time)
 {
+    Shader screen_image_shader = ShaderManager::GetShader(SHADER_SCREEN_IMAGE);
+    
     //
     // Background images
     //
-    
-    Shader screen_image_shader = ShaderManager::GetShader(SHADER_SCREEN_IMAGE);
 
     // Fully visible for 8 seconds, fades out in 1 second
     const float opaque_time = 8.0f;
