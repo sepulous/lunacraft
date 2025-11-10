@@ -1,5 +1,6 @@
 #include <string>
 #include <vector>
+#include <filesystem>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -8,6 +9,7 @@
 
 #include "stbi.h"
 #include "ui.h"
+#include "storage.h"
 
 //
 // Screen-space images
@@ -49,7 +51,7 @@ UIScreenImage::UIScreenImage()
     This coordinate system is easier to think about than normalized device coordinates,
     but still independent of screen size.
 */
-UIScreenImage::UIScreenImage(const char *image_path, float x, float y, float width, float height)
+UIScreenImage::UIScreenImage(std::filesystem::path image_path, float x, float y, float width, float height)
 {
     // Vertex array object
     glGenVertexArrays(1, &_vao);
@@ -58,7 +60,7 @@ UIScreenImage::UIScreenImage(const char *image_path, float x, float y, float wid
     // Create texture from image data
     int image_width, image_height, num_channels;
     stbi_set_flip_vertically_on_load(true);
-    unsigned char *image_data = stbi_load(image_path, &image_width, &image_height, &num_channels, 0);
+    unsigned char *image_data = stbi_load(image_path.c_str(), &image_width, &image_height, &num_channels, 0);
 
     glGenTextures(1, &_texture);
     glBindTexture(GL_TEXTURE_2D, _texture);
@@ -103,11 +105,11 @@ UIScreenImage::UIScreenImage(const char *image_path, float x, float y, float wid
     _dimensions = glm::vec2(width, height);
 }
 
-void UIScreenImage::SetImage(const char *image_path)
+void UIScreenImage::SetImage(std::filesystem::path image_path)
 {
     int image_width, image_height, num_channels;
     stbi_set_flip_vertically_on_load(true);
-    unsigned char *image_data = stbi_load(image_path, &image_width, &image_height, &num_channels, 0);
+    unsigned char *image_data = stbi_load(image_path.c_str(), &image_width, &image_height, &num_channels, 0);
 
     glBindTexture(GL_TEXTURE_2D, _texture); // Already exists since constructor was called
     int format = (num_channels == 3) ? GL_RGB : GL_RGBA; // I expect either 3 or 4 channels
@@ -175,19 +177,19 @@ void UIScreenImage::Render()
 
 UIMainMenu::UIMainMenu()
 {
-    _lunacraft_text = new UIScreenImage("../assets/images/lunacraft.png", 0.02f, 0.88f, 0.35f, 0.1f);
+    _lunacraft_text = new UIScreenImage(Storage::ASSET_DIR / "images" / "lunacraft.png", 0.02f, 0.88f, 0.35f, 0.1f);
 
-    std::vector<std::string> background_image_paths = {
-        "../assets/images/main_menu_1.png",
-        "../assets/images/main_menu_2.png",
-        "../assets/images/main_menu_3.png",
-        "../assets/images/main_menu_4.png",
-        "../assets/images/main_menu_5.png"
+    std::vector<std::filesystem::path> background_image_paths = {
+        Storage::ASSET_DIR / "images" / "main_menu_1.png",
+        Storage::ASSET_DIR / "images" / "main_menu_2.png",
+        Storage::ASSET_DIR / "images" / "main_menu_3.png",
+        Storage::ASSET_DIR / "images" / "main_menu_4.png",
+        Storage::ASSET_DIR / "images" / "main_menu_5.png"
     };
 
     _background_images = new UIScreenImage[background_image_paths.size()];
     for (int i = 0; i < background_image_paths.size(); i++)
-        _background_images[i] = UIScreenImage(background_image_paths[i].c_str(), 0, 0, 1, 1);
+        _background_images[i] = UIScreenImage(background_image_paths[i], 0, 0, 1, 1);
 
     // // _buttons[0] = UIButton(...);
     // // ...

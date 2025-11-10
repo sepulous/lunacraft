@@ -1,6 +1,8 @@
 #ifndef SHADER_H
 #define SHADER_H
 
+#include <filesystem>
+
 #include <glm/glm.hpp>
 
 #define SHADER_SCREEN_IMAGE 0
@@ -12,8 +14,8 @@ class Shader
 
     public:
         Shader();
-        Shader(const char *vertexShaderPath, const char *fragmentShaderPath);
-        void MakeProgram(const char *vertexShaderPath, const char *fragmentShaderPath);
+        Shader(std::filesystem::path vertex_shader_path, std::filesystem::path fragment_shader_path);
+        void MakeProgram(std::filesystem::path vertex_shader_path, std::filesystem::path fragment_shader_path);
         void Use();
         unsigned int GetID();
         void SetInt(const char *name, int value);

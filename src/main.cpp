@@ -9,6 +9,7 @@
 #include "ui.h"
 #include "shader.h"
 #include "soundlib.h"
+#include "storage.h"
 
 const int WINDOW_WIDTH = 1280;
 const int WINDOW_HEIGHT = 720;
@@ -50,7 +51,7 @@ int main()
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-
+    Storage::Init();
     Soundlib::Init();
     ShaderManager::CompileAllShaders();
 

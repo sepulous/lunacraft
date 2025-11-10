@@ -1,6 +1,8 @@
 #ifndef UI_H
 #define UI_H
 
+#include <filesystem>
+
 #include <glm/glm.hpp>
 
 #include "shader.h"
@@ -16,8 +18,8 @@ class UIScreenImage
 
     public:
         UIScreenImage();
-        UIScreenImage(const char *image_path, float x, float y, float width, float height);
-        void SetImage(const char *image_path);
+        UIScreenImage(std::filesystem::path image_path, float x, float y, float width, float height);
+        void SetImage(std::filesystem::path image_path);
         void SetPosition(float x, float y);
         void SetDimensions(float width, float height);
         void Render();
