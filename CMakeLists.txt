@@ -22,6 +22,7 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/sepulous/soundlib.git
     GIT_TAG master
 )
+set(STATIC_SOUNDLIB ON CACHE BOOL "Build Soundlib as static library" FORCE)
 FetchContent_MakeAvailable(Soundlib)
 
 # Main executable
