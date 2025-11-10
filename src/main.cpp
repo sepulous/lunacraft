@@ -8,6 +8,7 @@
 
 #include "ui.h"
 #include "shader.h"
+#include "soundlib.h"
 
 const int WINDOW_WIDTH = 1280;
 const int WINDOW_HEIGHT = 720;
@@ -49,6 +50,8 @@ int main()
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+
+    Soundlib::Init();
     ShaderManager::CompileAllShaders();
 
     UIMainMenu ui_main_menu;
@@ -82,6 +85,8 @@ int main()
         glfwPollEvents();
     }
 
+    Soundlib::Exit();
     glfwTerminate();
+
     return 0;
 }

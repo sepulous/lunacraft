@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.13)
 project(Lunacraft)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -14,6 +14,15 @@ pkg_search_module(GLFW REQUIRED glfw3)
 # If you downloaded GLFW manually instead:
 # add_subdirectory(libs/glfw)
 # target_link_libraries(glfw)
+
+# Soundlib
+include(FetchContent)
+FetchContent_Declare(
+    Soundlib
+    GIT_REPOSITORY https://github.com/sepulous/soundlib.git
+    GIT_TAG master
+)
+FetchContent_MakeAvailable(Soundlib)
 
 # Main executable
 add_executable(Lunacraft
@@ -33,6 +42,7 @@ target_include_directories(Lunacraft
 # Link dependencies
 target_link_libraries(Lunacraft
     glad
+    Soundlib
     ${GLFW_LIBRARIES}
 )
 
