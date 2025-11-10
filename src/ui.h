@@ -7,7 +7,14 @@ class UIScreenImage
 {
     private:
         unsigned int _vao;
+        unsigned int _vbo;
         unsigned int _texture;
+
+    public:
+        UIScreenImage();
+        UIScreenImage(const char *image_path, float x, float y, float width, float height);
+        void SetImage(const char *image_path);
+        void Render();
 };
 
 class UIButton
@@ -33,16 +40,15 @@ class UIDeleteMoonMenu
 class UIMainMenu
 {
     private:
-        unsigned int _lunacraft_text_vao;
-        unsigned int _lunacraft_text_texture;
-        unsigned int _bg_textures[5];
-        unsigned int _bg_vao;
+        UIScreenImage _lunacraft_text;
+        UIScreenImage _background_images[5];
         int _current_bg = 0;
         float _current_bg_time = 0;
         // UIMoonSettingsMenu _moon_settings_menu;
         // UIDeleteMoonMenu _delete_moon_menu;
         // UIOptionsMenu _options_menu;
         // UIButton _buttons[10]; // 4 moons, 4 deletes, options, quit (there are more; just for now)
+        
 
     public:
         UIMainMenu();
