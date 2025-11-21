@@ -17,17 +17,20 @@
 //
 
 Shader ShaderManager::_screen_image_shader;
+Shader ShaderManager::_screen_text_shader;
 
 void ShaderManager::CompileAllShaders()
 {
     _screen_image_shader.MakeProgram(Storage::SHADER_DIR / "screen_image.vert", Storage::SHADER_DIR / "screen_image.frag");
+    _screen_text_shader.MakeProgram(Storage::SHADER_DIR / "screen_text.vert", Storage::SHADER_DIR / "screen_text.frag");
 }
 
-Shader ShaderManager::GetShader(int shader)
+Shader ShaderManager::GetShader(int shader_id)
 {
-    switch (shader)
+    switch (shader_id)
     {
         case SHADER_SCREEN_IMAGE: return _screen_image_shader;
+        case SHADER_SCREEN_TEXT:  return _screen_text_shader;
         default: return _screen_image_shader; // TODO: Special error shader if invalid shader is requested
     }
 }

@@ -6,6 +6,7 @@
 #include <glm/glm.hpp>
 
 #define SHADER_SCREEN_IMAGE 0
+#define SHADER_SCREEN_TEXT 1
 
 class Shader
 {
@@ -30,11 +31,12 @@ class ShaderManager
 {
     private:
         static Shader _screen_image_shader;
+        static Shader _screen_text_shader;
 
     public:
         ShaderManager() = delete;
         static void CompileAllShaders();
-        static Shader GetShader(int shader);
+        static Shader GetShader(int shader_id);
 };
 
 #endif

@@ -45,14 +45,15 @@ target_include_directories(Lunacraft
 
 # Link dependencies
 target_link_libraries(Lunacraft
+    PRIVATE
     glad
-    Soundlib
     ${GLFW_LIBRARIES}
+    Soundlib
 )
 
 # On Linux: need to link OpenGL + X11 + others manually
 if (UNIX AND NOT APPLE)
-    target_link_libraries(Lunacraft dl X11 pthread Xrandr Xi GL)
+    target_link_libraries(Lunacraft PRIVATE dl X11 pthread Xrandr Xi GL)
 endif()
 
 # On macOS, link OpenGL and Cocoa frameworks
@@ -61,5 +62,5 @@ if (APPLE)
     find_library(OpenGL_LIBRARY OpenGL)
     find_library(IOKit_LIBRARY IOKit)
     find_library(CoreVideo_LIBRARY CoreVideo)
-    target_link_libraries(Lunacraft ${COCOA_LIBRARY} ${OpenGL_LIBRARY} ${IOKit_LIBRARY} ${CoreVideo_LIBRARY})
+    target_link_libraries(Lunacraft PRIVATE ${COCOA_LIBRARY} ${OpenGL_LIBRARY} ${IOKit_LIBRARY} ${CoreVideo_LIBRARY})
 endif()
