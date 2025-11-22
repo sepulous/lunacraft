@@ -8,6 +8,7 @@
 #include <stb_truetype/stb_truetype.h>
 
 #include "shader.h"
+#include "input.h"
 
 class UIScreenText
 {
@@ -26,6 +27,7 @@ class UIScreenText
         glm::vec4 _color;
 
     public:
+        UIScreenText();
         UIScreenText(std::string text, float font_size, glm::vec2 position, glm::vec4 color);
         void SetText(std::string text);
         void Render();
@@ -75,8 +77,8 @@ class UIDeleteMoonMenu
 class UIMainMenu
 {
     private:
-        UIScreenImage *_lunacraft_text;
-        UIScreenImage *_background_images;
+        UIScreenImage _lunacraft_text;
+        UIScreenImage _background_images[5];
         int _current_bg = 0;
         float _current_bg_time = 0;
         // UIMoonSettingsMenu _moon_settings_menu;
@@ -87,7 +89,7 @@ class UIMainMenu
 
     public:
         UIMainMenu();
-        void Update();
+        void Update(MouseState mouse_state);
         void Render(float delta_time);
         void Rescale(glm::vec2 old_viewport, glm::vec2 new_viewport);
 };

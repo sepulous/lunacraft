@@ -13,6 +13,7 @@
 
 #include "ui.h"
 #include "storage.h"
+#include "input.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_STATIC
@@ -99,6 +100,28 @@ void UIScreenText::_SetupFont()
     glBindTexture(GL_TEXTURE_2D, 0);
 
     delete[] font_atlas_texture_data;
+}
+
+UIScreenText::UIScreenText()
+{
+    if (_atlas_texture == 0) // Font must be initialized
+    {
+        UIScreenText::_SetupFont();
+    }
+
+    glGenBuffers(1, &_vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, _vbo);
+    glGenVertexArrays(1, &_vao);
+    glBindVertexArray(_vao);
+    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0); // Position and UV coords
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(4 * sizeof(float))); // Color
+    glEnableVertexAttribArray(1);
+
+    _text = "";
+    _font_size = 1.0f;
+    _position = glm::vec2(0);
+    _color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
 }
 
 UIScreenText::UIScreenText(std::string text, float font_size, glm::vec2 position, glm::vec4 color)
@@ -390,6 +413,8 @@ void UIScreenImage::SetImage(std::filesystem::path image_path)
     glTexImage2D(GL_TEXTURE_2D, 0, format, image_width, image_height, 0, format, GL_UNSIGNED_BYTE, image_data);
 
     stbi_image_free(image_data);
+
+    _real_image_size = glm::vec2(image_width, image_height);
 }
 
 void UIScreenImage::SetPosition(float x, float y)
@@ -442,7 +467,6 @@ void UIScreenImage::Render()
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, _texture);
     glDrawArrays(GL_TRIANGLES, 0, 6);
-    glBindVertexArray(0);
 }
 
 //
@@ -451,7 +475,9 @@ void UIScreenImage::Render()
 
 UIMainMenu::UIMainMenu()
 {
-    _lunacraft_text = new UIScreenImage(Storage::ASSET_DIR / "images" / "lunacraft.png", -0.95f, 0.7f, 1.2f);
+    _lunacraft_text.SetImage(Storage::ASSET_DIR / "images" / "lunacraft.png");
+    _lunacraft_text.SetPosition(-0.95f, 0.7f);
+    _lunacraft_text.SetScale(1.2f);
 
     std::vector<std::filesystem::path> background_image_paths = {
         Storage::ASSET_DIR / "images" / "main_menu_1.png",
@@ -464,10 +490,13 @@ UIMainMenu::UIMainMenu()
     GLint viewport_info[4]; // [x, y, width, height]
     glGetIntegerv(GL_VIEWPORT, viewport_info);
 
-    _background_images = new UIScreenImage[background_image_paths.size()];
+    //_background_images = new UIScreenImage[background_image_paths.size()];
     for (int i = 0; i < background_image_paths.size(); i++)
     {
-        _background_images[i] = UIScreenImage(background_image_paths[i], -1, -1, 0);
+        //_background_images[i] = UIScreenImage(background_image_paths[i], -1, -1, 0);
+        _background_images[i].SetImage(background_image_paths[i]);
+        _background_images[i].SetPosition(-1, -1);
+        _background_images[i].SetScale(0);
         glm::vec2 bg_image_size = _background_images[i].GetImageSize();
         float scale = 10.0f; // Fill viewport height (by default)
         if (viewport_info[2] >= viewport_info[3]) // Expand to fill viewport width (if viewport is wider than it is tall)
@@ -480,7 +509,7 @@ UIMainMenu::UIMainMenu()
     // // _buttons[9] = UIButton(...);
 }
 
-void UIMainMenu::Update()
+void UIMainMenu::Update(MouseState mouse_state)
 {
     // for (UIButton button : _buttons)
     //     button.Update();
@@ -548,7 +577,7 @@ void UIMainMenu::Render(float delta_time)
     screen_image_shader.Use();
     screen_image_shader.SetFloat("scale", 1.0f);
     screen_image_shader.SetFloat("opacity", 1.0f);
-    _lunacraft_text->Render();
+    _lunacraft_text.Render();
     
 
     // for (UIButton button : _buttons)
@@ -566,7 +595,7 @@ void UIMainMenu::Rescale(glm::vec2 old_viewport, glm::vec2 new_viewport)
     float width_change_ratio = new_viewport.x / old_viewport.x;
     float height_change_ratio = new_viewport.y / old_viewport.y;
 
-    _lunacraft_text->SetScale(_lunacraft_text->GetScale() * (width_change_ratio / height_change_ratio));
+    _lunacraft_text.SetScale(_lunacraft_text.GetScale() * (width_change_ratio / height_change_ratio));
 
     for (int i = 0; i < 5; i++)
     {
