@@ -29,7 +29,7 @@ void Storage::Init()
     if (!std::filesystem::exists(ASSET_DIR))
         std::filesystem::create_directory(ASSET_DIR);
 
-    SHADER_DIR = ROOT_DIR / "shaders";
+    SHADER_DIR = ASSET_DIR / "shaders";
     if (!std::filesystem::exists(SHADER_DIR))
         std::filesystem::create_directory(SHADER_DIR);
 
