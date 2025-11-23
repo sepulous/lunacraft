@@ -40,16 +40,16 @@ class UIScreenImage
         unsigned int _vbo;
         unsigned int _texture;
         glm::vec2 _position;
-        float _scale;
+        glm::vec2 _dimensions;
         glm::vec2 _real_image_size; // Size of underlying image (in pixels); should not be modified
 
     public:
-        UIScreenImage();
-        UIScreenImage(std::filesystem::path image_path, float x, float y, float scale);
-        void SetImage(std::filesystem::path image_path);
-        void SetPosition(float x, float y);
-        void SetScale(float scale);
-        float GetScale() const { return _scale; }
+        UIScreenImage(GLint filtering = GL_LINEAR);
+        UIScreenImage(std::filesystem::path image_path, glm::vec2 position, glm::vec2 dimensions, GLint filtering = GL_LINEAR);
+        void LoadImage(std::filesystem::path image_path, GLint filtering = GL_LINEAR);
+        void SetPosition(glm::vec2 position);
+        void SetDimensions(glm::vec2 dimensions);
+        glm::vec2 GetDimensions();
         glm::vec2 GetImageSize() { return _real_image_size; }
         void Render();
 };

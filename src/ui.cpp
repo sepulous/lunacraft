@@ -324,7 +324,7 @@ void UIScreenText::SetText(std::string text)
 // Screen-space images
 //
 
-UIScreenImage::UIScreenImage()
+UIScreenImage::UIScreenImage(GLint filtering)
 {
     // Vertex array object
     glGenVertexArrays(1, &_vao);
@@ -342,16 +342,17 @@ UIScreenImage::UIScreenImage()
     glGenTextures(1, &_texture);
     glBindTexture(GL_TEXTURE_2D, _texture);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filtering);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filtering);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
     _position = glm::vec2(0);
-    _scale = 1.0f;
+    //_scale = 1.0f;
+    _dimensions = glm::vec2(1.0f);
 }
 
-UIScreenImage::UIScreenImage(std::filesystem::path image_path, float x, float y, float scale)
+UIScreenImage::UIScreenImage(std::filesystem::path image_path, glm::vec2 position, glm::vec2 dimensions, GLint filtering)
 {
     // Vertex array object
     glGenVertexArrays(1, &_vao);
@@ -365,8 +366,8 @@ UIScreenImage::UIScreenImage(std::filesystem::path image_path, float x, float y,
     glGenTextures(1, &_texture);
     glBindTexture(GL_TEXTURE_2D, _texture);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filtering);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filtering);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     int format = (num_channels == 3) ? GL_RGB : GL_RGBA; // I expect either 3 or 4 channels
@@ -374,18 +375,14 @@ UIScreenImage::UIScreenImage(std::filesystem::path image_path, float x, float y,
 
     stbi_image_free(image_data);
 
-    GLint viewport_info[4]; // [x, y, width, height]
-    glGetIntegerv(GL_VIEWPORT, viewport_info);
-    float height = 0.2f * scale;
-    float width = height * ((float)viewport_info[3] / (float)viewport_info[2]) * ((float)image_width / (float)image_height);
     float vertices[] = {
-    //  Position-------------  UV--------
-        x,         y,          0.0f, 0.0f, // Bottom left
-        x + width, y,          1.0f, 0.0f, // Bottom right
-        x + width, y + height, 1.0f, 1.0f, // Top right
-        x + width, y + height, 1.0f, 1.0f, // Top right
-        x,         y + height, 0.0f, 1.0f, // Top left
-        x,         y,          0.0f, 0.0f, // Bottom left
+    //  Position--------------------------------------------  UV--------
+        position.x,                position.y,                0.0f, 0.0f, // Bottom left
+        position.x + dimensions.x, position.y,                1.0f, 0.0f, // Bottom right
+        position.x + dimensions.x, position.y + dimensions.y, 1.0f, 1.0f, // Top right
+        position.x + dimensions.x, position.y + dimensions.y, 1.0f, 1.0f, // Top right
+        position.x,                position.y + dimensions.y, 0.0f, 1.0f, // Top left
+        position.x,                position.y,                0.0f, 0.0f, // Bottom left
     };
 
     // Vertex buffer object
@@ -397,18 +394,21 @@ UIScreenImage::UIScreenImage(std::filesystem::path image_path, float x, float y,
     glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
-    _position = glm::vec2(x, y);
-    _scale = scale;
+    _position = position;
+    //_scale = scale;
+    _dimensions = dimensions;
     _real_image_size = glm::vec2(image_width, image_height);
 }
 
-void UIScreenImage::SetImage(std::filesystem::path image_path)
+void UIScreenImage::LoadImage(std::filesystem::path image_path, GLint filtering)
 {
     int image_width, image_height, num_channels;
     stbi_set_flip_vertically_on_load(true);
     unsigned char *image_data = stbi_load(image_path.c_str(), &image_width, &image_height, &num_channels, 0);
 
     glBindTexture(GL_TEXTURE_2D, _texture); // Already exists since constructor was called
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filtering);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filtering);
     int format = (num_channels == 3) ? GL_RGB : GL_RGBA; // I expect either 3 or 4 channels
     glTexImage2D(GL_TEXTURE_2D, 0, format, image_width, image_height, 0, format, GL_UNSIGNED_BYTE, image_data);
 
@@ -417,48 +417,44 @@ void UIScreenImage::SetImage(std::filesystem::path image_path)
     _real_image_size = glm::vec2(image_width, image_height);
 }
 
-void UIScreenImage::SetPosition(float x, float y)
+void UIScreenImage::SetPosition(glm::vec2 position)
 {
-    GLint viewport_info[4]; // [x, y, width, height]
-    glGetIntegerv(GL_VIEWPORT, viewport_info);
-    float height = 0.2f * _scale;
-    float width = height * ((float)viewport_info[3] / (float)viewport_info[2]) * ((float)_real_image_size.x / (float)_real_image_size.y);
     float vertices[] = {
-    //  Position-------------  UV--------
-        x,         y,          0.0f, 0.0f, // Bottom left
-        x + width, y,          1.0f, 0.0f, // Bottom right
-        x + width, y + height, 1.0f, 1.0f, // Top right
-        x + width, y + height, 1.0f, 1.0f, // Top right
-        x,         y + height, 0.0f, 1.0f, // Top left
-        x,         y,          0.0f, 0.0f, // Bottom left
+    //  Position----------------------------------------------  UV--------
+        position.x,                 position.y,                 0.0f, 0.0f, // Bottom left
+        position.x + _dimensions.x, position.y,                 1.0f, 0.0f, // Bottom right
+        position.x + _dimensions.x, position.y + _dimensions.y, 1.0f, 1.0f, // Top right
+        position.x + _dimensions.x, position.y + _dimensions.y, 1.0f, 1.0f, // Top right
+        position.x,                 position.y + _dimensions.y, 0.0f, 1.0f, // Top left
+        position.x,                 position.y,                 0.0f, 0.0f, // Bottom left
     };
-
     glBindBuffer(GL_ARRAY_BUFFER, _vbo);
     glBufferData(GL_ARRAY_BUFFER, 4 * 6 * sizeof(float), vertices, GL_DYNAMIC_DRAW);
 
-    _position = glm::vec2(x, y);
+    _position = position;
 }
 
-void UIScreenImage::SetScale(float scale)
+void UIScreenImage::SetDimensions(glm::vec2 dimensions)
 {
-    GLint viewport_info[4]; // [x, y, width, height]
-    glGetIntegerv(GL_VIEWPORT, viewport_info);
-    float height = 0.2f * scale;
-    float width = height * ((float)viewport_info[3] / (float)viewport_info[2]) * ((float)_real_image_size.x / (float)_real_image_size.y);
     float vertices[] = {
-    //  Position---------------------------------  UV--------
-        _position.x,         _position.y,          0.0f, 0.0f, // Bottom left
-        _position.x + width, _position.y,          1.0f, 0.0f, // Bottom right
-        _position.x + width, _position.y + height, 1.0f, 1.0f, // Top right
-        _position.x + width, _position.y + height, 1.0f, 1.0f, // Top right
-        _position.x,         _position.y + height, 0.0f, 1.0f, // Top left
-        _position.x,         _position.y,          0.0f, 0.0f, // Bottom left
+    //  Position----------------------------------------------  UV--------
+        _position.x,                _position.y,                0.0f, 0.0f, // Bottom left
+        _position.x + dimensions.x, _position.y,                1.0f, 0.0f, // Bottom right
+        _position.x + dimensions.x, _position.y + dimensions.y, 1.0f, 1.0f, // Top right
+        _position.x + dimensions.x, _position.y + dimensions.y, 1.0f, 1.0f, // Top right
+        _position.x,                _position.y + dimensions.y, 0.0f, 1.0f, // Top left
+        _position.x,                _position.y,                0.0f, 0.0f, // Bottom left
     };
 
     glBindBuffer(GL_ARRAY_BUFFER, _vbo);
     glBufferData(GL_ARRAY_BUFFER, 4 * 6 * sizeof(float), vertices, GL_DYNAMIC_DRAW);
 
-    _scale = scale;
+    _dimensions = dimensions;
+}
+
+glm::vec2 UIScreenImage::GetDimensions()
+{
+    return _dimensions;
 }
 
 void UIScreenImage::Render()
@@ -475,9 +471,15 @@ void UIScreenImage::Render()
 
 UIMainMenu::UIMainMenu()
 {
-    _lunacraft_text.SetImage(Storage::ASSET_DIR / "images" / "lunacraft.png");
-    _lunacraft_text.SetPosition(-0.95f, 0.7f);
-    _lunacraft_text.SetScale(1.2f);
+    GLint viewport_info[4]; // [x, y, width, height]
+    glGetIntegerv(GL_VIEWPORT, viewport_info);
+
+    _lunacraft_text.LoadImage(Storage::ASSET_DIR / "images" / "lunacraft.png");
+    _lunacraft_text.SetPosition({-0.95f, 0.7f});
+    glm::vec2 lc_image_size = _lunacraft_text.GetImageSize();
+    float lc_text_height = 0.24f;
+    float lc_text_width = lc_text_height * ((float)viewport_info[3] / (float)viewport_info[2]) * (lc_image_size.x / lc_image_size.y);
+    _lunacraft_text.SetDimensions({lc_text_width, lc_text_height});
 
     std::vector<std::filesystem::path> background_image_paths = {
         Storage::ASSET_DIR / "images" / "main_menu_1.png",
@@ -487,21 +489,19 @@ UIMainMenu::UIMainMenu()
         Storage::ASSET_DIR / "images" / "main_menu_5.png"
     };
 
-    GLint viewport_info[4]; // [x, y, width, height]
-    glGetIntegerv(GL_VIEWPORT, viewport_info);
-
-    //_background_images = new UIScreenImage[background_image_paths.size()];
     for (int i = 0; i < background_image_paths.size(); i++)
     {
-        //_background_images[i] = UIScreenImage(background_image_paths[i], -1, -1, 0);
-        _background_images[i].SetImage(background_image_paths[i]);
-        _background_images[i].SetPosition(-1, -1);
-        _background_images[i].SetScale(0);
+        _background_images[i].LoadImage(background_image_paths[i]);
+        _background_images[i].SetPosition({-1, -1});
         glm::vec2 bg_image_size = _background_images[i].GetImageSize();
-        float scale = 10.0f; // Fill viewport height (by default)
-        if (viewport_info[2] >= viewport_info[3]) // Expand to fill viewport width (if viewport is wider than it is tall)
-            scale *= ((float)viewport_info[2] / (float)viewport_info[3]) * (bg_image_size.y / bg_image_size.x);
-        _background_images[i].SetScale(scale);
+        float height = 2.0f;
+        float width = 2.0f * ((float)viewport_info[3] / (float)viewport_info[2]) * (bg_image_size.x / bg_image_size.y);
+        if (width < 2.0f)
+        {
+            height *= 2.0f / width;
+            width *= 2.0f / width;
+        }
+        _background_images[i].SetDimensions({width, height});
     }
 
     // // _buttons[0] = UIButton(...);
@@ -595,18 +595,27 @@ void UIMainMenu::Rescale(glm::vec2 old_viewport, glm::vec2 new_viewport)
     float width_change_ratio = new_viewport.x / old_viewport.x;
     float height_change_ratio = new_viewport.y / old_viewport.y;
 
-    _lunacraft_text.SetScale(_lunacraft_text.GetScale() * (width_change_ratio / height_change_ratio));
+    glm::vec2 lc_image_size = _lunacraft_text.GetImageSize();
+    float lc_text_height = _lunacraft_text.GetDimensions().y * (width_change_ratio / height_change_ratio);
+    float lc_text_width = lc_text_height * (new_viewport.y / new_viewport.x) * (lc_image_size.x / lc_image_size.y);
+    _lunacraft_text.SetDimensions({lc_text_width, lc_text_height});
 
     for (int i = 0; i < 5; i++)
     {
+        // Re-scale
         glm::vec2 bg_image_size = _background_images[i].GetImageSize();
-        float scale = 10.0f; // Fill viewport height
-        float width = 0.2f * scale * (new_viewport.y / new_viewport.x) * (bg_image_size.x / bg_image_size.y);
-        float scale_factor = (width < 2.0f) ? (2.0f / width) : 1.0f;
-        _background_images[i].SetScale(scale * scale_factor);
+        float height = 2.0f;
+        float width = 2.0f * (new_viewport.y / new_viewport.x) * (bg_image_size.x / bg_image_size.y);
+        if (width < 2.0f)
+        {
+            height *= 2.0f / width;
+            width *= 2.0f / width;
+        }
+        _background_images[i].SetDimensions({width, height});
 
-        float width_diff = (width * scale_factor) - 2.0f;
-        float height_diff = (0.2f * scale * scale_factor) - 2.0f;
-        _background_images[i].SetPosition(-1 - (width_diff / 2), -1 - (height_diff / 2));
+        // Re-center
+        float width_shift = (width - 2.0f) / 2.0f;
+        float height_shift = (height - 2.0f) / 2.0f;
+        _background_images[i].SetPosition({-1-width_shift, -1-height_shift});
     }
 }
