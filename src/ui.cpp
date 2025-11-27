@@ -56,7 +56,7 @@ UIMainMenu::UIMainMenu()
 
         std::string button_text = std::string("Moon ") + "ABCD"[i] + " - Unexplored";
         moon_button.GetText().SetPosition({495 + 60, 755 - i*(105 + 25) + 35});
-        moon_button.SetText(button_text, 1.3f, {0.0f, 0.0f, 0.0f, 1.0f});
+        moon_button.SetText(button_text, 0.5f, {0.0f, 0.0f, 0.0f, 1.0f});
 
         i++;
     }
@@ -71,7 +71,7 @@ UIMainMenu::UIMainMenu()
         reset_button.SetPosition({1375, 765 - i*(80 + 50)});
 
         reset_button.GetText().SetPosition({1375 + 25, 765 - i*(80 + 50) + 25});
-        reset_button.SetText("Reset", 1.2f, {0.9f, 0.0f, 0.0f, 1.0f});
+        reset_button.SetText("Reset", 0.425f, {0.9f, 0.0f, 0.0f, 1.0f});
 
         i++;
     }
@@ -82,7 +82,7 @@ UIMainMenu::UIMainMenu()
     _options_button.SetSize({390, 105});
     _options_button.SetPosition({685, 225});
     _options_button.GetText().SetPosition({685 + 50, 225 + 35});
-    _options_button.SetText("Options", 1.6f, {0.0f, 0.0f, 0.0f, 1.0f});
+    _options_button.SetText("Options", 0.6f, {0.0f, 0.0f, 0.0f, 1.0f});
 
     _quit_button.SetDefaultImage(Storage::ASSET_DIR / "images" / "ui_quit_button_default.png");
     _quit_button.SetHoverImage(Storage::ASSET_DIR / "images" / "ui_quit_button_hover.png");
@@ -90,7 +90,7 @@ UIMainMenu::UIMainMenu()
     _quit_button.SetSize({220, 105});
     _quit_button.SetPosition({1095, 225});
     _quit_button.GetText().SetPosition({1095 + 35, 225 + 35});
-    _quit_button.SetText("Quit", 1.6f, {0.0f, 0.0f, 0.0f, 1.0f});
+    _quit_button.SetText("Quit", 0.6f, {0.0f, 0.0f, 0.0f, 1.0f});
 }
 
 void UIMainMenu::Update(MouseState mouse_state)
@@ -414,8 +414,8 @@ void UIText::_SetupFont()
     if(!stbtt_InitFont(&fontInfo, fontDataBuf, 0))
         std::cerr << "stbtt_InitFont() Failed!\n";
 
-    const size_t font_atlas_width = 512;
-    const size_t font_atlas_height = 512;
+    const size_t font_atlas_width = 1024;
+    const size_t font_atlas_height = 1024;
     unsigned char *font_atlas_texture_data = new uint8_t[font_atlas_width * font_atlas_height];
     
     stbtt_pack_context ctx;
@@ -432,7 +432,7 @@ void UIText::_SetupFont()
         &ctx,                         // stbtt_pack_context
         fontDataBuf,                  // Font Atlas texture data
         0,                            // Font Index                                 
-        48,                           // Size of font in pixels. (Use STBTT_POINT_SIZE(fontSize) to use points) 
+        128,                           // Size of font in pixels. (Use STBTT_POINT_SIZE(fontSize) to use points) 
         (int)' ',                     // Code point of the first charecter
         95,                           // No. of charecters to be included in the font atlas 
         _packed_chars                 // stbtt_packedchar array, this struct will contain the data to render a glyph
@@ -564,7 +564,7 @@ UIText::UIText(std::string text, float font_size, glm::vec2 position, glm::vec4 
         }
         else if (ch == '\n')
         {
-            localPosition.y -= 48 * font_size;
+            localPosition.y -= 128 * font_size;
             localPosition.x = position.x;
         }
     }
@@ -656,7 +656,7 @@ void UIText::SetText(std::string text)
         }
         else if (ch == '\n')
         {
-            localPosition.y -= 48 * _font_size;
+            localPosition.y -= 128 * _font_size;
             localPosition.x = _position.x;
         }
     }
