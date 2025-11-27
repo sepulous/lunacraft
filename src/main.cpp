@@ -17,30 +17,34 @@
 #include "storage.h"
 #include "input.h"
 
-const int WINDOW_WIDTH = 1280;
-const int WINDOW_HEIGHT = 720;
+glm::vec2 viewport = {1280, 720};
+glm::mat4 ui_window_to_virtual = glm::mat4(1.0f);
+glm::mat4 ui_virtual_to_window = glm::mat4(1.0f);
 
-void scale_ui(float viewport_width, float viewport_height)
+// NOTE: Must compile shaders before calling this!
+void ui_rescale()
 {
-    float scale = std::max(viewport_width / 1920.0f, viewport_height / 1080.0f);
-    float scaled_virtual_width = 1920.0f * scale;
-    float scaled_virtual_height = 1080.0f * scale;
-
-    float offset_x = (viewport_width - scaled_virtual_width)  * 0.5f;
-    float offset_y = (viewport_height - scaled_virtual_height) * 0.5f;
-
-    glm::mat4 virtual_to_window = glm::mat4(1.0f);
-    virtual_to_window = glm::translate(virtual_to_window, glm::vec3(offset_x, offset_y, 0.0f));
-    virtual_to_window = glm::scale(virtual_to_window, glm::vec3(scale, scale, 1.0f));
-
-    glm::mat4 proj = glm::ortho(0.0f, viewport_width, 0.0f, viewport_height, -1.0f, 1.0f);
-    glm::mat4 ui_matrix = proj * virtual_to_window;
+    glm::mat4 proj = glm::ortho(0.0f, viewport.x, 0.0f, viewport.y, -1.0f, 1.0f);
+    glm::mat4 ui_matrix = proj * ui_virtual_to_window;
 
     ShaderManager::UI_IMAGE_SHADER.Use();
     glUniformMatrix4fv(glGetUniformLocation(ShaderManager::UI_IMAGE_SHADER.GetID(), "ui_matrix"), 1, GL_FALSE, glm::value_ptr(ui_matrix));
 
     ShaderManager::UI_TEXT_SHADER.Use();
     glUniformMatrix4fv(glGetUniformLocation(ShaderManager::UI_TEXT_SHADER.GetID(), "ui_matrix"), 1, GL_FALSE, glm::value_ptr(ui_matrix));
+}
+
+void ui_update_transforms()
+{
+    float scale = std::max(viewport.x / VIRTUAL_UI_WIDTH, viewport.y / VIRTUAL_UI_HEIGHT);
+    float scaled_virtual_width = VIRTUAL_UI_WIDTH * scale;
+    float scaled_virtual_height = VIRTUAL_UI_HEIGHT * scale;
+    float offset_x = (viewport.x - scaled_virtual_width)  * 0.5f;
+    float offset_y = (viewport.y - scaled_virtual_height) * 0.5f;
+    ui_virtual_to_window = glm::mat4(1.0f);
+    ui_virtual_to_window = glm::translate(ui_virtual_to_window, glm::vec3(offset_x, offset_y, 0.0f));
+    ui_virtual_to_window = glm::scale(ui_virtual_to_window, glm::vec3(scale, scale, 1.0f));
+    ui_window_to_virtual = glm::inverse(ui_virtual_to_window);
 }
 
 int main()
@@ -53,7 +57,7 @@ int main()
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     #endif
 
-    GLFWwindow *window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Lunacraft", nullptr, nullptr);
+    GLFWwindow *window = glfwCreateWindow(viewport.x, viewport.y, "Lunacraft", nullptr, nullptr);
     if (!window)
     {
         std::cerr << "Failed to create GLFW window\n";
@@ -62,8 +66,6 @@ int main()
     }
 
     glfwMakeContextCurrent(window);
-    //glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    //glfwSetCursorPosCallback(window, mouse_callback);
     glfwSwapInterval(0);
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
@@ -74,9 +76,12 @@ int main()
 
     glfwSetFramebufferSizeCallback(window, [](GLFWwindow *window, int width, int height) {
         glViewport(0, 0, width, height);
-        scale_ui(width, height);
+        viewport = {width, height};
+        ui_update_transforms();
+        ui_rescale();
     });
-    glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+    glViewport(0, 0, viewport.x, viewport.y);
+    ui_update_transforms();
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -85,7 +90,7 @@ int main()
     Soundlib::Init();
     ShaderManager::CompileAllShaders();
 
-    scale_ui(WINDOW_WIDTH, WINDOW_HEIGHT);
+    ui_rescale();
     UIMainMenu ui_main_menu;
 
     enum class GameState {MAIN_MENU, IN_GAME};
@@ -132,27 +137,7 @@ int main()
             double mouse_x, mouse_y;
             glfwGetCursorPos(window, &mouse_x, &mouse_y);
 
-            GLint viewport_info[4];
-            glGetIntegerv(GL_VIEWPORT, viewport_info);
-            float viewport_width = viewport_info[2];
-            float viewport_height = viewport_info[3];
-
-            float scale = std::max(viewport_width / 1920.0f, viewport_height / 1080.0f);
-            float scaled_virtual_width = 1920.0f * scale;
-            float scaled_virtual_height = 1080.0f * scale;
-
-            float offset_x = (viewport_width - scaled_virtual_width)  * 0.5f;
-            float offset_y = (viewport_height - scaled_virtual_height) * 0.5f;
-
-            // TODO: Make virtual_to_window and window_to_virtual global so we don't have to recompute repeatedly
-
-            glm::mat4 virtual_to_window = glm::mat4(1.0f);
-            virtual_to_window = glm::translate(virtual_to_window, glm::vec3(offset_x, offset_y, 0.0f));
-            virtual_to_window = glm::scale(virtual_to_window, glm::vec3(scale, scale, 1.0f));
-
-            glm::mat4 window_to_virtual = glm::inverse(virtual_to_window);
-            glm::vec4 virtual_mouse = window_to_virtual * glm::vec4(mouse_x, viewport_height - mouse_y, 0.0f, 1.0f);
-
+            glm::vec4 virtual_mouse = ui_window_to_virtual * glm::vec4(mouse_x, viewport.y - mouse_y, 0.0f, 1.0f);
             mouse_state.position.x = virtual_mouse.x;
             mouse_state.position.y = virtual_mouse.y;
         }
