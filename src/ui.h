@@ -56,7 +56,8 @@ class UIText
         void SetFontSize(float font_size);
         void SetColor(glm::vec4 color);
         void Render();
-        static float GetFontSizeForWidth(std::string text, float width);
+
+        static glm::vec2 GetTextSizeInPixels(std::string text, float font_size);
 };
 
 class UIButton

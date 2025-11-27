@@ -30,10 +30,12 @@
 
 UIMainMenu::UIMainMenu()
 {
+    // Lunacraft logo
     _lunacraft_logo.LoadImage(Storage::ASSET_DIR / "images" / "lunacraft.png");
     _lunacraft_logo.SetPosition({70, 925});
     _lunacraft_logo.SetSize({661, 100});
 
+    // Background images
     int i = 1;
     for (UIImage& background_image : _background_images)
     {
@@ -44,53 +46,83 @@ UIMainMenu::UIMainMenu()
         i++;
     }
 
+    // Moon buttons
     i = 0;
     for (UIButton& moon_button : _moon_buttons)
     {
+        glm::vec2 button_position = {495, 755 - i*(105 + 25)};
+        glm::vec2 button_size = {820, 105};
         moon_button.SetDefaultImage(Storage::ASSET_DIR / "images" / "ui_moon_button_default.png");
         moon_button.SetHoverImage(Storage::ASSET_DIR / "images" / "ui_moon_button_hover.png");
         moon_button.SetClickImage(Storage::ASSET_DIR / "images" / "ui_moon_button_click.png");
-        moon_button.SetSize({820, 105});
-        moon_button.SetPosition({495, 755 - i*(105 + 25)});
+        moon_button.SetSize(button_size);
+        moon_button.SetPosition(button_position);
         moon_button.SetClickAction([this]() { _moon_settings_menu.SetActive(true); });
 
         std::string button_text = std::string("Moon ") + "ABCD"[i] + " - Unexplored";
-        moon_button.GetText().SetPosition({495 + 60, 755 - i*(105 + 25) + 35});
+        glm::vec2 text_size = UIText::GetTextSizeInPixels(button_text, 0.5f);
+        moon_button.GetText().SetPosition({
+            button_position.x + (button_size.x / 2.0f) - (text_size.x / 2.0f),
+            button_position.y + (button_size.y / 2.0f) - (text_size.y / 2.0f)
+        });
         moon_button.SetText(button_text, 0.5f, {0.0f, 0.0f, 0.0f, 1.0f});
 
         i++;
     }
 
+    // Reset buttons
     i = 0;
     for (UIButton& reset_button : _reset_buttons)
     {
+        glm::vec2 button_position = {1375, 765 - i*(80 + 50)};
+        glm::vec2 button_size = {210, 80};
         reset_button.SetDefaultImage(Storage::ASSET_DIR / "images" / "ui_reset_button_default.png");
         reset_button.SetHoverImage(Storage::ASSET_DIR / "images" / "ui_reset_button_hover.png");
         reset_button.SetClickImage(Storage::ASSET_DIR / "images" / "ui_reset_button_click.png");
-        reset_button.SetSize({210, 80});
-        reset_button.SetPosition({1375, 765 - i*(80 + 50)});
+        reset_button.SetSize(button_size);
+        reset_button.SetPosition(button_position);
 
-        reset_button.GetText().SetPosition({1375 + 25, 765 - i*(80 + 50) + 25});
+        glm::vec2 text_size = UIText::GetTextSizeInPixels("Reset", 0.425f);
+        reset_button.GetText().SetPosition({
+            button_position.x + (button_size.x / 2.0f) - (text_size.x / 2.0f),
+            button_position.y + (button_size.y / 2.0f) - (text_size.y / 2.0f)
+        });
         reset_button.SetText("Reset", 0.425f, {0.9f, 0.0f, 0.0f, 1.0f});
 
         i++;
     }
 
+    // Options button
+    glm::vec2 options_button_position = {685, 225};
+    glm::vec2 options_button_size = {390, 105};
+    float options_font_size = 0.6f;
     _options_button.SetDefaultImage(Storage::ASSET_DIR / "images" / "ui_options_button_default.png");
     _options_button.SetHoverImage(Storage::ASSET_DIR / "images" / "ui_options_button_hover.png");
     _options_button.SetClickImage(Storage::ASSET_DIR / "images" / "ui_options_button_click.png");
-    _options_button.SetSize({390, 105});
-    _options_button.SetPosition({685, 225});
-    _options_button.GetText().SetPosition({685 + 50, 225 + 35});
-    _options_button.SetText("Options", 0.6f, {0.0f, 0.0f, 0.0f, 1.0f});
+    _options_button.SetSize(options_button_size);
+    _options_button.SetPosition(options_button_position);
+    glm::vec2 options_text_size = UIText::GetTextSizeInPixels("Options", options_font_size);
+    _options_button.GetText().SetPosition({
+        options_button_position.x + (options_button_size.x / 2.0f) - (options_text_size.x / 2.0f),
+        options_button_position.y + (options_button_size.y / 2.0f) - (options_text_size.y / 2.0f)
+    });
+    _options_button.SetText("Options", options_font_size, {0.0f, 0.0f, 0.0f, 1.0f});
 
+    // Quit button
+    glm::vec2 quit_button_position = {1095, 225};
+    glm::vec2 quit_button_size = {220, 105};
+    float quit_font_size = 0.6f;
     _quit_button.SetDefaultImage(Storage::ASSET_DIR / "images" / "ui_quit_button_default.png");
     _quit_button.SetHoverImage(Storage::ASSET_DIR / "images" / "ui_quit_button_hover.png");
     _quit_button.SetClickImage(Storage::ASSET_DIR / "images" / "ui_quit_button_click.png");
-    _quit_button.SetSize({220, 105});
-    _quit_button.SetPosition({1095, 225});
-    _quit_button.GetText().SetPosition({1095 + 35, 225 + 35});
-    _quit_button.SetText("Quit", 0.6f, {0.0f, 0.0f, 0.0f, 1.0f});
+    _quit_button.SetSize(quit_button_size);
+    _quit_button.SetPosition(quit_button_position);
+    glm::vec2 quit_text_size = UIText::GetTextSizeInPixels("Quit", quit_font_size);
+    _quit_button.GetText().SetPosition({
+        quit_button_position.x + (quit_button_size.x / 2.0f) - (quit_text_size.x / 2.0f),
+        quit_button_position.y + (quit_button_size.y / 2.0f) - (quit_text_size.y / 2.0f)
+    });
+    _quit_button.SetText("Quit", quit_font_size, {0.0f, 0.0f, 0.0f, 1.0f});
 }
 
 void UIMainMenu::Update(MouseState mouse_state)
@@ -686,28 +718,29 @@ void UIText::SetColor(glm::vec4 color)
     SetText(_text);
 }
 
-float UIText::GetFontSizeForWidth(std::string text, float width)
+glm::vec2 UIText::GetTextSizeInPixels(std::string text, float font_size)
 {
-    float total_length = 0;
-    float line_length = 0;
+    float width, height = 0;
+    float current_line_width = 0;
     for (int i = 0; i < text.length(); i++)
     {
         char ch = text.at(i);
         if (ch >= (int)' ' && ch <= (int)' ' + 95)
         {
             stbtt_packedchar* packedChar = &_packed_chars[ch - (int)' '];
-            line_length += packedChar->xadvance;
+            current_line_width += packedChar->xadvance * font_size;
         }
         
         if (ch == '\n' || i == text.length() - 1)
         {
-            if (line_length > total_length)
-                total_length = line_length;
-            line_length = 0;
+            if (current_line_width > width)
+                width = current_line_width;
+            current_line_width = 0;
+            height += 128 * font_size;
         }
     }
 
-    return width / total_length;
+    return {width, height / 2.0f}; // I have no clue why height must be divided by two...
 }
 
 //
