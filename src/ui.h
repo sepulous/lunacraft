@@ -11,6 +11,9 @@
 #include "shader.h"
 #include "input.h"
 
+const float VIRTUAL_UI_WIDTH = 1920.0f;
+const float VIRTUAL_UI_HEIGHT = 1080.0f;
+
 class UIImage
 {
     private:

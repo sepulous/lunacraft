@@ -33,7 +33,7 @@ UIMainMenu::UIMainMenu()
     // Lunacraft logo
     _lunacraft_logo.LoadImage(Storage::ASSET_DIR / "images" / "lunacraft.png");
     _lunacraft_logo.SetPosition({70, 875});
-    _lunacraft_logo.SetSize({661 * 1.3f, 100 * 1.3f});
+    _lunacraft_logo.SetSize({859, 130});
 
     // Background images
     int i = 1;
@@ -42,7 +42,7 @@ UIMainMenu::UIMainMenu()
         std::string image_path = std::string("main_menu_") + std::to_string(i) + ".png";
         background_image.LoadImage(Storage::ASSET_DIR / "images" / image_path);
         background_image.SetPosition({0, 0});
-        background_image.SetSize({1920, 1080});
+        background_image.SetSize({VIRTUAL_UI_WIDTH, VIRTUAL_UI_HEIGHT});
         i++;
     }
 
@@ -156,8 +156,8 @@ void UIMainMenu::Render(float delta_time)
         ui_image_shader.SetFloat("opacity", 1.0f);
 
         current_position = _background_images[_current_background].GetPosition();
-        offset = {(1920.0f * (scale - 1.0f)) / 2.0f, (1080.0f * (scale - 1.0f)) / 2.0f};
-        _background_images[_current_background].SetSize(scale * glm::vec2(1920.0f, 1080.0f));
+        offset = {(VIRTUAL_UI_WIDTH * (scale - 1.0f)) / 2.0f, (VIRTUAL_UI_HEIGHT * (scale - 1.0f)) / 2.0f};
+        _background_images[_current_background].SetSize(scale * glm::vec2(VIRTUAL_UI_WIDTH, VIRTUAL_UI_HEIGHT));
         _background_images[_current_background].SetPosition({-offset.x, -offset.y});
         _background_images[_current_background].Render();
     }
@@ -171,8 +171,8 @@ void UIMainMenu::Render(float delta_time)
         ui_image_shader.SetFloat("opacity", opacity);
 
         current_position = _background_images[_current_background].GetPosition();
-        offset = {(1920.0f * (scale - 1.0f)) / 2.0f, (1080.0f * (scale - 1.0f)) / 2.0f};
-        _background_images[_current_background].SetSize(scale * glm::vec2(1920.0f, 1080.0f));
+        offset = {(VIRTUAL_UI_WIDTH * (scale - 1.0f)) / 2.0f, (VIRTUAL_UI_HEIGHT * (scale - 1.0f)) / 2.0f};
+        _background_images[_current_background].SetSize(scale * glm::vec2(VIRTUAL_UI_WIDTH, VIRTUAL_UI_HEIGHT));
         _background_images[_current_background].SetPosition({-offset.x, -offset.y});
         _background_images[_current_background].Render();
 
@@ -182,15 +182,15 @@ void UIMainMenu::Render(float delta_time)
         ui_image_shader.SetFloat("opacity", opacity);
 
         current_position = _background_images[(_current_background + 1) % 5].GetPosition();
-        offset = {(1920.0f * (scale - 1.0f)) / 2.0f, (1080.0f * (scale - 1.0f)) / 2.0f};
-        _background_images[(_current_background + 1) % 5].SetSize(scale * glm::vec2(1920.0f, 1080.0f));
+        offset = {(VIRTUAL_UI_WIDTH * (scale - 1.0f)) / 2.0f, (VIRTUAL_UI_HEIGHT * (scale - 1.0f)) / 2.0f};
+        _background_images[(_current_background + 1) % 5].SetSize(scale * glm::vec2(VIRTUAL_UI_WIDTH, VIRTUAL_UI_HEIGHT));
         _background_images[(_current_background + 1) % 5].SetPosition({-offset.x, -offset.y});
         _background_images[(_current_background + 1) % 5].Render();
 
         if (_current_background_time >= opaque_time + fade_time)
         {
             _current_background_time = fade_time;
-            _background_images[_current_background].SetSize({1920.0f, 1080.0f});
+            _background_images[_current_background].SetSize({VIRTUAL_UI_WIDTH, VIRTUAL_UI_HEIGHT});
             _background_images[_current_background].SetPosition({0, 0});
             _current_background = (_current_background + 1) % 5;
         }
@@ -226,15 +226,22 @@ UIMoonSettingsMenu::UIMoonSettingsMenu()
     _background.LoadImage(Storage::ASSET_DIR / "images" / "ui_menu_bg.png", GL_NEAREST);
     float bg_width = 1200;
     float bg_height = 700;
-    float bg_pos_x = (1920.0f / 2.0f) - (bg_width / 2.0f);
-    float bg_pos_y = (1080.0f / 2.0f) - (bg_height / 2.0f);
+    float bg_pos_x = (VIRTUAL_UI_WIDTH / 2.0f) - (bg_width / 2.0f);
+    float bg_pos_y = (VIRTUAL_UI_HEIGHT / 2.0f) - (bg_height / 2.0f);
     _background.SetSize({bg_width, bg_height});
     _background.SetPosition({bg_pos_x, bg_pos_y});
 
-    _back_button.SetPosition({bg_pos_x + 50, bg_pos_y + 40});
-    _back_button.SetSize({160, 80});
-    _back_button.SetText("Back", 1.0f, {0.0f, 0.0f, 0.0f, 1.0f});
-    _back_button.GetText().SetPosition({bg_pos_x + 50 + 20, bg_pos_y + 40 + 30});
+    glm::vec2 back_button_position = {bg_pos_x + 50, bg_pos_y + 40};
+    glm::vec2 back_button_size = {160, 80};
+    float back_font_size = 0.4f;
+    _back_button.SetPosition(back_button_position);
+    _back_button.SetSize(back_button_size);
+    _back_button.SetText("Back", back_font_size, {0.0f, 0.0f, 0.0f, 1.0f});
+    glm::vec2 back_text_size = UIText::GetTextSizeInPixels("Back", back_font_size);
+    _back_button.GetText().SetPosition({
+        back_button_position.x + (back_button_size.x / 2.0f) - (back_text_size.x / 2.0f),
+        back_button_position.y + (back_button_size.y / 2.0f) - (back_text_size.y / 2.0f)
+    });
     _back_button.SetClickAction([this]() { _active = false; });
 }
 
