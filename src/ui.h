@@ -63,27 +63,24 @@ class UIText
 class UIButton
 {
     private:
+        GLuint _vao;
+        GLuint _vbo;
+        GLuint _texture;
         bool _hovered = false;
         bool _clicked = false;
         bool _held = false;
         glm::vec2 _position;
         glm::vec2 _size;
         UIText _text;
-        UIImage _default_image;
-        UIImage _hover_image;
-        UIImage _click_image;
+        glm::vec2 _button_image_size;
         std::function<void()> _ClickAction;
 
     public:
         UIButton();
-        UIButton(glm::vec2 position, glm::vec2 size, std::string text, float font_size, glm::vec4 text_color, std::function<void()> click_action);
-        void SetPosition(glm::vec2 position); // TODO: Center text on image (need to know size of text in pixels to do this)
+        void SetPosition(glm::vec2 position);
         void SetSize(glm::vec2 size);
         void SetText(std::string text, float font_size, glm::vec4 color);
         void SetClickAction(std::function<void()> click_action);
-        void SetDefaultImage(std::filesystem::path default_image_path);
-        void SetHoverImage(std::filesystem::path hover_image_path);
-        void SetClickImage(std::filesystem::path click_image_path);
         void Update(MouseState mouse_state);
         void Render();
 

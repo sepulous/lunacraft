@@ -32,8 +32,8 @@ UIMainMenu::UIMainMenu()
 {
     // Lunacraft logo
     _lunacraft_logo.LoadImage(Storage::ASSET_DIR / "images" / "lunacraft.png");
-    _lunacraft_logo.SetPosition({70, 925});
-    _lunacraft_logo.SetSize({661, 100});
+    _lunacraft_logo.SetPosition({70, 875});
+    _lunacraft_logo.SetSize({661 * 1.3f, 100 * 1.3f});
 
     // Background images
     int i = 1;
@@ -50,11 +50,8 @@ UIMainMenu::UIMainMenu()
     i = 0;
     for (UIButton& moon_button : _moon_buttons)
     {
-        glm::vec2 button_position = {495, 755 - i*(105 + 25)};
+        glm::vec2 button_position = {595, 705 - i*(105 + 25)};
         glm::vec2 button_size = {820, 105};
-        moon_button.SetDefaultImage(Storage::ASSET_DIR / "images" / "ui_moon_button_default.png");
-        moon_button.SetHoverImage(Storage::ASSET_DIR / "images" / "ui_moon_button_hover.png");
-        moon_button.SetClickImage(Storage::ASSET_DIR / "images" / "ui_moon_button_click.png");
         moon_button.SetSize(button_size);
         moon_button.SetPosition(button_position);
         moon_button.SetClickAction([this]() { _moon_settings_menu.SetActive(true); });
@@ -74,11 +71,8 @@ UIMainMenu::UIMainMenu()
     i = 0;
     for (UIButton& reset_button : _reset_buttons)
     {
-        glm::vec2 button_position = {1375, 765 - i*(80 + 50)};
+        glm::vec2 button_position = {1475, 715 - i*(80 + 50)};
         glm::vec2 button_size = {210, 80};
-        reset_button.SetDefaultImage(Storage::ASSET_DIR / "images" / "ui_reset_button_default.png");
-        reset_button.SetHoverImage(Storage::ASSET_DIR / "images" / "ui_reset_button_hover.png");
-        reset_button.SetClickImage(Storage::ASSET_DIR / "images" / "ui_reset_button_click.png");
         reset_button.SetSize(button_size);
         reset_button.SetPosition(button_position);
 
@@ -93,12 +87,9 @@ UIMainMenu::UIMainMenu()
     }
 
     // Options button
-    glm::vec2 options_button_position = {685, 225};
+    glm::vec2 options_button_position = {785, 175};
     glm::vec2 options_button_size = {390, 105};
     float options_font_size = 0.6f;
-    _options_button.SetDefaultImage(Storage::ASSET_DIR / "images" / "ui_options_button_default.png");
-    _options_button.SetHoverImage(Storage::ASSET_DIR / "images" / "ui_options_button_hover.png");
-    _options_button.SetClickImage(Storage::ASSET_DIR / "images" / "ui_options_button_click.png");
     _options_button.SetSize(options_button_size);
     _options_button.SetPosition(options_button_position);
     glm::vec2 options_text_size = UIText::GetTextSizeInPixels("Options", options_font_size);
@@ -109,12 +100,9 @@ UIMainMenu::UIMainMenu()
     _options_button.SetText("Options", options_font_size, {0.0f, 0.0f, 0.0f, 1.0f});
 
     // Quit button
-    glm::vec2 quit_button_position = {1095, 225};
+    glm::vec2 quit_button_position = {1195, 175};
     glm::vec2 quit_button_size = {220, 105};
     float quit_font_size = 0.6f;
-    _quit_button.SetDefaultImage(Storage::ASSET_DIR / "images" / "ui_quit_button_default.png");
-    _quit_button.SetHoverImage(Storage::ASSET_DIR / "images" / "ui_quit_button_hover.png");
-    _quit_button.SetClickImage(Storage::ASSET_DIR / "images" / "ui_quit_button_click.png");
     _quit_button.SetSize(quit_button_size);
     _quit_button.SetPosition(quit_button_position);
     glm::vec2 quit_text_size = UIText::GetTextSizeInPixels("Quit", quit_font_size);
@@ -153,6 +141,7 @@ void UIMainMenu::Render(float delta_time)
     //
 
     ui_image_shader.Use();
+    ui_image_shader.SetFloat("darkness", 0.0f);
 
     // Fully visible for 8 seconds, fades out in 1 second
     const float opaque_time = 8.0f;
@@ -223,6 +212,7 @@ void UIMainMenu::Render(float delta_time)
     _options_button.Render();
     _quit_button.Render();
 
+    ui_image_shader.SetFloat("darkness", 0.0f);
     if (_moon_settings_menu.IsActive())
         _moon_settings_menu.Render();
 }
@@ -744,47 +734,128 @@ UIButton::UIButton()
 {
     _position = glm::vec2(0);
     _size = glm::vec2(1);
-    _default_image.LoadImage(Storage::ASSET_DIR / "images" / "ui_moon_button_default.png");
-    _hover_image.LoadImage(Storage::ASSET_DIR / "images" / "ui_moon_button_hover.png");
-    _click_image.LoadImage(Storage::ASSET_DIR / "images" / "ui_moon_button_click.png");
     _ClickAction = [](){};
-}
 
-UIButton::UIButton(glm::vec2 position, glm::vec2 size, std::string text, float font_size, glm::vec4 text_color, std::function<void()> click_action)
-{
-    _position = position;
-    _text.SetPosition(position);
-    _default_image.SetPosition(position);
-    _hover_image.SetPosition(position);
-    _click_image.SetPosition(position);
+    glGenVertexArrays(1, &_vao);
+    glBindVertexArray(_vao);
 
-    _size = size;
-    _default_image.SetSize(size);
-    _hover_image.SetSize(size);
-    _click_image.SetSize(size);
+    glGenBuffers(1, &_vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, _vbo);
 
-    _text.SetText(text);
-    _text.SetFontSize(font_size);
-    _text.SetColor(text_color);
+    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
 
-    _ClickAction = click_action;
+    glGenTextures(1, &_texture);
+    glBindTexture(GL_TEXTURE_2D, _texture);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    int image_width, image_height, num_channels;
+    stbi_set_flip_vertically_on_load(true);
+    std::filesystem::path button_path = Storage::ASSET_DIR / "images" / "ui_button.png";
+    unsigned char *image_data = stbi_load(button_path.c_str(), &image_width, &image_height, &num_channels, 0);
+    _button_image_size = {image_width, image_height};
+
+    int format = (num_channels == 3) ? GL_RGB : GL_RGBA; // I expect either 3 or 4 channels
+    glTexImage2D(GL_TEXTURE_2D, 0, format, image_width, image_height, 0, format, GL_UNSIGNED_BYTE, image_data);
+
+    stbi_image_free(image_data);
 }
 
 void UIButton::SetPosition(glm::vec2 position)
 {
     _position = position;
     _text.SetPosition(position);
-    _default_image.SetPosition(position);
-    _hover_image.SetPosition(position);
-    _click_image.SetPosition(position);
+
+    float desired_width = _size.x;
+    float desired_height = _size.y;
+
+    float scale = desired_height / _button_image_size.y;
+    float edge_width = 40.0f * scale;
+    float middle_width = desired_width - 2*edge_width;
+
+    float uv_1 = 40.0f / _button_image_size.x; // Right of the left edge
+    float uv_2 = 733.0f / _button_image_size.x; // Left of the right edge
+
+    float vertices[] = {
+    //  Left quad
+    //  Position--------------------------------------------  UV--------
+        position.x,              position.y,                  0.0f, 0.0f, // Bottom left
+        position.x + edge_width, position.y,                  uv_1, 0.0f, // Bottom right
+        position.x + edge_width, position.y + desired_height, uv_1, 1.0f, // Top right
+        position.x + edge_width, position.y + desired_height, uv_1, 1.0f, // Top right
+        position.x,              position.y + desired_height, 0.0f, 1.0f, // Top left
+        position.x,              position.y,                  0.0f, 0.0f, // Bottom left
+
+    //  Middle quad
+    //  Position-----------------------------------------------------------  UV--------
+        position.x + edge_width,                position.y,                  uv_1, 0.0f, // Bottom left
+        position.x + edge_width + middle_width, position.y,                  uv_2, 0.0f, // Bottom right
+        position.x + edge_width + middle_width, position.y + desired_height, uv_2, 1.0f, // Top right
+        position.x + edge_width + middle_width, position.y + desired_height, uv_2, 1.0f, // Top right
+        position.x + edge_width,                position.y + desired_height, uv_1, 1.0f, // Top left
+        position.x + edge_width,                position.y,                  uv_1, 0.0f, // Bottom left
+
+    //  Right quad
+    //  Position-----------------------------------------------------------  UV--------
+        position.x + edge_width + middle_width, position.y,                  uv_2, 0.0f, // Bottom left
+        position.x + desired_width,             position.y,                  1.0f, 0.0f, // Bottom right
+        position.x + desired_width,             position.y + desired_height, 1.0f, 1.0f, // Top right
+        position.x + desired_width,             position.y + desired_height, 1.0f, 1.0f, // Top right
+        position.x + edge_width + middle_width, position.y + desired_height, uv_2, 1.0f, // Top left
+        position.x + edge_width + middle_width, position.y,                  uv_2, 0.0f, // Bottom left
+    };
+    glBindBuffer(GL_ARRAY_BUFFER, _vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_DYNAMIC_DRAW);
 }
 
 void UIButton::SetSize(glm::vec2 size)
 {
     _size = size;
-    _default_image.SetSize(size);
-    _hover_image.SetSize(size);
-    _click_image.SetSize(size);
+
+    float desired_width = size.x;
+    float desired_height = size.y;
+
+    float scale = desired_height / _button_image_size.y;
+    float edge_width = 40.0f * scale;
+    float middle_width = desired_width - 2*edge_width;
+
+    float uv_1 = 40.0f / _button_image_size.x; // Right of the left edge
+    float uv_2 = 733.0f / _button_image_size.x; // Left of the right edge
+
+    float vertices[] = {
+    //  Left quad
+    //  Position----------------------------------------------  UV--------
+        _position.x,              _position.y,                  0.0f, 0.0f, // Bottom left
+        _position.x + edge_width, _position.y,                  uv_1, 0.0f, // Bottom right
+        _position.x + edge_width, _position.y + desired_height, uv_1, 1.0f, // Top right
+        _position.x + edge_width, _position.y + desired_height, uv_1, 1.0f, // Top right
+        _position.x,              _position.y + desired_height, 0.0f, 1.0f, // Top left
+        _position.x,              _position.y,                  0.0f, 0.0f, // Bottom left
+
+    //  Middle quad
+    //  Position-------------------------------------------------------------  UV--------
+        _position.x + edge_width,                _position.y,                  uv_1, 0.0f, // Bottom left
+        _position.x + edge_width + middle_width, _position.y,                  uv_2, 0.0f, // Bottom right
+        _position.x + edge_width + middle_width, _position.y + desired_height, uv_2, 1.0f, // Top right
+        _position.x + edge_width + middle_width, _position.y + desired_height, uv_2, 1.0f, // Top right
+        _position.x + edge_width,                _position.y + desired_height, uv_1, 1.0f, // Top left
+        _position.x + edge_width,                _position.y,                  uv_1, 0.0f, // Bottom left
+
+    //  Right quad
+    //  Position-------------------------------------------------------------  UV--------
+        _position.x + edge_width + middle_width, _position.y,                  uv_2, 0.0f, // Bottom left
+        _position.x + desired_width,             _position.y,                  1.0f, 0.0f, // Bottom right
+        _position.x + desired_width,             _position.y + desired_height, 1.0f, 1.0f, // Top right
+        _position.x + desired_width,             _position.y + desired_height, 1.0f, 1.0f, // Top right
+        _position.x + edge_width + middle_width, _position.y + desired_height, uv_2, 1.0f, // Top left
+        _position.x + edge_width + middle_width, _position.y,                  uv_2, 0.0f, // Bottom left
+    };
+    glBindBuffer(GL_ARRAY_BUFFER, _vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_DYNAMIC_DRAW);
 }
 
 void UIButton::SetText(std::string text, float font_size, glm::vec4 color)
@@ -797,21 +868,6 @@ void UIButton::SetText(std::string text, float font_size, glm::vec4 color)
 void UIButton::SetClickAction(std::function<void()> click_action)
 {
     _ClickAction = click_action;
-}
-
-void UIButton::SetDefaultImage(std::filesystem::path default_image_path)
-{
-    _default_image.LoadImage(default_image_path);
-}
-
-void UIButton::SetHoverImage(std::filesystem::path hover_image_path)
-{
-    _hover_image.LoadImage(hover_image_path);
-}
-
-void UIButton::SetClickImage(std::filesystem::path click_image_path)
-{
-    _click_image.LoadImage(click_image_path);
 }
 
 void UIButton::Update(MouseState mouse_state)
@@ -835,19 +891,20 @@ void UIButton::Update(MouseState mouse_state)
 
 void UIButton::Render()
 {
-    ShaderManager::UI_IMAGE_SHADER.Use();
+    Shader image_shader = ShaderManager::UI_IMAGE_SHADER;
+    image_shader.Use();
+
     if (_held)
-    {
-        _click_image.Render();
-    }
+        image_shader.SetFloat("darkness", 0.2f);
     else if (_hovered)
-    {
-        _hover_image.Render();
-    }
+        image_shader.SetFloat("darkness", 0.1f);
     else
-    {
-        _default_image.Render();
-    }
+        image_shader.SetFloat("darkness", 0.0f);
+
+    glBindVertexArray(_vao);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, _texture);
+    glDrawArrays(GL_TRIANGLES, 0, 18); // 3 quads, 6 verts/quad
 
     ShaderManager::UI_TEXT_SHADER.Use();
     _text.Render();
