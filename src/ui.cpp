@@ -127,17 +127,21 @@ UIMainMenu::UIMainMenu()
 
 void UIMainMenu::Update(MouseState mouse_state)
 {
-    for (UIButton& moon_button : _moon_buttons)
-        moon_button.Update(mouse_state);
-
-    for (UIButton& reset_button : _reset_buttons)
-        reset_button.Update(mouse_state);
-
-    _options_button.Update(mouse_state);
-    _quit_button.Update(mouse_state);
-
     if (_moon_settings_menu.IsActive())
+    {
         _moon_settings_menu.Update(mouse_state);
+    }
+    else // Player can't interact with buttons behind active menus
+    {
+        for (UIButton& moon_button : _moon_buttons)
+            moon_button.Update(mouse_state);
+
+        for (UIButton& reset_button : _reset_buttons)
+            reset_button.Update(mouse_state);
+
+        _options_button.Update(mouse_state);
+        _quit_button.Update(mouse_state);
+    }
 }
 
 void UIMainMenu::Render(float delta_time)
@@ -153,10 +157,8 @@ void UIMainMenu::Render(float delta_time)
     // Fully visible for 8 seconds, fades out in 1 second
     const float opaque_time = 8.0f;
     const float fade_time = 1.0f;
-    const float scale_speed = 0.000001f;
+    const float scale_speed = 0.04f;
     glm::vec2 current_position;
-    glm::vec2 current_size;
-    glm::vec2 new_size;
     glm::vec2 offset;
 
     if (_current_background_time < opaque_time) // Current background is fully opaque
@@ -165,12 +167,9 @@ void UIMainMenu::Render(float delta_time)
         ui_image_shader.SetFloat("opacity", 1.0f);
 
         current_position = _background_images[_current_background].GetPosition();
-        current_size = _background_images[_current_background].GetSize();
-        new_size = current_size * scale;
-        offset = glm::vec2((new_size.x - current_size.x) / 2.0f, (new_size.y - current_size.y) / 2.0f);
-        _background_images[_current_background].SetSize(new_size);
-        _background_images[_current_background].SetPosition(current_position - offset);
-
+        offset = {(1920.0f * (scale - 1.0f)) / 2.0f, (1080.0f * (scale - 1.0f)) / 2.0f};
+        _background_images[_current_background].SetSize(scale * glm::vec2(1920.0f, 1080.0f));
+        _background_images[_current_background].SetPosition({-offset.x, -offset.y});
         _background_images[_current_background].Render();
     }
     else // Cross-fading
@@ -183,12 +182,9 @@ void UIMainMenu::Render(float delta_time)
         ui_image_shader.SetFloat("opacity", opacity);
 
         current_position = _background_images[_current_background].GetPosition();
-        current_size = _background_images[_current_background].GetSize();
-        new_size = current_size * scale;
-        offset = glm::vec2((new_size.x - current_size.x) / 2.0f, (new_size.y - current_size.y) / 2.0f);
-        _background_images[_current_background].SetSize(new_size);
-        _background_images[_current_background].SetPosition(current_position - offset);
-
+        offset = {(1920.0f * (scale - 1.0f)) / 2.0f, (1080.0f * (scale - 1.0f)) / 2.0f};
+        _background_images[_current_background].SetSize(scale * glm::vec2(1920.0f, 1080.0f));
+        _background_images[_current_background].SetPosition({-offset.x, -offset.y});
         _background_images[_current_background].Render();
 
         // Next
@@ -197,12 +193,9 @@ void UIMainMenu::Render(float delta_time)
         ui_image_shader.SetFloat("opacity", opacity);
 
         current_position = _background_images[(_current_background + 1) % 5].GetPosition();
-        current_size = _background_images[(_current_background + 1) % 5].GetSize();
-        new_size = current_size * scale;
-        offset = glm::vec2((new_size.x - current_size.x) / 2.0f, (new_size.y - current_size.y) / 2.0f);
-        _background_images[(_current_background + 1) % 5].SetSize(new_size);
-        _background_images[(_current_background + 1) % 5].SetPosition(current_position - offset);
-
+        offset = {(1920.0f * (scale - 1.0f)) / 2.0f, (1080.0f * (scale - 1.0f)) / 2.0f};
+        _background_images[(_current_background + 1) % 5].SetSize(scale * glm::vec2(1920.0f, 1080.0f));
+        _background_images[(_current_background + 1) % 5].SetPosition({-offset.x, -offset.y});
         _background_images[(_current_background + 1) % 5].Render();
 
         if (_current_background_time >= opaque_time + fade_time)
