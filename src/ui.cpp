@@ -25,6 +25,18 @@
 #define STBTT_STATIC
 #include <stb_truetype/stb_truetype.h>
 
+int LAST_INPUT_KEY = ' ';
+bool LAST_INPUT_KEY_HANDLED = true;
+
+void HandleTextInput(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    if (key >= (int)' ' && (key < 128 || key == GLFW_KEY_BACKSPACE) && action == GLFW_PRESS)
+    {
+        LAST_INPUT_KEY = key;
+        LAST_INPUT_KEY_HANDLED = false;
+    }
+}
+
 //
 // Main Menu
 //
@@ -117,13 +129,15 @@ UIMainMenu::UIMainMenu(GLFWwindow *window)
     });
     _quit_button.SetText("Quit", quit_font_size, {0.0f, 0.0f, 0.0f, 1.0f});
     _quit_button.SetClickAction([this]() { glfwSetWindowShouldClose(_window, true); });
+
+    glfwSetKeyCallback(window, HandleTextInput);
 }
 
-void UIMainMenu::Update(MouseState mouse_state)
+void UIMainMenu::Update(float delta_time, MouseState mouse_state)
 {
     if (_moon_settings_menu.IsActive())
     {
-        _moon_settings_menu.Update(mouse_state);
+        _moon_settings_menu.Update(delta_time, mouse_state);
     }
     else if (_options_menu.IsActive())
     {
@@ -268,12 +282,26 @@ UIMoonSettingsMenu::UIMoonSettingsMenu()
     _tree_cover.SetFontSize(setting_font_size);
     _tree_cover.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
 
+    // Tree cover slider
+    _tree_cover_slider.SetDiscrete(true);
+    _tree_cover_slider.SetPosition({bg_pos_x + setting_text_align_x + 20, 700 + 6});
+    _tree_cover_slider.SetSize({460, 20});
+    _tree_cover_slider.SetBounds({0.0f, 4.0f});
+    _tree_cover_slider.SetValue(2.0f);
+
     // Terrain roughness
     float roughness_text_width = UIText::GetTextSizeInPixels("Terrain Roughness:", setting_font_size).x;
     _roughness.SetPosition({bg_pos_x + setting_text_align_x - roughness_text_width, 640});
     _roughness.SetText("Terrain Roughness:");
     _roughness.SetFontSize(setting_font_size);
     _roughness.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
+
+    // Terrain roughness slider
+    _roughness_slider.SetDiscrete(true);
+    _roughness_slider.SetPosition({bg_pos_x + setting_text_align_x + 20, 640 + 6});
+    _roughness_slider.SetSize({460, 20});
+    _roughness_slider.SetBounds({0.0f, 4.0f});
+    _roughness_slider.SetValue(2.0f);
 
     // Wildlife level
     float wildlife_text_width = UIText::GetTextSizeInPixels("Wildlife Level:", setting_font_size).x;
@@ -282,6 +310,13 @@ UIMoonSettingsMenu::UIMoonSettingsMenu()
     _wildlife.SetFontSize(setting_font_size);
     _wildlife.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
 
+    // Wildlife level slider
+    _wildlife_slider.SetDiscrete(true);
+    _wildlife_slider.SetPosition({bg_pos_x + setting_text_align_x + 20, 580 + 6});
+    _wildlife_slider.SetSize({460, 20});
+    _wildlife_slider.SetBounds({0.0f, 4.0f});
+    _wildlife_slider.SetValue(2.0f);
+
     // Seed
     float seed_text_width = UIText::GetTextSizeInPixels("Seed:", setting_font_size).x;
     _seed.SetPosition({bg_pos_x + setting_text_align_x - seed_text_width, 520});
@@ -289,24 +324,31 @@ UIMoonSettingsMenu::UIMoonSettingsMenu()
     _seed.SetFontSize(setting_font_size);
     _seed.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
 
+    // Seed textbox
+    _seed_textbox.SetPosition({bg_pos_x + setting_text_align_x + 20, 505});
+    _seed_textbox.SetSize({460, 50});
+
     // Mode description
     float mode_text_width = UIText::GetTextSizeInPixels("Survive on an alien moon", 0.3f).x;
-    _mode_description.SetPosition({bg_pos_x + (bg_width / 2.0f) - (mode_text_width / 2.0f), bg_pos_y + 250});
+    _mode_description.SetPosition({bg_pos_x + (bg_width / 2.0f) - (mode_text_width / 2.0f), bg_pos_y + 230});
     _mode_description.SetText("Survive on an alien moon");
     _mode_description.SetFontSize(0.3f);
     _mode_description.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
 
     // Creative button
-    _creative_button.LoadImage(Storage::ASSET_DIR / "images" / "creative_inactive.png", GL_NEAREST);
+    _creative_button.SetToggledImage(Storage::ASSET_DIR / "images" / "creative_toggled.png");
+    _creative_button.SetUntoggledImage(Storage::ASSET_DIR / "images" / "creative_untoggled.png");
     glm::vec2 creative_button_size = {200, 60};
     _creative_button.SetSize(creative_button_size);
     _creative_button.SetPosition({bg_pos_x + (bg_width / 2.0f) - (creative_button_size.x / 2.0f) - 100, bg_pos_y + 150});
 
     // Explore button
-    _explore_button.LoadImage(Storage::ASSET_DIR / "images" / "explore_active.png", GL_NEAREST);
+    _explore_button.SetToggledImage(Storage::ASSET_DIR / "images" / "explore_toggled.png");
+    _explore_button.SetUntoggledImage(Storage::ASSET_DIR / "images" / "explore_untoggled.png");
     glm::vec2 explore_button_size = {200, 60};
     _explore_button.SetSize(explore_button_size);
     _explore_button.SetPosition({bg_pos_x + (bg_width / 2.0f) + (explore_button_size.x / 2.0f) - 100, bg_pos_y + 150});
+    _explore_button.SetToggled(true);
 
     // Back button
     glm::vec2 back_button_position = {bg_pos_x + 50, bg_pos_y + 40};
@@ -347,12 +389,44 @@ bool UIMoonSettingsMenu::IsActive()
     return _active;
 }
 
-void UIMoonSettingsMenu::Update(MouseState mouse_state)
+void UIMoonSettingsMenu::Update(float delta_time, MouseState mouse_state)
 {
     _back_button.Update(mouse_state);
     _launch_button.Update(mouse_state);
-    //_explore_button.Update(mouse_state);
-    //_creative_button.Update(mouse_state);
+    _tree_cover_slider.Update(mouse_state);
+    _roughness_slider.Update(mouse_state);
+    _wildlife_slider.Update(mouse_state);
+    _seed_textbox.Update(delta_time, mouse_state);
+
+    bool explore_was_toggled = _explore_button.IsToggled();
+    _explore_button.Update(mouse_state);
+    if (explore_was_toggled && !_explore_button.IsToggled()) // Prevent both buttons being untoggled
+        _explore_button.SetToggled(true);
+    if (_explore_button.IsToggled())
+        _creative_button.SetToggled(false);
+
+    bool creative_was_toggled = _creative_button.IsToggled();
+    _creative_button.Update(mouse_state);
+    if (creative_was_toggled && !_creative_button.IsToggled()) // Prevent both buttons being untoggled
+        _creative_button.SetToggled(true);
+    if (_creative_button.IsToggled())
+        _explore_button.SetToggled(false);
+
+    glm::vec2 bg_pos = _background.GetPosition();
+    glm::vec2 bg_size = _background.GetSize();
+    float mode_text_width;
+    if (_explore_button.IsToggled())
+    {
+        mode_text_width = UIText::GetTextSizeInPixels("Survive on an alien moon", 0.3f).x;
+        _mode_description.SetPosition({bg_pos.x + (bg_size.x / 2.0f) - (mode_text_width / 2.0f), bg_pos.y + 230});
+        _mode_description.SetText("Survive on an alien moon");
+    }
+    else
+    {
+        mode_text_width = UIText::GetTextSizeInPixels("Create without limits, safely", 0.3f).x;
+        _mode_description.SetPosition({bg_pos.x + (bg_size.x / 2.0f) - (mode_text_width / 2.0f), bg_pos.y + 230});
+        _mode_description.SetText("Create without limits, safely");
+    }
 }
 
 void UIMoonSettingsMenu::Render()
@@ -360,9 +434,13 @@ void UIMoonSettingsMenu::Render()
     _background.Render();
     _title.Render();
     _tree_cover.Render();
+    _tree_cover_slider.Render();
     _roughness.Render();
+    _roughness_slider.Render();
     _wildlife.Render();
+    _wildlife_slider.Render();
     _seed.Render();
+    _seed_textbox.Render();
     _explore_button.Render();
     _creative_button.Render();
     _mode_description.Render();
@@ -410,7 +488,6 @@ UIOptionsMenu::UIOptionsMenu()
     _sfx_volume_slider.SetPosition({bg_pos_x + option_text_align_x1 + 25, 685});
     _sfx_volume_slider.SetSize({240, 20});
     _sfx_volume_slider.SetBounds({0.0f, 1.0f});
-    //_sfx_volume_slider.SetValue(0.5f);
     _sfx_volume_slider.SetValue(current_options.sfx_volume);
 
     // Music volume
@@ -424,7 +501,6 @@ UIOptionsMenu::UIOptionsMenu()
     _music_volume_slider.SetPosition({bg_pos_x + option_text_align_x1 + 25, 605});
     _music_volume_slider.SetSize({240, 20});
     _music_volume_slider.SetBounds({0.0f, 1.0f});
-    //_music_volume_slider.SetValue(0.5f);
     _music_volume_slider.SetValue(current_options.music_volume);
 
     // Sensitivity
@@ -438,7 +514,6 @@ UIOptionsMenu::UIOptionsMenu()
     _sensitivity_slider.SetPosition({bg_pos_x + option_text_align_x1 + 25, 525});
     _sensitivity_slider.SetSize({240, 20});
     _sensitivity_slider.SetBounds({0.0f, 2.0f});
-    //_sensitivity_slider.SetValue(0.5f);
     _sensitivity_slider.SetValue(current_options.sensitivity);
 
     // Render distance
@@ -453,7 +528,6 @@ UIOptionsMenu::UIOptionsMenu()
     _render_distance_slider.SetPosition({bg_pos_x + option_text_align_x1 + 25, 445});
     _render_distance_slider.SetSize({240, 20});
     _render_distance_slider.SetBounds({1.0f, 8.0f});
-    //_render_distance_slider.SetValue(0.5f);
     _render_distance_slider.SetValue(current_options.render_distance);
 
     // Show GUI
@@ -466,7 +540,7 @@ UIOptionsMenu::UIOptionsMenu()
     // Show GUI toggle
     _show_gui_toggle.SetPosition({bg_pos_x + option_text_align_x2 + 20, 680 - 10});
     _show_gui_toggle.SetSize({40, 40});
-    _show_gui_toggle.SetChecked(current_options.show_gui);
+    _show_gui_toggle.SetToggled(current_options.show_gui);
 
     // Show fog
     float fog_text_width = UIText::GetTextSizeInPixels("Show Fog:", option_font_size).x;
@@ -478,7 +552,7 @@ UIOptionsMenu::UIOptionsMenu()
     // Show fog toggle
     _show_fog_toggle.SetPosition({bg_pos_x + option_text_align_x2 + 20, 600 - 10});
     _show_fog_toggle.SetSize({40, 40});
-    _show_fog_toggle.SetChecked(current_options.show_fog);
+    _show_fog_toggle.SetToggled(current_options.show_fog);
 
     // Show debug info
     float debug_text_width = UIText::GetTextSizeInPixels("Debug Info:", option_font_size).x;
@@ -490,7 +564,7 @@ UIOptionsMenu::UIOptionsMenu()
     // Show debug toggle
     _show_debug_toggle.SetPosition({bg_pos_x + option_text_align_x2 + 20, 520 - 10});
     _show_debug_toggle.SetSize({40, 40});
-    _show_debug_toggle.SetChecked(current_options.show_debug_info);
+    _show_debug_toggle.SetToggled(current_options.show_debug_info);
 
     // Back button
     glm::vec2 back_button_position = {bg_pos_x + 50, bg_pos_y + 40};
@@ -510,9 +584,9 @@ UIOptionsMenu::UIOptionsMenu()
         new_options.render_distance = _render_distance_slider.GetValue();
         new_options.sensitivity = _sensitivity_slider.GetValue();
         new_options.sfx_volume = _sfx_volume_slider.GetValue();
-        new_options.show_debug_info = _show_debug_toggle.IsChecked();
-        new_options.show_fog = _show_fog_toggle.IsChecked();
-        new_options.show_gui = _show_gui_toggle.IsChecked();
+        new_options.show_debug_info = _show_debug_toggle.IsToggled();
+        new_options.show_fog = _show_fog_toggle.IsToggled();
+        new_options.show_gui = _show_gui_toggle.IsToggled();
         OptionsManager::SetOptions(new_options);
         _active = false;
     });
@@ -1313,39 +1387,49 @@ void UIButton::Render()
 
 UIToggleButton::UIToggleButton()
 {
-    _checked_image.LoadImage(Storage::ASSET_DIR / "images" / "ui_toggle_checked.png");
-    _unchecked_image.LoadImage(Storage::ASSET_DIR / "images" / "ui_toggle_unchecked.png");
+    _toggled_image.LoadImage(Storage::ASSET_DIR / "images" / "ui_toggle_checked.png");
+    _untoggled_image.LoadImage(Storage::ASSET_DIR / "images" / "ui_toggle_unchecked.png");
+}
+
+void UIToggleButton::SetToggledImage(std::filesystem::path image_path)
+{
+    _toggled_image.LoadImage(image_path);
+}
+
+void UIToggleButton::SetUntoggledImage(std::filesystem::path image_path)
+{
+    _untoggled_image.LoadImage(image_path);
 }
 
 void UIToggleButton::SetPosition(glm::vec2 position)
 {
     _position = position;
-    _checked_image.SetPosition(position);
-    _unchecked_image.SetPosition(position);
+    _toggled_image.SetPosition(position);
+    _untoggled_image.SetPosition(position);
 }
 
 void UIToggleButton::SetSize(glm::vec2 size)
 {
     _size = size;
-    _checked_image.SetSize(size);
-    _unchecked_image.SetSize(size);
+    _toggled_image.SetSize(size);
+    _untoggled_image.SetSize(size);
 }
 
-void UIToggleButton::SetChecked(bool value)
+void UIToggleButton::SetToggled(bool toggled)
 {
-    _checked = value;
+    _toggled = toggled;
 }
 
-bool UIToggleButton::IsChecked()
+bool UIToggleButton::IsToggled()
 {
-    return _checked;
+    return _toggled;
 }
 
 void UIToggleButton::Update(MouseState mouse_state)
 {
     _hovered = mouse_state.position.x >= _position.x && mouse_state.position.x <= _position.x + _size.x && mouse_state.position.y >= _position.y && mouse_state.position.y <= _position.y + _size.y;
     if (_hovered && mouse_state.left_clicked)
-        _checked = !_checked;
+        _toggled = !_toggled;
 }
 
 void UIToggleButton::Render()
@@ -1358,10 +1442,10 @@ void UIToggleButton::Render()
     else
         image_shader.SetFloat("darkness", 0.0f);
 
-    if (_checked)
-        _checked_image.Render();
+    if (_toggled)
+        _toggled_image.Render();
     else
-        _unchecked_image.Render();
+        _untoggled_image.Render();
 }
 
 //
@@ -1465,4 +1549,91 @@ void UISlider::Render()
         _slider_handle_held.Render();
     else
         _slider_handle.Render();
+}
+
+//
+// Text Box
+//
+
+UITextBox::UITextBox()
+{
+    _box.SetImage(Storage::ASSET_DIR / "images" / "ui_textbox.png");
+    _text.SetText("");
+    _text.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
+    _text.SetFontSize(0.4f);
+    _cursor.SetText("1");
+    _cursor.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
+    _cursor.SetFontSize(0.6f);
+    _cursor_time = 0;
+}
+
+void UITextBox::SetPosition(glm::vec2 position)
+{
+    _position = position;
+    _box.SetPosition(position);
+    _text.SetPosition({position.x + 10, position.y + 10});
+    _cursor.SetPosition({position.x + 10, position.y + 10});
+}
+
+void UITextBox::SetSize(glm::vec2 size)
+{
+    _size = size;
+    _box.SetSize(size);
+}
+
+std::string UITextBox::GetText()
+{
+    return _text_str;
+}
+
+void UITextBox::Update(float delta_time, MouseState mouse_state)
+{
+    // Text
+    if (_active && !LAST_INPUT_KEY_HANDLED)
+    {
+        if (LAST_INPUT_KEY == GLFW_KEY_BACKSPACE)
+        {
+            _text_str = _text_str.substr(0, _text_str.length() - 1);
+        }
+        else
+        {
+            float text_width = UIText::GetTextSizeInPixels(_text_str, 0.4f).x;
+            if (text_width < 0.9f * _size.x)
+                _text_str += (char)LAST_INPUT_KEY;
+        }
+        _text.SetText(_text_str);
+        LAST_INPUT_KEY_HANDLED = true;
+        _cursor_time = 0;
+    }
+    else if (!_active)
+    {
+        LAST_INPUT_KEY_HANDLED = true;
+    }
+
+    // Cursor
+    float new_text_width = UIText::GetTextSizeInPixels(_text_str, 0.4f).x;
+    _cursor.SetPosition({_position.x + 10 + new_text_width, _position.y + 10});
+    if (_active)
+    {
+        _cursor_time += delta_time;
+        if (_cursor_time > 0.8f)
+            _cursor_time = 0;
+    }
+    else
+    {
+        _cursor_time = 0;
+    }
+
+    bool mouse_on_box = mouse_state.position.x >= _position.x && mouse_state.position.x <= _position.x + _size.x && mouse_state.position.y >= _position.y && mouse_state.position.y <= _position.y + _size.y;
+    if (mouse_state.left_clicked)
+        _active = mouse_on_box;
+}
+
+void UITextBox::Render()
+{
+    _box.Render();
+    _text.Render();
+
+    if (_active && _cursor_time < 0.4f)
+        _cursor.Render();
 }

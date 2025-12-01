@@ -112,9 +112,6 @@ int main()
         // Input
         //
 
-        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-            glfwSetWindowShouldClose(window, true);
-
         if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
         {
             if (!mouse_state.left_clicked && !mouse_state.left_held)
@@ -153,7 +150,7 @@ int main()
 
         if (game_state == GameState::MAIN_MENU)
         {
-            ui_main_menu.Update(mouse_state);
+            ui_main_menu.Update(delta_time, mouse_state);
             ui_main_menu.Render(delta_time);
         }
         else // IN_GAME

@@ -94,19 +94,21 @@ class UIButton
 class UIToggleButton
 {
     private:
-        bool _checked = false;
+        bool _toggled = false;
         bool _hovered = false;
         glm::vec2 _position;
         glm::vec2 _size;
-        UIImage _unchecked_image;
-        UIImage _checked_image;
+        UIImage _untoggled_image;
+        UIImage _toggled_image;
 
     public:
         UIToggleButton();
+        void SetToggledImage(std::filesystem::path image_path);
+        void SetUntoggledImage(std::filesystem::path image_path);
         void SetPosition(glm::vec2 position);
         void SetSize(glm::vec2 size);
-        void SetChecked(bool value);
-        bool IsChecked();
+        void SetToggled(bool toggled);
+        bool IsToggled();
         void Update(MouseState mouse_state);
         void Render();
 };
@@ -141,7 +143,23 @@ class UISlider
 
 class UITextBox
 {
+    private:
+        bool _active = false;
+        std::string _text_str;
+        glm::vec2 _position;
+        glm::vec2 _size;
+        UIButton _box;
+        UIText _text;
+        UIText _cursor;
+        float _cursor_time;
 
+    public:
+        UITextBox();
+        void SetPosition(glm::vec2 position);
+        void SetSize(glm::vec2 size);
+        std::string GetText();
+        void Update(float delta_time, MouseState mouse_state);
+        void Render();
 };
 
 class UIMoonSettingsMenu
@@ -159,8 +177,10 @@ class UIMoonSettingsMenu
         UIText _seed;
         UITextBox _seed_textbox;
         UIText _mode_description;
-        UIImage _explore_button;
-        UIImage _creative_button;
+        // UIImage _explore_button;
+        // UIImage _creative_button;
+        UIToggleButton _explore_button;
+        UIToggleButton _creative_button;
         UIButton _launch_button;
         UIButton _back_button;
 
@@ -168,7 +188,7 @@ class UIMoonSettingsMenu
         UIMoonSettingsMenu();
         void SetActive(bool status);
         bool IsActive();
-        void Update(MouseState mouse_state);
+        void Update(float delta_time, MouseState mouse_state);
         void Render();
 };
 
@@ -239,7 +259,7 @@ class UIMainMenu
 
     public:
         UIMainMenu(GLFWwindow *window);
-        void Update(MouseState mouse_state);
+        void Update(float delta_time, MouseState mouse_state);
         void Render(float delta_time);
 };
 
