@@ -16,6 +16,7 @@
 #include "soundlib.h"
 #include "storage.h"
 #include "input.h"
+#include "options.h"
 
 glm::vec2 viewport = {1280, 720};
 glm::mat4 ui_window_to_virtual = glm::mat4(1.0f);
@@ -87,11 +88,12 @@ int main()
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     Storage::Init();
-    Soundlib::Init();
+    OptionsManager::Init();
     ShaderManager::CompileAllShaders();
+    Soundlib::Init();
 
     ui_rescale();
-    UIMainMenu ui_main_menu;
+    UIMainMenu ui_main_menu(window);
 
     enum class GameState {MAIN_MENU, IN_GAME};
     static GameState game_state = GameState::MAIN_MENU;
@@ -163,6 +165,7 @@ int main()
         glfwPollEvents();
     }
 
+    OptionsManager::SaveOptions();
     Soundlib::Exit();
     glfwTerminate();
 

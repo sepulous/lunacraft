@@ -33,6 +33,7 @@ add_executable(Lunacraft
     src/shader.cpp
     src/ui.cpp
     src/storage.cpp
+    src/options.cpp
 )
 
 # Include directories

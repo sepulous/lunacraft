@@ -15,6 +15,7 @@
 #include "storage.h"
 #include "input.h"
 #include "shader.h"
+#include "options.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_STATIC
@@ -28,8 +29,10 @@
 // Main Menu
 //
 
-UIMainMenu::UIMainMenu()
+UIMainMenu::UIMainMenu(GLFWwindow *window)
 {
+    _window = window;
+
     // Lunacraft logo
     _lunacraft_logo.LoadImage(Storage::ASSET_DIR / "images" / "lunacraft.png");
     _lunacraft_logo.SetPosition({70, 875});
@@ -82,6 +85,7 @@ UIMainMenu::UIMainMenu()
             button_position.y + (button_size.y / 2.0f) - (text_size.y / 2.0f)
         });
         reset_button.SetText("Reset", 0.425f, {0.9f, 0.0f, 0.0f, 1.0f});
+        reset_button.SetClickAction([this, i]() { _reset_moon_menu.SetMoon(i); _reset_moon_menu.SetActive(true); });
 
         i++;
     }
@@ -98,6 +102,7 @@ UIMainMenu::UIMainMenu()
         options_button_position.y + (options_button_size.y / 2.0f) - (options_text_size.y / 2.0f)
     });
     _options_button.SetText("Options", options_font_size, {0.0f, 0.0f, 0.0f, 1.0f});
+    _options_button.SetClickAction([this]() { _options_menu.SetActive(true); });
 
     // Quit button
     glm::vec2 quit_button_position = {1195, 175};
@@ -111,6 +116,7 @@ UIMainMenu::UIMainMenu()
         quit_button_position.y + (quit_button_size.y / 2.0f) - (quit_text_size.y / 2.0f)
     });
     _quit_button.SetText("Quit", quit_font_size, {0.0f, 0.0f, 0.0f, 1.0f});
+    _quit_button.SetClickAction([this]() { glfwSetWindowShouldClose(_window, true); });
 }
 
 void UIMainMenu::Update(MouseState mouse_state)
@@ -118,6 +124,14 @@ void UIMainMenu::Update(MouseState mouse_state)
     if (_moon_settings_menu.IsActive())
     {
         _moon_settings_menu.Update(mouse_state);
+    }
+    else if (_options_menu.IsActive())
+    {
+        _options_menu.Update(mouse_state);
+    }
+    else if (_reset_moon_menu.IsActive())
+    {
+        _reset_moon_menu.Update(mouse_state);
     }
     else // Player can't interact with buttons behind active menus
     {
@@ -215,6 +229,10 @@ void UIMainMenu::Render(float delta_time)
     ui_image_shader.SetFloat("darkness", 0.0f);
     if (_moon_settings_menu.IsActive())
         _moon_settings_menu.Render();
+    else if (_options_menu.IsActive())
+        _options_menu.Render();
+    else if (_reset_moon_menu.IsActive())
+        _reset_moon_menu.Render();
 }
 
 //
@@ -223,6 +241,7 @@ void UIMainMenu::Render(float delta_time)
 
 UIMoonSettingsMenu::UIMoonSettingsMenu()
 {
+    // Background
     _background.LoadImage(Storage::ASSET_DIR / "images" / "ui_menu_bg.png", GL_NEAREST);
     float bg_width = 1200;
     float bg_height = 700;
@@ -231,6 +250,65 @@ UIMoonSettingsMenu::UIMoonSettingsMenu()
     _background.SetSize({bg_width, bg_height});
     _background.SetPosition({bg_pos_x, bg_pos_y});
 
+    // Title
+    glm::vec2 title_size = UIText::GetTextSizeInPixels("Moon Settings", 0.8f);
+    glm::vec2 title_position = {bg_pos_x + (bg_width / 2.0f) - (title_size.x / 2.0f), bg_pos_y + bg_height - 100};
+    _title.SetPosition(title_position);
+    _title.SetText("Moon Settings");
+    _title.SetFontSize(0.8f);
+    _title.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
+
+    float setting_text_align_x = 580;
+    float setting_font_size = 0.4f;
+
+    // Tree  cover
+    float tree_text_width = UIText::GetTextSizeInPixels("Tree Cover:", setting_font_size).x;
+    _tree_cover.SetPosition({bg_pos_x + setting_text_align_x - tree_text_width, 700});
+    _tree_cover.SetText("Tree Cover:");
+    _tree_cover.SetFontSize(setting_font_size);
+    _tree_cover.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
+
+    // Terrain roughness
+    float roughness_text_width = UIText::GetTextSizeInPixels("Terrain Roughness:", setting_font_size).x;
+    _roughness.SetPosition({bg_pos_x + setting_text_align_x - roughness_text_width, 640});
+    _roughness.SetText("Terrain Roughness:");
+    _roughness.SetFontSize(setting_font_size);
+    _roughness.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
+
+    // Wildlife level
+    float wildlife_text_width = UIText::GetTextSizeInPixels("Wildlife Level:", setting_font_size).x;
+    _wildlife.SetPosition({bg_pos_x + setting_text_align_x - wildlife_text_width, 580});
+    _wildlife.SetText("Wildlife Level:");
+    _wildlife.SetFontSize(setting_font_size);
+    _wildlife.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
+
+    // Seed
+    float seed_text_width = UIText::GetTextSizeInPixels("Seed:", setting_font_size).x;
+    _seed.SetPosition({bg_pos_x + setting_text_align_x - seed_text_width, 520});
+    _seed.SetText("Seed:");
+    _seed.SetFontSize(setting_font_size);
+    _seed.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
+
+    // Mode description
+    float mode_text_width = UIText::GetTextSizeInPixels("Survive on an alien moon", 0.3f).x;
+    _mode_description.SetPosition({bg_pos_x + (bg_width / 2.0f) - (mode_text_width / 2.0f), bg_pos_y + 250});
+    _mode_description.SetText("Survive on an alien moon");
+    _mode_description.SetFontSize(0.3f);
+    _mode_description.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
+
+    // Creative button
+    _creative_button.LoadImage(Storage::ASSET_DIR / "images" / "creative_inactive.png", GL_NEAREST);
+    glm::vec2 creative_button_size = {200, 60};
+    _creative_button.SetSize(creative_button_size);
+    _creative_button.SetPosition({bg_pos_x + (bg_width / 2.0f) - (creative_button_size.x / 2.0f) - 100, bg_pos_y + 150});
+
+    // Explore button
+    _explore_button.LoadImage(Storage::ASSET_DIR / "images" / "explore_active.png", GL_NEAREST);
+    glm::vec2 explore_button_size = {200, 60};
+    _explore_button.SetSize(explore_button_size);
+    _explore_button.SetPosition({bg_pos_x + (bg_width / 2.0f) + (explore_button_size.x / 2.0f) - 100, bg_pos_y + 150});
+
+    // Back button
     glm::vec2 back_button_position = {bg_pos_x + 50, bg_pos_y + 40};
     glm::vec2 back_button_size = {160, 80};
     float back_font_size = 0.4f;
@@ -243,6 +321,20 @@ UIMoonSettingsMenu::UIMoonSettingsMenu()
         back_button_position.y + (back_button_size.y / 2.0f) - (back_text_size.y / 2.0f)
     });
     _back_button.SetClickAction([this]() { _active = false; });
+
+    // Launch button
+    glm::vec2 launch_button_size = {240, 80};
+    glm::vec2 launch_button_position = {bg_pos_x + (bg_width / 2.0f) - (launch_button_size.x / 2.0f), bg_pos_y + 40};
+    float launch_font_size = 0.4f;
+    _launch_button.SetPosition(launch_button_position);
+    _launch_button.SetSize(launch_button_size);
+    _launch_button.SetText("Launch!", launch_font_size, {0.0f, 0.0f, 0.0f, 1.0f});
+    glm::vec2 launch_text_size = UIText::GetTextSizeInPixels("Launch!", launch_font_size);
+    _launch_button.GetText().SetPosition({
+        launch_button_position.x + (launch_button_size.x / 2.0f) - (launch_text_size.x / 2.0f),
+        launch_button_position.y + (launch_button_size.y / 2.0f) - (launch_text_size.y / 2.0f)
+    });
+    //_launch_button.SetClickAction([]() {  });
 }
 
 void UIMoonSettingsMenu::SetActive(bool status)
@@ -258,12 +350,296 @@ bool UIMoonSettingsMenu::IsActive()
 void UIMoonSettingsMenu::Update(MouseState mouse_state)
 {
     _back_button.Update(mouse_state);
+    _launch_button.Update(mouse_state);
+    //_explore_button.Update(mouse_state);
+    //_creative_button.Update(mouse_state);
 }
 
 void UIMoonSettingsMenu::Render()
 {
     _background.Render();
+    _title.Render();
+    _tree_cover.Render();
+    _roughness.Render();
+    _wildlife.Render();
+    _seed.Render();
+    _explore_button.Render();
+    _creative_button.Render();
+    _mode_description.Render();
     _back_button.Render();
+    _launch_button.Render();
+}
+
+//
+// Options Menu
+//
+
+UIOptionsMenu::UIOptionsMenu()
+{
+    // Background
+    _background.LoadImage(Storage::ASSET_DIR / "images" / "ui_menu_bg.png", GL_NEAREST);
+    float bg_width = 1200;
+    float bg_height = 700;
+    float bg_pos_x = (VIRTUAL_UI_WIDTH / 2.0f) - (bg_width / 2.0f);
+    float bg_pos_y = (VIRTUAL_UI_HEIGHT / 2.0f) - (bg_height / 2.0f);
+    _background.SetSize({bg_width, bg_height});
+    _background.SetPosition({bg_pos_x, bg_pos_y});
+
+    // Title
+    glm::vec2 title_size = UIText::GetTextSizeInPixels("Options", 0.8f);
+    glm::vec2 title_position = {bg_pos_x + (bg_width / 2.0f) - (title_size.x / 2.0f), bg_pos_y + bg_height - 100};
+    _title.SetPosition(title_position);
+    _title.SetText("Options");
+    _title.SetFontSize(0.8f);
+    _title.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
+
+    Options current_options = OptionsManager::GetOptions();
+
+    float option_text_align_x1 = 360;
+    float option_text_align_x2 = 1050;
+    float option_font_size = 0.4f;
+
+    // SFX volume
+    float sfx_text_width = UIText::GetTextSizeInPixels("SFX Vol:", option_font_size).x;
+    _sfx_volume.SetPosition({bg_pos_x + option_text_align_x1 - sfx_text_width, 680});
+    _sfx_volume.SetText("SFX Vol:");
+    _sfx_volume.SetFontSize(option_font_size);
+    _sfx_volume.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
+
+    // SFX volume slider
+    _sfx_volume_slider.SetPosition({bg_pos_x + option_text_align_x1 + 25, 685});
+    _sfx_volume_slider.SetSize({240, 20});
+    _sfx_volume_slider.SetBounds({0.0f, 1.0f});
+    //_sfx_volume_slider.SetValue(0.5f);
+    _sfx_volume_slider.SetValue(current_options.sfx_volume);
+
+    // Music volume
+    float music_text_width = UIText::GetTextSizeInPixels("Music Vol:", option_font_size).x;
+    _music_volume.SetPosition({bg_pos_x + option_text_align_x1 - music_text_width, 600});
+    _music_volume.SetText("Music Vol:");
+    _music_volume.SetFontSize(option_font_size);
+    _music_volume.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
+
+    // Music volume slider
+    _music_volume_slider.SetPosition({bg_pos_x + option_text_align_x1 + 25, 605});
+    _music_volume_slider.SetSize({240, 20});
+    _music_volume_slider.SetBounds({0.0f, 1.0f});
+    //_music_volume_slider.SetValue(0.5f);
+    _music_volume_slider.SetValue(current_options.music_volume);
+
+    // Sensitivity
+    float sensitivity_text_width = UIText::GetTextSizeInPixels("Ctrl Sense:", option_font_size).x;
+    _sensitivity.SetPosition({bg_pos_x + option_text_align_x1 - sensitivity_text_width, 520});
+    _sensitivity.SetText("Ctrl Sense:");
+    _sensitivity.SetFontSize(option_font_size);
+    _sensitivity.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
+
+    // Sensitivity slider
+    _sensitivity_slider.SetPosition({bg_pos_x + option_text_align_x1 + 25, 525});
+    _sensitivity_slider.SetSize({240, 20});
+    _sensitivity_slider.SetBounds({0.0f, 2.0f});
+    //_sensitivity_slider.SetValue(0.5f);
+    _sensitivity_slider.SetValue(current_options.sensitivity);
+
+    // Render distance
+    float render_distance_text_width = UIText::GetTextSizeInPixels("View Dist:", option_font_size).x;
+    _render_distance.SetPosition({bg_pos_x + option_text_align_x1 - render_distance_text_width, 440});
+    _render_distance.SetText("View Dist:");
+    _render_distance.SetFontSize(option_font_size);
+    _render_distance.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
+
+    // Render distance slider
+    _render_distance_slider.SetDiscrete(true);
+    _render_distance_slider.SetPosition({bg_pos_x + option_text_align_x1 + 25, 445});
+    _render_distance_slider.SetSize({240, 20});
+    _render_distance_slider.SetBounds({1.0f, 8.0f});
+    //_render_distance_slider.SetValue(0.5f);
+    _render_distance_slider.SetValue(current_options.render_distance);
+
+    // Show GUI
+    float gui_text_width = UIText::GetTextSizeInPixels("Show GUI:", option_font_size).x;
+    _show_gui.SetPosition({bg_pos_x + option_text_align_x2 - gui_text_width, 680});
+    _show_gui.SetText("Show GUI:");
+    _show_gui.SetFontSize(option_font_size);
+    _show_gui.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
+
+    // Show GUI toggle
+    _show_gui_toggle.SetPosition({bg_pos_x + option_text_align_x2 + 20, 680 - 10});
+    _show_gui_toggle.SetSize({40, 40});
+    _show_gui_toggle.SetChecked(current_options.show_gui);
+
+    // Show fog
+    float fog_text_width = UIText::GetTextSizeInPixels("Show Fog:", option_font_size).x;
+    _show_fog.SetPosition({bg_pos_x + option_text_align_x2 - fog_text_width, 600});
+    _show_fog.SetText("Show Fog:");
+    _show_fog.SetFontSize(option_font_size);
+    _show_fog.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
+
+    // Show fog toggle
+    _show_fog_toggle.SetPosition({bg_pos_x + option_text_align_x2 + 20, 600 - 10});
+    _show_fog_toggle.SetSize({40, 40});
+    _show_fog_toggle.SetChecked(current_options.show_fog);
+
+    // Show debug info
+    float debug_text_width = UIText::GetTextSizeInPixels("Debug Info:", option_font_size).x;
+    _show_debug.SetPosition({bg_pos_x + option_text_align_x2 - debug_text_width, 520});
+    _show_debug.SetText("Debug Info:");
+    _show_debug.SetFontSize(option_font_size);
+    _show_debug.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
+
+    // Show debug toggle
+    _show_debug_toggle.SetPosition({bg_pos_x + option_text_align_x2 + 20, 520 - 10});
+    _show_debug_toggle.SetSize({40, 40});
+    _show_debug_toggle.SetChecked(current_options.show_debug_info);
+
+    // Back button
+    glm::vec2 back_button_position = {bg_pos_x + 50, bg_pos_y + 40};
+    glm::vec2 back_button_size = {160, 80};
+    float back_font_size = 0.4f;
+    _back_button.SetPosition(back_button_position);
+    _back_button.SetSize(back_button_size);
+    _back_button.SetText("Back", back_font_size, {0.0f, 0.0f, 0.0f, 1.0f});
+    glm::vec2 back_text_size = UIText::GetTextSizeInPixels("Back", back_font_size);
+    _back_button.GetText().SetPosition({
+        back_button_position.x + (back_button_size.x / 2.0f) - (back_text_size.x / 2.0f),
+        back_button_position.y + (back_button_size.y / 2.0f) - (back_text_size.y / 2.0f)
+    });
+    _back_button.SetClickAction([this]() {
+        Options new_options;
+        new_options.music_volume = _music_volume_slider.GetValue();
+        new_options.render_distance = _render_distance_slider.GetValue();
+        new_options.sensitivity = _sensitivity_slider.GetValue();
+        new_options.sfx_volume = _sfx_volume_slider.GetValue();
+        new_options.show_debug_info = _show_debug_toggle.IsChecked();
+        new_options.show_fog = _show_fog_toggle.IsChecked();
+        new_options.show_gui = _show_gui_toggle.IsChecked();
+        OptionsManager::SetOptions(new_options);
+        _active = false;
+    });
+}
+
+void UIOptionsMenu::SetActive(bool status)
+{
+    _active = status;
+}
+
+bool UIOptionsMenu::IsActive()
+{
+    return _active;
+}
+
+void UIOptionsMenu::Update(MouseState mouse_state)
+{
+    _back_button.Update(mouse_state);
+    _sfx_volume_slider.Update(mouse_state);
+    _music_volume_slider.Update(mouse_state);
+    _sensitivity_slider.Update(mouse_state);
+    _render_distance_slider.Update(mouse_state);
+    _show_gui_toggle.Update(mouse_state);
+    _show_fog_toggle.Update(mouse_state);
+    _show_debug_toggle.Update(mouse_state);
+}
+
+void UIOptionsMenu::Render()
+{
+    _background.Render();
+    _title.Render();
+    _sfx_volume.Render();
+    _sfx_volume_slider.Render();
+    _music_volume.Render();
+    _music_volume_slider.Render();
+    _sensitivity.Render();
+    _sensitivity_slider.Render();
+    _render_distance.Render();
+    _render_distance_slider.Render();
+    _show_gui.Render();
+    _show_gui_toggle.Render();
+    _show_fog.Render();
+    _show_fog_toggle.Render();
+    _show_debug.Render();
+    _show_debug_toggle.Render();
+    _back_button.Render();
+}
+
+//
+// Reset Moon Menu
+//
+
+UIResetMoonMenu::UIResetMoonMenu()
+{
+    // Background
+    _background.LoadImage(Storage::ASSET_DIR / "images" / "ui_menu_bg.png", GL_NEAREST);
+    float bg_width = 720;
+    float bg_height = 420;
+    float bg_pos_x = (VIRTUAL_UI_WIDTH / 2.0f) - (bg_width / 2.0f);
+    float bg_pos_y = (VIRTUAL_UI_HEIGHT / 2.0f) - (bg_height / 2.0f);
+    _background.SetSize({bg_width, bg_height});
+    _background.SetPosition({bg_pos_x, bg_pos_y});
+
+    // Title
+    glm::vec2 title_size = UIText::GetTextSizeInPixels("Reset saved world?", 0.4f);
+    glm::vec2 title_position = {bg_pos_x + (bg_width / 2.0f) - (title_size.x / 2.0f), bg_pos_y + bg_height - 100};
+    _title.SetPosition(title_position);
+    _title.SetText("Reset saved world?");
+    _title.SetFontSize(0.4f);
+    _title.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
+
+    // Cancel button
+    glm::vec2 cancel_button_position = {bg_pos_x + 100, bg_pos_y + 100};
+    glm::vec2 cancel_button_size = {240, 80};
+    float cancel_font_size = 0.4f;
+    _cancel_button.SetPosition(cancel_button_position);
+    _cancel_button.SetSize(cancel_button_size);
+    _cancel_button.SetText("Cancel", cancel_font_size, {0.0f, 0.0f, 0.0f, 1.0f});
+    glm::vec2 cancel_text_size = UIText::GetTextSizeInPixels("Cancel", cancel_font_size);
+    _cancel_button.GetText().SetPosition({
+        cancel_button_position.x + (cancel_button_size.x / 2.0f) - (cancel_text_size.x / 2.0f),
+        cancel_button_position.y + (cancel_button_size.y / 2.0f) - (cancel_text_size.y / 2.0f)
+    });
+    _cancel_button.SetClickAction([this]() { _active = false; });
+
+    // Reset button
+    glm::vec2 reset_button_position = {bg_pos_x + 380, bg_pos_y + 100};
+    glm::vec2 reset_button_size = {240, 80};
+    float reset_font_size = 0.4f;
+    _reset_button.SetPosition(reset_button_position);
+    _reset_button.SetSize(reset_button_size);
+    _reset_button.SetText("Reset", reset_font_size, {0.9f, 0.0f, 0.0f, 1.0f});
+    glm::vec2 reset_text_size = UIText::GetTextSizeInPixels("Reset", reset_font_size);
+    _reset_button.GetText().SetPosition({
+        reset_button_position.x + (reset_button_size.x / 2.0f) - (reset_text_size.x / 2.0f),
+        reset_button_position.y + (reset_button_size.y / 2.0f) - (reset_text_size.y / 2.0f)
+    });
+    //_reset_button.SetClickAction([this]() {  });
+}
+
+void UIResetMoonMenu::SetMoon(int moon)
+{
+    _moon = moon;
+}
+
+void UIResetMoonMenu::SetActive(bool status)
+{
+    _active = status;
+}
+
+bool UIResetMoonMenu::IsActive()
+{
+    return _active;
+}
+
+void UIResetMoonMenu::Update(MouseState mouse_state)
+{
+    _cancel_button.Update(mouse_state);
+    _reset_button.Update(mouse_state);
+}
+
+void UIResetMoonMenu::Render()
+{
+    _background.Render();
+    _title.Render();
+    _cancel_button.Render();
+    _reset_button.Render();
 }
 
 //
@@ -772,6 +1148,20 @@ UIButton::UIButton()
     stbi_image_free(image_data);
 }
 
+void UIButton::SetImage(std::filesystem::path image_path)
+{
+    int image_width, image_height, num_channels;
+    stbi_set_flip_vertically_on_load(true);
+    unsigned char *image_data = stbi_load(image_path.c_str(), &image_width, &image_height, &num_channels, 0);
+    _button_image_size = {image_width, image_height};
+
+    int format = (num_channels == 3) ? GL_RGB : GL_RGBA; // I expect either 3 or 4 channels
+    glBindTexture(GL_TEXTURE_2D, _texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, format, image_width, image_height, 0, format, GL_UNSIGNED_BYTE, image_data);
+
+    stbi_image_free(image_data);
+}
+
 void UIButton::SetPosition(glm::vec2 position)
 {
     _position = position;
@@ -915,4 +1305,164 @@ void UIButton::Render()
 
     ShaderManager::UI_TEXT_SHADER.Use();
     _text.Render();
+}
+
+//
+// Toggle Button
+//
+
+UIToggleButton::UIToggleButton()
+{
+    _checked_image.LoadImage(Storage::ASSET_DIR / "images" / "ui_toggle_checked.png");
+    _unchecked_image.LoadImage(Storage::ASSET_DIR / "images" / "ui_toggle_unchecked.png");
+}
+
+void UIToggleButton::SetPosition(glm::vec2 position)
+{
+    _position = position;
+    _checked_image.SetPosition(position);
+    _unchecked_image.SetPosition(position);
+}
+
+void UIToggleButton::SetSize(glm::vec2 size)
+{
+    _size = size;
+    _checked_image.SetSize(size);
+    _unchecked_image.SetSize(size);
+}
+
+void UIToggleButton::SetChecked(bool value)
+{
+    _checked = value;
+}
+
+bool UIToggleButton::IsChecked()
+{
+    return _checked;
+}
+
+void UIToggleButton::Update(MouseState mouse_state)
+{
+    _hovered = mouse_state.position.x >= _position.x && mouse_state.position.x <= _position.x + _size.x && mouse_state.position.y >= _position.y && mouse_state.position.y <= _position.y + _size.y;
+    if (_hovered && mouse_state.left_clicked)
+        _checked = !_checked;
+}
+
+void UIToggleButton::Render()
+{
+    Shader image_shader = ShaderManager::UI_IMAGE_SHADER;
+    image_shader.Use();
+
+    if (_hovered)
+        image_shader.SetFloat("darkness", 0.1f);
+    else
+        image_shader.SetFloat("darkness", 0.0f);
+
+    if (_checked)
+        _checked_image.Render();
+    else
+        _unchecked_image.Render();
+}
+
+//
+// Slider
+//
+
+UISlider::UISlider()
+{
+    _slider_bg.SetImage(Storage::ASSET_DIR / "images" / "ui_slider_bg.png");
+    _slider_level.SetImage(Storage::ASSET_DIR / "images" / "ui_slider_level.png");
+    _slider_handle.LoadImage(Storage::ASSET_DIR / "images" / "ui_slider_handle.png");
+    _slider_handle_held.LoadImage(Storage::ASSET_DIR / "images" / "ui_slider_handle_held.png");
+}
+
+void UISlider::SetValue(float level)
+{
+    _value = glm::clamp(level, _value_min, _value_max);
+    if (_discrete)
+        _value = glm::round(_value);
+    float f = (_value - _value_min) / (_value_max - _value_min);
+    float handle_pos_x = _position.x + f*_size.x - 20;
+    _slider_level.SetSize({handle_pos_x - _position.x + 20, _size.y});
+    _slider_handle.SetPosition({handle_pos_x, _position.y - 20});
+    _slider_handle_held.SetPosition({handle_pos_x, _position.y - 20});
+}
+
+float UISlider::GetValue()
+{
+    return _value;
+}
+
+void UISlider::SetBounds(glm::vec2 bounds)
+{
+    _value_min = bounds.x;
+    _value_max = bounds.y;
+}
+
+void UISlider::SetPosition(glm::vec2 position)
+{
+    _position = position;
+    _slider_bg.SetPosition(position);
+    _slider_level.SetPosition(position);
+    _slider_handle.SetPosition({position.x - 20, position.y - 20});
+    _slider_handle_held.SetPosition({position.x - 20, position.y - 20});
+}
+
+void UISlider::SetSize(glm::vec2 size)
+{
+    _size = size;
+    _slider_bg.SetSize(size);
+    _slider_level.SetSize(size);
+    float handle_size = size.y * 2.5f;
+    _slider_handle.SetSize({handle_size, handle_size});
+    _slider_handle_held.SetSize({handle_size, handle_size});
+}
+
+void UISlider::SetDiscrete(bool value)
+{
+    _discrete = value;
+}
+
+void UISlider::Update(MouseState mouse_state)
+{
+    glm::vec2 mouse_pos = mouse_state.position;
+    glm::vec2 handle_pos = _slider_handle.GetPosition();
+    glm::vec2 handle_size = _slider_handle.GetSize();
+    bool mouse_on_slider = mouse_pos.x >= _position.x && mouse_pos.x <= _position.x + _size.x && mouse_pos.y >= handle_pos.y && mouse_pos.y <= handle_pos.y + handle_size.y;
+
+    if (_clicked)
+        _clicked = mouse_state.left_held;
+    else
+        _clicked = mouse_state.left_clicked && mouse_on_slider;
+
+    if (_held)
+        _held = mouse_state.left_held;
+    else
+        _held = _clicked && mouse_state.left_held && mouse_on_slider;
+
+    if (_held) // Still held; drag slider
+    {
+        _value = glm::clamp(
+            ((mouse_pos.x - _position.x) / _size.x) * (_value_max - _value_min) + _value_min,
+            _value_min,
+            _value_max
+        );
+        if (_discrete)
+            _value = glm::round(_value);
+        float f = (_value - _value_min) / (_value_max - _value_min);
+        float handle_pos_x = _position.x + f*_size.x - 20;
+        _slider_level.SetSize({handle_pos_x - _position.x + 20, _size.y});
+        _slider_handle.SetPosition({handle_pos_x, _position.y - 20});
+        _slider_handle_held.SetPosition({handle_pos_x, _position.y - 20});
+    }
+}
+
+void UISlider::Render()
+{
+    _slider_bg.Render();
+    _slider_level.Render();
+    if (_held)
+        _slider_handle_held.Render();
+    else
+        _slider_handle.Render();
 }

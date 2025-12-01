@@ -80,6 +80,7 @@ class UIButton
 
     public:
         UIButton();
+        void SetImage(std::filesystem::path image_path);
         void SetPosition(glm::vec2 position);
         void SetSize(glm::vec2 size);
         void SetText(std::string text, float font_size, glm::vec4 color);
@@ -90,11 +91,77 @@ class UIButton
         UIText& GetText() { return _text; }
 };
 
+class UIToggleButton
+{
+    private:
+        bool _checked = false;
+        bool _hovered = false;
+        glm::vec2 _position;
+        glm::vec2 _size;
+        UIImage _unchecked_image;
+        UIImage _checked_image;
+
+    public:
+        UIToggleButton();
+        void SetPosition(glm::vec2 position);
+        void SetSize(glm::vec2 size);
+        void SetChecked(bool value);
+        bool IsChecked();
+        void Update(MouseState mouse_state);
+        void Render();
+};
+
+class UISlider
+{
+    private:
+        bool _discrete = false;
+        bool _clicked = false; // Necessary to drag only one slider
+        bool _held = false;
+        float _value = 0.5f;
+        float _value_min = 0.0f;
+        float _value_max = 1.0f;
+        glm::vec2 _position;
+        glm::vec2 _size;
+        UIButton _slider_bg;
+        UIButton _slider_level;
+        UIImage _slider_handle;
+        UIImage _slider_handle_held;
+
+    public:
+        UISlider();
+        void SetDiscrete(bool value);
+        void SetValue(float value);
+        float GetValue();
+        void SetBounds(glm::vec2 bounds);
+        void SetPosition(glm::vec2 position);
+        void SetSize(glm::vec2 size);
+        void Update(MouseState mouse_state);
+        void Render();
+};
+
+class UITextBox
+{
+
+};
+
 class UIMoonSettingsMenu
 {
     private:
         bool _active = false;
         UIImage _background;
+        UIText _title;
+        UIText _tree_cover;
+        UISlider _tree_cover_slider;
+        UIText _roughness;
+        UISlider _roughness_slider;
+        UIText _wildlife;
+        UISlider _wildlife_slider;
+        UIText _seed;
+        UITextBox _seed_textbox;
+        UIText _mode_description;
+        UIImage _explore_button;
+        UIImage _creative_button;
+        UIButton _launch_button;
         UIButton _back_button;
 
     public:
@@ -105,21 +172,73 @@ class UIMoonSettingsMenu
         void Render();
 };
 
+class UIOptionsMenu
+{
+    private:
+        bool _active = false;
+        UIImage _background;
+        UIText _title;
+        UIText _sfx_volume;
+        UISlider _sfx_volume_slider;
+        UIText _music_volume;
+        UISlider _music_volume_slider;
+        UIText _sensitivity;
+        UISlider _sensitivity_slider;
+        UIText _render_distance;
+        UISlider _render_distance_slider;
+        UIText _show_gui;
+        UIToggleButton _show_gui_toggle;
+        UIText _show_fog;
+        UIToggleButton _show_fog_toggle;
+        UIText _show_debug;
+        UIToggleButton _show_debug_toggle;
+        UIButton _back_button;
+
+    public:
+        UIOptionsMenu();
+        void SetActive(bool status);
+        bool IsActive();
+        void Update(MouseState mouse_state);
+        void Render();
+};
+
+class UIResetMoonMenu
+{
+    private:
+        bool _active = false;
+        int _moon = 0;
+        UIImage _background;
+        UIText _title;
+        UIButton _cancel_button;
+        UIButton _reset_button;
+
+    public:
+        UIResetMoonMenu();
+        void SetMoon(int moon);
+        void SetActive(bool status);
+        bool IsActive();
+        void Update(MouseState mouse_state);
+        void Render();
+};
+
 class UIMainMenu
 {
     private:
+        GLFWwindow *_window;
         UIImage _lunacraft_logo;
         UIImage _background_images[5];
         int _current_background = 0;
         float _current_background_time = 0;
-        UIMoonSettingsMenu _moon_settings_menu;
         UIButton _moon_buttons[4];
         UIButton _reset_buttons[4];
         UIButton _options_button;
         UIButton _quit_button;
+        UIMoonSettingsMenu _moon_settings_menu;
+        UIOptionsMenu _options_menu;
+        UIResetMoonMenu _reset_moon_menu;
 
     public:
-        UIMainMenu();
+        UIMainMenu(GLFWwindow *window);
         void Update(MouseState mouse_state);
         void Render(float delta_time);
 };
