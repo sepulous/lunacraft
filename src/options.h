@@ -3,13 +3,13 @@
 
 struct Options
 {
+    float sfx_volume = 0.5f;
+    float music_volume = 0.5f;
+    float sensitivity = 1.0f;
     int render_distance = 3;
     bool show_fog = true;
     bool show_gui = true;
     bool show_debug_info = false;
-    float sfx_volume = 0.5f;
-    float music_volume = 0.5f;
-    float sensitivity = 1.0f;
 };
 
 class OptionsManager

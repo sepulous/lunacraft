@@ -34,6 +34,7 @@ add_executable(Lunacraft
     src/ui.cpp
     src/storage.cpp
     src/options.cpp
+    src/skybox.cpp
 )
 
 # Include directories

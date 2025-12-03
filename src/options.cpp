@@ -1,6 +1,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <cstring>
 
 #include "options.h"
 #include "storage.h"
@@ -15,8 +16,8 @@ void OptionsManager::Init()
         char options_data[sizeof(Options)];
         std::ifstream options_file(options_file_path, std::ios::binary);
         options_file.read(options_data, sizeof(Options));
-        _options = *(reinterpret_cast<Options *>(options_data));
         options_file.close();
+        memcpy(&_options, options_data, sizeof(Options));
     }
     else
     {

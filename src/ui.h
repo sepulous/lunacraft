@@ -10,9 +10,27 @@
 
 #include "shader.h"
 #include "input.h"
+#include "moon_settings.h"
 
 const float VIRTUAL_UI_WIDTH = 1920.0f;
 const float VIRTUAL_UI_HEIGHT = 1080.0f;
+
+// Menus
+class UIMainMenu;
+class UILoadMoonMenu;
+class UIResetMoonMenu;
+class UIOptionsMenu;
+class UIMoonSettingsMenu;
+
+// UI elements
+class UITextBox;
+class UISlider;
+class UIToggleButton;
+class UIButton;
+class UIImage;
+class UIText;
+
+/////////////////////////////////////
 
 class UIImage
 {
@@ -162,10 +180,26 @@ class UITextBox
         void Render();
 };
 
+class UILoadMoonMenu
+{
+    private:
+        bool _active = false;
+        UIImage _background;
+        UIText _title;
+
+    public:
+        UILoadMoonMenu();
+        void SetActive(bool status);
+        bool IsActive();
+        void Update();
+        void Render();
+};
+
 class UIMoonSettingsMenu
 {
     private:
         bool _active = false;
+        int _moon = 0;
         UIImage _background;
         UIText _title;
         UIText _tree_cover;
@@ -177,8 +211,6 @@ class UIMoonSettingsMenu
         UIText _seed;
         UITextBox _seed_textbox;
         UIText _mode_description;
-        // UIImage _explore_button;
-        // UIImage _creative_button;
         UIToggleButton _explore_button;
         UIToggleButton _creative_button;
         UIButton _launch_button;
@@ -186,6 +218,7 @@ class UIMoonSettingsMenu
 
     public:
         UIMoonSettingsMenu();
+        void SetMoon(int moon);
         void SetActive(bool status);
         bool IsActive();
         void Update(float delta_time, MouseState mouse_state);

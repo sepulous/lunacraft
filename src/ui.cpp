@@ -25,6 +25,9 @@
 #define STBTT_STATIC
 #include <stb_truetype/stb_truetype.h>
 
+extern void CreateMoon(int, MoonSettings);
+extern void LoadMoon(int);
+
 int LAST_INPUT_KEY = ' ';
 bool LAST_INPUT_KEY_HANDLED = true;
 
@@ -46,7 +49,7 @@ UIMainMenu::UIMainMenu(GLFWwindow *window)
     _window = window;
 
     // Lunacraft logo
-    _lunacraft_logo.LoadImage(Storage::ASSET_DIR / "images" / "lunacraft.png");
+    _lunacraft_logo.LoadImage(Storage::IMAGE_DIR / "lunacraft.png");
     _lunacraft_logo.SetPosition({70, 875});
     _lunacraft_logo.SetSize({859, 130});
 
@@ -55,7 +58,7 @@ UIMainMenu::UIMainMenu(GLFWwindow *window)
     for (UIImage& background_image : _background_images)
     {
         std::string image_path = std::string("main_menu_") + std::to_string(i) + ".png";
-        background_image.LoadImage(Storage::ASSET_DIR / "images" / image_path);
+        background_image.LoadImage(Storage::IMAGE_DIR / image_path);
         background_image.SetPosition({0, 0});
         background_image.SetSize({VIRTUAL_UI_WIDTH, VIRTUAL_UI_HEIGHT});
         i++;
@@ -65,11 +68,12 @@ UIMainMenu::UIMainMenu(GLFWwindow *window)
     i = 0;
     for (UIButton& moon_button : _moon_buttons)
     {
+        // TODO: Set click action to LoadMoon(_moon) if the moon already exists
         glm::vec2 button_position = {595, 705 - i*(105 + 25)};
         glm::vec2 button_size = {820, 105};
         moon_button.SetSize(button_size);
         moon_button.SetPosition(button_position);
-        moon_button.SetClickAction([this]() { _moon_settings_menu.SetActive(true); });
+        moon_button.SetClickAction([this, i]() { _moon_settings_menu.SetMoon(i); _moon_settings_menu.SetActive(true); });
 
         std::string button_text = std::string("Moon ") + "ABCD"[i] + " - Unexplored";
         glm::vec2 text_size = UIText::GetTextSizeInPixels(button_text, 0.5f);
@@ -256,7 +260,7 @@ void UIMainMenu::Render(float delta_time)
 UIMoonSettingsMenu::UIMoonSettingsMenu()
 {
     // Background
-    _background.LoadImage(Storage::ASSET_DIR / "images" / "ui_menu_bg.png", GL_NEAREST);
+    _background.LoadImage(Storage::IMAGE_DIR / "ui" / "ui_menu_bg.png", GL_NEAREST);
     float bg_width = 1200;
     float bg_height = 700;
     float bg_pos_x = (VIRTUAL_UI_WIDTH / 2.0f) - (bg_width / 2.0f);
@@ -336,15 +340,15 @@ UIMoonSettingsMenu::UIMoonSettingsMenu()
     _mode_description.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
 
     // Creative button
-    _creative_button.SetToggledImage(Storage::ASSET_DIR / "images" / "creative_toggled.png");
-    _creative_button.SetUntoggledImage(Storage::ASSET_DIR / "images" / "creative_untoggled.png");
+    _creative_button.SetToggledImage(Storage::IMAGE_DIR / "ui" / "creative_toggled.png");
+    _creative_button.SetUntoggledImage(Storage::IMAGE_DIR / "ui" / "creative_untoggled.png");
     glm::vec2 creative_button_size = {200, 60};
     _creative_button.SetSize(creative_button_size);
     _creative_button.SetPosition({bg_pos_x + (bg_width / 2.0f) - (creative_button_size.x / 2.0f) - 100, bg_pos_y + 150});
 
     // Explore button
-    _explore_button.SetToggledImage(Storage::ASSET_DIR / "images" / "explore_toggled.png");
-    _explore_button.SetUntoggledImage(Storage::ASSET_DIR / "images" / "explore_untoggled.png");
+    _explore_button.SetToggledImage(Storage::IMAGE_DIR / "ui" / "explore_toggled.png");
+    _explore_button.SetUntoggledImage(Storage::IMAGE_DIR / "ui" / "explore_untoggled.png");
     glm::vec2 explore_button_size = {200, 60};
     _explore_button.SetSize(explore_button_size);
     _explore_button.SetPosition({bg_pos_x + (bg_width / 2.0f) + (explore_button_size.x / 2.0f) - 100, bg_pos_y + 150});
@@ -376,7 +380,30 @@ UIMoonSettingsMenu::UIMoonSettingsMenu()
         launch_button_position.x + (launch_button_size.x / 2.0f) - (launch_text_size.x / 2.0f),
         launch_button_position.y + (launch_button_size.y / 2.0f) - (launch_text_size.y / 2.0f)
     });
-    //_launch_button.SetClickAction([]() {  });
+    _launch_button.SetClickAction([this]() {
+        MoonSettings moon_settings;
+        moon_settings.tree_cover = (uint8_t)_tree_cover_slider.GetValue();
+        moon_settings.terrain_roughness = (uint8_t)_roughness_slider.GetValue();
+        moon_settings.wildlife_level = (uint8_t)_wildlife_slider.GetValue();
+        moon_settings.is_creative = _creative_button.IsToggled();
+
+        std::string seed_text = _seed_textbox.GetText();
+        uint64_t seed_hash = 1469598103934665603ULL;
+        for (unsigned char c : seed_text)
+        {
+            seed_hash ^= c;
+            seed_hash *= 1099511628211ULL; // FNV prime
+        }
+        moon_settings.seed = seed_hash;
+
+        SetActive(false);
+        CreateMoon(_moon, moon_settings);
+    });
+}
+
+void UIMoonSettingsMenu::SetMoon(int moon)
+{
+    _moon = moon;
 }
 
 void UIMoonSettingsMenu::SetActive(bool status)
@@ -449,13 +476,58 @@ void UIMoonSettingsMenu::Render()
 }
 
 //
+// Load Moon Menu
+//
+
+UILoadMoonMenu::UILoadMoonMenu()
+{
+    // Background
+    _background.LoadImage(Storage::IMAGE_DIR / "ui" / "ui_menu_bg.png", GL_NEAREST);
+    float bg_width = 780;
+    float bg_height = 420;
+    float bg_pos_x = (VIRTUAL_UI_WIDTH / 2.0f) - (bg_width / 2.0f);
+    float bg_pos_y = (VIRTUAL_UI_HEIGHT / 2.0f) - (bg_height / 2.0f);
+    _background.SetSize({bg_width, bg_height});
+    _background.SetPosition({bg_pos_x, bg_pos_y});
+
+    // Title
+    glm::vec2 title_size = UIText::GetTextSizeInPixels("Inserting astronaut...", 0.4f);
+    glm::vec2 title_position = {bg_pos_x + (bg_width / 2.0f) - (title_size.x / 2.0f), bg_pos_y + bg_height - 100};
+    _title.SetPosition(title_position);
+    _title.SetText("Inserting astronaut...");
+    _title.SetFontSize(0.4f);
+    _title.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
+}
+
+void UILoadMoonMenu::SetActive(bool status)
+{
+    _active = status;
+}
+
+bool UILoadMoonMenu::IsActive()
+{
+    return _active;
+}
+
+void UILoadMoonMenu::Update()
+{
+    
+}
+
+void UILoadMoonMenu::Render()
+{
+    _background.Render();
+    _title.Render();
+}
+
+//
 // Options Menu
 //
 
 UIOptionsMenu::UIOptionsMenu()
 {
     // Background
-    _background.LoadImage(Storage::ASSET_DIR / "images" / "ui_menu_bg.png", GL_NEAREST);
+    _background.LoadImage(Storage::IMAGE_DIR / "ui" / "ui_menu_bg.png", GL_NEAREST);
     float bg_width = 1200;
     float bg_height = 700;
     float bg_pos_x = (VIRTUAL_UI_WIDTH / 2.0f) - (bg_width / 2.0f);
@@ -642,7 +714,7 @@ void UIOptionsMenu::Render()
 UIResetMoonMenu::UIResetMoonMenu()
 {
     // Background
-    _background.LoadImage(Storage::ASSET_DIR / "images" / "ui_menu_bg.png", GL_NEAREST);
+    _background.LoadImage(Storage::IMAGE_DIR / "ui" / "ui_menu_bg.png", GL_NEAREST);
     float bg_width = 720;
     float bg_height = 420;
     float bg_pos_x = (VIRTUAL_UI_WIDTH / 2.0f) - (bg_width / 2.0f);
@@ -1212,7 +1284,7 @@ UIButton::UIButton()
 
     int image_width, image_height, num_channels;
     stbi_set_flip_vertically_on_load(true);
-    std::filesystem::path button_path = Storage::ASSET_DIR / "images" / "ui_button.png";
+    std::filesystem::path button_path = Storage::IMAGE_DIR / "ui" / "ui_button.png";
     unsigned char *image_data = stbi_load(button_path.c_str(), &image_width, &image_height, &num_channels, 0);
     _button_image_size = {image_width, image_height};
 
@@ -1387,8 +1459,8 @@ void UIButton::Render()
 
 UIToggleButton::UIToggleButton()
 {
-    _toggled_image.LoadImage(Storage::ASSET_DIR / "images" / "ui_toggle_checked.png");
-    _untoggled_image.LoadImage(Storage::ASSET_DIR / "images" / "ui_toggle_unchecked.png");
+    _toggled_image.LoadImage(Storage::IMAGE_DIR / "ui" / "ui_toggle_checked.png");
+    _untoggled_image.LoadImage(Storage::IMAGE_DIR / "ui" / "ui_toggle_unchecked.png");
 }
 
 void UIToggleButton::SetToggledImage(std::filesystem::path image_path)
@@ -1454,10 +1526,10 @@ void UIToggleButton::Render()
 
 UISlider::UISlider()
 {
-    _slider_bg.SetImage(Storage::ASSET_DIR / "images" / "ui_slider_bg.png");
-    _slider_level.SetImage(Storage::ASSET_DIR / "images" / "ui_slider_level.png");
-    _slider_handle.LoadImage(Storage::ASSET_DIR / "images" / "ui_slider_handle.png");
-    _slider_handle_held.LoadImage(Storage::ASSET_DIR / "images" / "ui_slider_handle_held.png");
+    _slider_bg.SetImage(Storage::IMAGE_DIR / "ui" / "ui_slider_bg.png");
+    _slider_level.SetImage(Storage::IMAGE_DIR / "ui" / "ui_slider_level.png");
+    _slider_handle.LoadImage(Storage::IMAGE_DIR / "ui" / "ui_slider_handle.png");
+    _slider_handle_held.LoadImage(Storage::IMAGE_DIR / "ui" / "ui_slider_handle_held.png");
 }
 
 void UISlider::SetValue(float level)
@@ -1557,7 +1629,7 @@ void UISlider::Render()
 
 UITextBox::UITextBox()
 {
-    _box.SetImage(Storage::ASSET_DIR / "images" / "ui_textbox.png");
+    _box.SetImage(Storage::IMAGE_DIR / "ui" / "ui_textbox.png");
     _text.SetText("");
     _text.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
     _text.SetFontSize(0.4f);

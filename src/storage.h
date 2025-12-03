@@ -26,6 +26,7 @@ class Storage
     public:
         static std::filesystem::path ROOT_DIR;
         static std::filesystem::path ASSET_DIR;
+        static std::filesystem::path IMAGE_DIR;
         static std::filesystem::path SHADER_DIR;
         static std::filesystem::path MOON_DIR;
         static std::filesystem::path SCREENSHOT_DIR;

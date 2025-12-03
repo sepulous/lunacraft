@@ -18,11 +18,15 @@
 
 Shader ShaderManager::UI_IMAGE_SHADER;
 Shader ShaderManager::UI_TEXT_SHADER;
+Shader ShaderManager::BLOCK_SHADER;
+Shader ShaderManager::SKYBOX_SHADER;
 
 void ShaderManager::CompileAllShaders()
 {
     UI_IMAGE_SHADER.MakeProgram(Storage::SHADER_DIR / "ui_image.vert", Storage::SHADER_DIR / "ui_image.frag");
     UI_TEXT_SHADER.MakeProgram(Storage::SHADER_DIR / "ui_text.vert", Storage::SHADER_DIR / "ui_text.frag");
+    BLOCK_SHADER.MakeProgram(Storage::SHADER_DIR / "block.vert", Storage::SHADER_DIR / "block.frag");
+    SKYBOX_SHADER.MakeProgram(Storage::SHADER_DIR / "skybox.vert", Storage::SHADER_DIR / "skybox.frag");
 }
 
 //

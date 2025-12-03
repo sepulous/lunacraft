@@ -6,6 +6,7 @@
 
 std::filesystem::path Storage::ROOT_DIR;
 std::filesystem::path Storage::ASSET_DIR;
+std::filesystem::path Storage::IMAGE_DIR;
 std::filesystem::path Storage::SHADER_DIR;
 std::filesystem::path Storage::MOON_DIR;
 std::filesystem::path Storage::SCREENSHOT_DIR;
@@ -26,12 +27,8 @@ void Storage::Init()
         std::filesystem::create_directory(ROOT_DIR);
 
     ASSET_DIR = ROOT_DIR / "assets";
-    if (!std::filesystem::exists(ASSET_DIR))
-        std::filesystem::create_directory(ASSET_DIR);
-
+    IMAGE_DIR = ASSET_DIR / "images";
     SHADER_DIR = ASSET_DIR / "shaders";
-    if (!std::filesystem::exists(SHADER_DIR))
-        std::filesystem::create_directory(SHADER_DIR);
 
     MOON_DIR = ROOT_DIR / "moons";
     if (!std::filesystem::exists(MOON_DIR))
