@@ -12,6 +12,7 @@
 #include "block.h"
 #include "constants.h"
 #include "simplex.h"
+#include "helpers.h"
 
 std::vector<std::vector<glm::vec3>> CRYSTAL_PLANT_SHAPES = {
     {
@@ -948,15 +949,12 @@ std::vector<std::vector<TreeBlock>> SPIRAL_LIGHT_TREE_SHAPES = {
     }
 };
 
-int GetStructureSeed(uint64_t worldSeed, int chunkX, int chunkZ)
+uint32_t GetStructureSeed(uint64_t world_seed, int chunk_x, int chunk_z)
 {
-    // Convert signed coords to unsigned to avoid sign extension issues
-    // uint64_t x = (uint64_t)((uint32_t)chunkX) + 341873128712UL;
-    // uint64_t z = (uint64_t)((uint32_t)chunkZ) + 132897987541UL;
-    uint64_t x = (uint64_t)((uint32_t)chunkX);
-    uint64_t z = (uint64_t)((uint32_t)chunkZ);
+    uint64_t x = (uint64_t)((uint32_t)chunk_x);
+    uint64_t z = (uint64_t)((uint32_t)chunk_z);
 
-    uint64_t hash = worldSeed;
+    uint64_t hash = world_seed;
     hash ^= x * 0x517CC1B727220A95UL;
     hash ^= z * 0x9E3779B97F4A7C15UL;
     hash ^= (hash >> 33);
@@ -977,15 +975,20 @@ uint64_t splitmix64(uint64_t& x)
     return z ^ (z >> 31ULL);
 }
 
-int *GenerateHeightMap(int heightMapIndex, int chunkX, int chunkZ, uint64_t seed, float amplitude, float frequency, float persistence, int octaves, int terrainRoughness)
+int RandomRange(int minInclusive, int maxExclusive)
 {
-    int *heightMap = new int[(CHUNK_SIZE + 2)*(CHUNK_SIZE + 2)];
+    int range = maxExclusive - minInclusive - 1;
+    return (int)((float)std::rand() * range / RAND_MAX) + minInclusive;
+}
+
+void GenerateHeightMap(int *heightMap, int chunkX, int chunkZ, uint64_t seed, float amplitude, float frequency, float persistence, int octaves, int terrainRoughness)
+{
     float frequency0 = frequency;
     float amplitude0 = amplitude;
     float divFactor = 32.0f - 4.0f * terrainRoughness;
     float heightLimit;
-    double offset_x = (double)((splitmix64(seed) << 32) >> 32);
-    double offset_z = (double)((splitmix64(seed) << 32) >> 32);
+    double offset_x = static_cast<double>(splitmix64(seed) & 0xFFFFFFFF);
+    double offset_z = static_cast<double>(splitmix64(seed) & 0xFFFFFFFF);
 
     for (int x = -1; x < CHUNK_SIZE + 1; x++)
     {
@@ -1005,285 +1008,283 @@ int *GenerateHeightMap(int heightMapIndex, int chunkX, int chunkZ, uint64_t seed
             heightMap[(z + 1) + (CHUNK_SIZE + 2) * (x + 1)] = (int)heightLimit;
         }
     }
-
-    return heightMap;
 }
 
-int RandomRange(int minInclusive, int maxExclusive)
+void GenerateChunk(uint16_t *chunk, int chunk_x, int chunk_z, uint64_t seed)
 {
-    int range = maxExclusive - minInclusive - 1;
-    return (int)((float)std::rand() * range / RAND_MAX) + minInclusive;
-}
+    static int *height_maps;
+    static bool height_maps_initialized = false;
+    if (!height_maps_initialized)
+    {
+        height_maps = new int[(CHUNK_SIZE + 2)*(CHUNK_SIZE + 2) * 4];
+        height_maps_initialized = true;
+    }
 
-void GenerateChunk(uint16_t *chunk, int chunkX, int chunkZ, uint64_t seed)
-{
     //
     // Generate terrain
     //
-    int *rockHeightMap = GenerateHeightMap(0, chunkX, chunkZ, seed, 16, 0.4, 0.4, 4, 2);
-    int *gravelHeightMap = GenerateHeightMap(1, chunkX, chunkZ, seed, 4, 0.4, 0.6, 2, 2);
-    int *dirtHeightMap = GenerateHeightMap(2, chunkX, chunkZ, seed, 3, 0.4, 0.4, 3, 2);
-    int *sandHeightMap = GenerateHeightMap(3, chunkX, chunkZ, seed, 2, 0.4, 0.8, 2, 2);
+    const int ROCK_OFFSET   = 0;
+    const int GRAVEL_OFFSET = 1 * (CHUNK_SIZE + 2)*(CHUNK_SIZE + 2);
+    const int DIRT_OFFSET   = 2 * (CHUNK_SIZE + 2)*(CHUNK_SIZE + 2);
+    const int SAND_OFFSET   = 3 * (CHUNK_SIZE + 2)*(CHUNK_SIZE + 2);
+    GenerateHeightMap(&height_maps[ROCK_OFFSET], chunk_x, chunk_z, seed, 16, 0.4, 0.4, 4, 2);
+    GenerateHeightMap(&height_maps[GRAVEL_OFFSET], chunk_x, chunk_z, seed, 4, 0.4, 0.6, 2, 2);
+    GenerateHeightMap(&height_maps[DIRT_OFFSET], chunk_x, chunk_z, seed, 3, 0.4, 0.4, 3, 2);
+    GenerateHeightMap(&height_maps[SAND_OFFSET], chunk_x, chunk_z, seed, 2, 0.4, 0.8, 2, 2);
 
-    int chunkIndex = 0;
+    int chunk_index = 0;
     for (int x = 0; x < CHUNK_SIZE + 2; x++)
     {
         for (int z = 0; z < CHUNK_SIZE + 2; z++)
         {
-            int rockHeightLimit = rockHeightMap[z + (CHUNK_SIZE + 2) * x];
-            int gravelHeightLimit = gravelHeightMap[z + (CHUNK_SIZE + 2) * x];
-            int dirtHeightLimit = dirtHeightMap[z + (CHUNK_SIZE + 2) * x];
-            int sandHeightLimit = sandHeightMap[z + (CHUNK_SIZE + 2) * x];
+            int rock_height_limit   = height_maps[ROCK_OFFSET   + z + (CHUNK_SIZE + 2) * x];
+            int gravel_height_limit = height_maps[GRAVEL_OFFSET + z + (CHUNK_SIZE + 2) * x];
+            int dirt_height_limit   = height_maps[DIRT_OFFSET   + z + (CHUNK_SIZE + 2) * x];
+            int sand_height_limit   = height_maps[SAND_OFFSET   + z + (CHUNK_SIZE + 2) * x];
             int y = 0;
 
             // Base rock
-            while (y < 50 + rockHeightLimit)
+            while (y < 50 + rock_height_limit)
             {
-                chunk[chunkIndex++] = (uint16_t)BlockID::rock;
+                chunk[chunk_index++] = (uint16_t)BlockID::rock;
                 y++;
             }
 
             // Base gravel
-            while (y < 50 + rockHeightLimit + gravelHeightLimit)
+            while (y < 50 + rock_height_limit + gravel_height_limit)
             {
-                chunk[chunkIndex++] = (uint16_t)BlockID::gravel;
+                chunk[chunk_index++] = (uint16_t)BlockID::gravel;
                 y++;
             }
 
             // Base dirt
-            while (y < 50 + rockHeightLimit + gravelHeightLimit + dirtHeightLimit)
+            while (y < 50 + rock_height_limit + gravel_height_limit + dirt_height_limit)
             {
-                chunk[chunkIndex++] = (uint16_t)BlockID::dirt;
+                chunk[chunk_index++] = (uint16_t)BlockID::dirt;
                 y++;
             }
 
-            if (50 + rockHeightLimit + gravelHeightLimit + dirtHeightLimit < GROUND_LEVEL) // Below ground level; fill rest in with sand/water
+            if (50 + rock_height_limit + gravel_height_limit + dirt_height_limit < GROUND_LEVEL) // Below ground level; fill rest in with sand/water
             {
-                while (y < GROUND_LEVEL && y < 50 + rockHeightLimit + gravelHeightLimit + dirtHeightLimit + sandHeightLimit)
+                int sand_limit = glm::min(GROUND_LEVEL, 50 + rock_height_limit + gravel_height_limit + dirt_height_limit + sand_height_limit);
+                while (y < sand_limit)
                 {
-                    chunk[chunkIndex++] = (uint16_t)BlockID::sand;
+                    chunk[chunk_index++] = (uint16_t)BlockID::sand;
                     y++;
                 }
 
                 while (y < GROUND_LEVEL)
                 {
-                    chunk[chunkIndex++] = (uint16_t)BlockID::water;
+                    chunk[chunk_index++] = (uint16_t)BlockID::water;
                     y++;
                 }
             }
             else // Above ground level; finish terrain by placing topsoil
             {
-                chunk[chunkIndex++] = (uint16_t)BlockID::topsoil;
+                chunk[chunk_index++] = (uint16_t)BlockID::topsoil;
                 y++;
             }
 
             while (y < WORLD_HEIGHT_LIMIT)
             {
-                chunk[chunkIndex++] = (uint16_t)BlockID::air;
+                chunk[chunk_index++] = (uint16_t)BlockID::air;
                 y++;
             }
         }
     }
-    free(rockHeightMap);
-    free(gravelHeightMap);
-    free(dirtHeightMap);
-    free(sandHeightMap);
 
     // Ensure the same seed puts the same structures in the same places
-    //UnityEngine.Random.State initialRandomState = UnityEngine.Random.state;
-    //int structureSeed = (int)((69 >> 32) ^ (69 & 0xFFFFFFFF)) ^ chunkX ^ chunkZ;
-    // int structureSeed = GetStructureSeed(69, chunkX, chunkZ);
-    int structureSeed = GetStructureSeed(seed, chunkX, chunkZ);
-    std::srand(structureSeed);
+    uint32_t structure_seed = GetStructureSeed(seed, chunk_x, chunk_z);
+    std::srand(structure_seed);
 
     //
     // Ores
     //
     //int oreSpawnChance = RandomRange(0, 10);
-    int oreSpawnChance = RandomRange(0, 10);
-    if (oreSpawnChance <= 3)
+    int ore_spawn_chance = RandomRange(0, 10);
+    if (ore_spawn_chance <= 3)
     {
-        int seedBlockX = RandomRange(5, CHUNK_SIZE - 6);
-        int seedBlockZ = RandomRange(5, CHUNK_SIZE - 6);
-        int seedBlockY = -1;
+        int seed_block_x = RandomRange(5, CHUNK_SIZE - 6);
+        int seed_block_z = RandomRange(5, CHUNK_SIZE - 6);
+        int seed_block_y = -1;
         for (int y = 63; y < WORLD_HEIGHT_LIMIT; y++)
         {
-            chunkIndex = GetChunkIndex(seedBlockX, y + 1, seedBlockZ);
-            if (chunk[chunkIndex] == (uint16_t)BlockID::air)
+            chunk_index = GetChunkIndex(seed_block_x, y + 1, seed_block_z);
+            if (chunk[chunk_index] == (uint16_t)BlockID::air)
             {
-                seedBlockY = y;
+                seed_block_y = y;
                 break;
             }
         }
 
         int ore = RandomRange(1, 101);
-        int veinSize;
-        BlockID oreID;
+        int vein_size;
+        BlockID ore_id;
         if (ore <= 36) // 36%
         {
-            oreID = BlockID::magnetite;
-            veinSize = RandomRange(2, 7);
+            ore_id = BlockID::magnetite;
+            vein_size = RandomRange(2, 7);
         }
         else if (ore <= 60) // 24%
         {
-            oreID = BlockID::aluminum_ore;
-            veinSize = RandomRange(2, 7);
+            ore_id = BlockID::aluminum_ore;
+            vein_size = RandomRange(2, 7);
         }
         else if (ore <= 78) // 18%
         {
-            oreID = BlockID::titanium_ore;
-            veinSize = RandomRange(2, 7);
+            ore_id = BlockID::titanium_ore;
+            vein_size = RandomRange(2, 7);
         }
         else if (ore <= 91) // 13%
         {
-            oreID = BlockID::gold_ore;
-            veinSize = RandomRange(1, 5);
+            ore_id = BlockID::gold_ore;
+            vein_size = RandomRange(1, 5);
         }
         else if (ore <= 98) // 7%
         {
-            oreID = BlockID::notchium_ore;
-            veinSize = RandomRange(1, 5);
+            ore_id = BlockID::notchium_ore;
+            vein_size = RandomRange(1, 5);
         }
         else // 2%
         {
-            oreID = BlockID::blue_crystal;
-            veinSize = RandomRange(1, 5);
+            ore_id = BlockID::blue_crystal;
+            vein_size = RandomRange(1, 5);
         }
 
-        int currentBlockX = seedBlockX;
-        int currentBlockY = seedBlockY;
-        int currentBlockZ = seedBlockZ;
-        chunkIndex = GetChunkIndex(seedBlockX, seedBlockY, seedBlockZ);
-        chunk[chunkIndex] = (uint16_t)oreID;
-        for (int count = 0; count < veinSize; count++)
+        int current_block_x = seed_block_x;
+        int current_block_y = seed_block_y;
+        int current_block_z = seed_block_z;
+        chunk_index = GetChunkIndex(seed_block_x, seed_block_y, seed_block_z);
+        chunk[chunk_index] = (uint16_t)ore_id;
+        for (int count = 0; count < vein_size; count++)
         {
-            int nextDirection = RandomRange(1, 6);
-            if (nextDirection == 1) // Forward
+            int next_direction = RandomRange(1, 6);
+            if (next_direction == 1) // Forward
             {
-                currentBlockZ++;
+                current_block_z++;
             }
-            else if (nextDirection == 2) // Backward
+            else if (next_direction == 2) // Backward
             {
-                currentBlockZ--;
+                current_block_z--;
             }
-            else if (nextDirection == 3) // Right
+            else if (next_direction == 3) // Right
             {
-                currentBlockX++;
+                current_block_x++;
             }
-            else if (nextDirection == 4) // Left
+            else if (next_direction == 4) // Left
             {
-                currentBlockX--;
+                current_block_x--;
             }
             else // Down
             {
-                currentBlockY--;
+                current_block_y--;
             }
 
-            chunkIndex = GetChunkIndex(currentBlockX, currentBlockY, currentBlockZ);
-            if (chunk[chunkIndex] != (uint16_t)BlockID::air)
-                chunk[chunkIndex] = (uint16_t)oreID;
+            chunk_index = GetChunkIndex(current_block_x, current_block_y, current_block_z);
+            if (chunk[chunk_index] != (uint16_t)BlockID::air)
+                chunk[chunk_index] = (uint16_t)ore_id;
         }
     }
 
     //
     // Astronaut lairs
     //
-    bool spawnAstronautLair = RandomRange(0, 100) == 69; // 1% chance, each chunk
-    const int lairDepth = 26;
-    if (spawnAstronautLair)
+    bool spawn_astronaut_lair = RandomRange(0, 100) == 69; // 1% chance, each chunk
+    const int lair_depth = 26;
+    if (spawn_astronaut_lair)
     {
-        int centerBlockX = (int)(CHUNK_SIZE / 2);
-        int centerBlockZ = (int)(CHUNK_SIZE / 2);
-        int centerBlockY = -1;
+        int center_block_x = (int)(CHUNK_SIZE / 2);
+        int center_block_z = (int)(CHUNK_SIZE / 2);
+        int center_block_y = -1;
         for (int y = 64; y < WORLD_HEIGHT_LIMIT; y++)
         {
-            chunkIndex = GetChunkIndex(centerBlockX, y + 1, centerBlockZ);
-            if (chunk[chunkIndex] == (uint16_t)BlockID::air)
+            chunk_index = GetChunkIndex(center_block_x, y + 1, center_block_z);
+            if (chunk[chunk_index] == (uint16_t)BlockID::air)
             {
-                centerBlockY = y;
+                center_block_y = y;
                 break;
             }
         }
 
         // Place gravel block at center of bottom so I can easily check whether a chunk contains an astronaut lair
-        chunkIndex = GetChunkIndex(centerBlockX, 0, centerBlockZ);
-        chunk[chunkIndex] = (uint16_t)BlockID::gravel;
+        chunk_index = GetChunkIndex(center_block_x, 0, center_block_z);
+        chunk[chunk_index] = (uint16_t)BlockID::gravel;
 
         // Carve main shaft
-        for (int xOffset = -3; xOffset <= 3; xOffset++)
+        for (int x_offset = -3; x_offset <= 3; x_offset++)
         {
-            for (int zOffset = -3; zOffset <= 3; zOffset++)
+            for (int z_offset = -3; z_offset <= 3; z_offset++)
             {
-                for (int yOffset = -6; yOffset <= lairDepth; yOffset++)
+                for (int y_offset = -6; y_offset <= lair_depth; y_offset++)
                 {
-                    chunkIndex = GetChunkIndex(centerBlockX + xOffset, centerBlockY - yOffset, centerBlockZ + zOffset);
-                    chunk[chunkIndex] = (uint16_t)BlockID::air;
+                    chunk_index = GetChunkIndex(center_block_x + x_offset, center_block_y - y_offset, center_block_z + z_offset);
+                    chunk[chunk_index] = (uint16_t)BlockID::air;
                 }
             }
         }
 
         // Decorate main shaft with polymer and light
-        bool leftSideDone = false;
-        bool rightSideDone = false;
-        bool frontSideDone = false;
-        bool backSideDone = false;
-        for (int y = centerBlockY - lairDepth; y < WORLD_HEIGHT_LIMIT; y++)
+        bool left_side_done = false;
+        bool right_side_done = false;
+        bool front_side_done = false;
+        bool back_side_done = false;
+        for (int y = center_block_y - lair_depth; y < WORLD_HEIGHT_LIMIT; y++)
         {
-            chunkIndex = GetChunkIndex(centerBlockX - 4, y, centerBlockZ);
-            if (chunk[chunkIndex] != (uint16_t)BlockID::air && !leftSideDone)
+            chunk_index = GetChunkIndex(center_block_x - 4, y, center_block_z);
+            if (chunk[chunk_index] != (uint16_t)BlockID::air && !left_side_done)
             {
-                chunk[chunkIndex] = (uint16_t)BlockID::polymer;
-                if ((y - (centerBlockY - lairDepth)) / 8.0f == 3)
-                    chunk[chunkIndex] = (uint16_t)BlockID::light;
+                chunk[chunk_index] = (uint16_t)BlockID::polymer;
+                if ((y - (center_block_y - lair_depth)) / 8.0f == 3)
+                    chunk[chunk_index] = (uint16_t)BlockID::light;
             }
             else
             {
-                leftSideDone = true;
+                left_side_done = true;
             }
 
-            chunkIndex = GetChunkIndex(centerBlockX + 4, y, centerBlockZ);
-            if (chunk[chunkIndex] != (uint16_t)BlockID::air && !rightSideDone)
+            chunk_index = GetChunkIndex(center_block_x + 4, y, center_block_z);
+            if (chunk[chunk_index] != (uint16_t)BlockID::air && !right_side_done)
             {
-                chunk[chunkIndex] = (uint16_t)BlockID::polymer;
-                if ((y - (centerBlockY - lairDepth)) / 8.0f == 3)
-                    chunk[chunkIndex] = (uint16_t)BlockID::light;
+                chunk[chunk_index] = (uint16_t)BlockID::polymer;
+                if ((y - (center_block_y - lair_depth)) / 8.0f == 3)
+                    chunk[chunk_index] = (uint16_t)BlockID::light;
             }
             else
             {
-                rightSideDone = true;
+                right_side_done = true;
             }
 
-            chunkIndex = GetChunkIndex(centerBlockX, y, centerBlockZ + 4);
-            if (chunk[chunkIndex] != (uint16_t)BlockID::air && !frontSideDone)
+            chunk_index = GetChunkIndex(center_block_x, y, center_block_z + 4);
+            if (chunk[chunk_index] != (uint16_t)BlockID::air && !front_side_done)
             {
-                chunk[chunkIndex] = (uint16_t)BlockID::polymer;
-                if ((y - (centerBlockY - lairDepth)) / 8.0f == 3)
-                    chunk[chunkIndex] = (uint16_t)BlockID::light;
+                chunk[chunk_index] = (uint16_t)BlockID::polymer;
+                if ((y - (center_block_y - lair_depth)) / 8.0f == 3)
+                    chunk[chunk_index] = (uint16_t)BlockID::light;
             }
             else
             {
-                frontSideDone = true;
+                front_side_done = true;
             }
 
-            chunkIndex = GetChunkIndex(centerBlockX, y, centerBlockZ - 4);
-            if (chunk[chunkIndex] != (uint16_t)BlockID::air && !backSideDone)
+            chunk_index = GetChunkIndex(center_block_x, y, center_block_z - 4);
+            if (chunk[chunk_index] != (uint16_t)BlockID::air && !back_side_done)
             {
-                chunk[chunkIndex] = (uint16_t)BlockID::polymer;
-                if ((y - (centerBlockY - lairDepth)) / 8.0f == 3)
-                    chunk[chunkIndex] = (uint16_t)BlockID::light;
+                chunk[chunk_index] = (uint16_t)BlockID::polymer;
+                if ((y - (center_block_y - lair_depth)) / 8.0f == 3)
+                    chunk[chunk_index] = (uint16_t)BlockID::light;
             }
             else
             {
-                backSideDone = true;
+                back_side_done = true;
             }
 
-            if (leftSideDone && rightSideDone && frontSideDone && backSideDone)
+            if (left_side_done && right_side_done && front_side_done && back_side_done)
                 break;
         }
 
         // Polymer at bottom center
-        chunkIndex = GetChunkIndex(centerBlockX, centerBlockY - lairDepth - 1, centerBlockZ);
-        chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+        chunk_index = GetChunkIndex(center_block_x, center_block_y - lair_depth - 1, center_block_z);
+        chunk[chunk_index] = (uint16_t)BlockID::polymer;
 
         // Extra front shaft(s)
         if (RandomRange(0, 4) == 0)
@@ -1294,40 +1295,40 @@ void GenerateChunk(uint16_t *chunk, int chunkX, int chunkZ, uint64_t seed)
                 {
                     for (int dy = -2; dy <= 2; dy++)
                     {
-                        int shaftX = centerBlockX + dx;
-                        int shaftY = (centerBlockY - lairDepth + 3) + dy;
-                        int shaftZ = (centerBlockZ + 4) + dz;
-                        chunkIndex = GetChunkIndex(shaftX, shaftY, shaftZ);
-                        chunk[chunkIndex] = (uint16_t)BlockID::air;
+                        int shaft_x = center_block_x + dx;
+                        int shaft_y = (center_block_y - lair_depth + 3) + dy;
+                        int shaft_z = (center_block_z + 4) + dz;
+                        chunk_index = GetChunkIndex(shaft_x, shaft_y, shaft_z);
+                        chunk[chunk_index] = (uint16_t)BlockID::air;
 
                         if (dy == 0)
                         {
                             // Left polymer
-                            chunkIndex = GetChunkIndex(centerBlockX - 3, shaftY, shaftZ);
-                            chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                            chunk_index = GetChunkIndex(center_block_x - 3, shaft_y, shaft_z);
+                            chunk[chunk_index] = (uint16_t)BlockID::polymer;
 
                             // Right polymer
-                            chunkIndex = GetChunkIndex(centerBlockX + 3, shaftY, shaftZ);
-                            chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                            chunk_index = GetChunkIndex(center_block_x + 3, shaft_y, shaft_z);
+                            chunk[chunk_index] = (uint16_t)BlockID::polymer;
                         }
 
                         if (dx == 0)
                         {
                             // Top polymer
-                            chunkIndex = GetChunkIndex(shaftX, centerBlockY - lairDepth + 6, shaftZ);
-                            chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                            chunk_index = GetChunkIndex(shaft_x, center_block_y - lair_depth + 6, shaft_z);
+                            chunk[chunk_index] = (uint16_t)BlockID::polymer;
 
                             // Bottom polymer
-                            chunkIndex = GetChunkIndex(shaftX, centerBlockY - lairDepth, shaftZ);
-                            chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                            chunk_index = GetChunkIndex(shaft_x, center_block_y - lair_depth, shaft_z);
+                            chunk[chunk_index] = (uint16_t)BlockID::polymer;
                         }
                     }
                 }
             }
 
             // Polymer on back wall
-            chunkIndex = GetChunkIndex(centerBlockX, centerBlockY - lairDepth + 3, centerBlockZ + 4 + 10);
-            chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+            chunk_index = GetChunkIndex(center_block_x, center_block_y - lair_depth + 3, center_block_z + 4 + 10);
+            chunk[chunk_index] = (uint16_t)BlockID::polymer;
 
             // Extra vertical shaft?
             if (RandomRange(0, 4) == 0)
@@ -1339,19 +1340,19 @@ void GenerateChunk(uint16_t *chunk, int chunkX, int chunkZ, uint64_t seed)
                         for (int dy = 0; dy <= 20; dy++)
                         {
                             // Carve
-                            chunkIndex = GetChunkIndex(centerBlockX + dx, centerBlockY - lairDepth - dy, centerBlockZ + 4 + 8 + dz);
-                            chunk[chunkIndex] = (uint16_t)BlockID::air;
+                            chunk_index = GetChunkIndex(center_block_x + dx, center_block_y - lair_depth - dy, center_block_z + 4 + 8 + dz);
+                            chunk[chunk_index] = (uint16_t)BlockID::air;
 
                             // Side polymers
                             if (dz == 0 && dx != 0)
                             {
-                                chunkIndex = GetChunkIndex(centerBlockX + dx + dx, centerBlockY - lairDepth - dy, centerBlockZ + 4 + 8);
-                                chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                                chunk_index = GetChunkIndex(center_block_x + dx + dx, center_block_y - lair_depth - dy, center_block_z + 4 + 8);
+                                chunk[chunk_index] = (uint16_t)BlockID::polymer;
                             }
                             else if (dx == 0 && dz != 0)
                             {
-                                chunkIndex = GetChunkIndex(centerBlockX, centerBlockY - lairDepth - dy, centerBlockZ + 4 + 8 + dz + dz);
-                                chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                                chunk_index = GetChunkIndex(center_block_x, center_block_y - lair_depth - dy, center_block_z + 4 + 8 + dz + dz);
+                                chunk[chunk_index] = (uint16_t)BlockID::polymer;
                             }
                         }
                     }
@@ -1368,19 +1369,19 @@ void GenerateChunk(uint16_t *chunk, int chunkX, int chunkZ, uint64_t seed)
                         for (int dx = 0; dx < 7; dx++)
                         {
                             // Carve
-                            chunkIndex = GetChunkIndex(centerBlockX - 3 - dx, centerBlockY - lairDepth + 3 + dy, centerBlockZ + 12 + dz);
-                            chunk[chunkIndex] = (uint16_t)BlockID::air;
+                            chunk_index = GetChunkIndex(center_block_x - 3 - dx, center_block_y - lair_depth + 3 + dy, center_block_z + 12 + dz);
+                            chunk[chunk_index] = (uint16_t)BlockID::air;
 
                             // Side polymers
                             if (dy == 0 && dz == -1) // left
                             {
-                                chunkIndex = GetChunkIndex(centerBlockX - 3 - dx, centerBlockY - lairDepth + 3 + dy, centerBlockZ + 12 + dz - 1);
-                                chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                                chunk_index = GetChunkIndex(center_block_x - 3 - dx, center_block_y - lair_depth + 3 + dy, center_block_z + 12 + dz - 1);
+                                chunk[chunk_index] = (uint16_t)BlockID::polymer;
                             }
                             else if (dz == 0 && dy != 0) // top and bottom
                             {
-                                chunkIndex = GetChunkIndex(centerBlockX - 3 - dx, centerBlockY - lairDepth + 3 + dy + dy, centerBlockZ + 12 + dz);
-                                chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                                chunk_index = GetChunkIndex(center_block_x - 3 - dx, center_block_y - lair_depth + 3 + dy + dy, center_block_z + 12 + dz);
+                                chunk[chunk_index] = (uint16_t)BlockID::polymer;
                             }
                         }
                     }
@@ -1397,19 +1398,19 @@ void GenerateChunk(uint16_t *chunk, int chunkX, int chunkZ, uint64_t seed)
                         for (int dx = 0; dx < 7; dx++)
                         {
                             // Carve
-                            chunkIndex = GetChunkIndex(centerBlockX + 3 + dx, centerBlockY - lairDepth + 3 + dy, centerBlockZ + 12 + dz);
-                            chunk[chunkIndex] = (uint16_t)BlockID::air;
+                            chunk_index = GetChunkIndex(center_block_x + 3 + dx, center_block_y - lair_depth + 3 + dy, center_block_z + 12 + dz);
+                            chunk[chunk_index] = (uint16_t)BlockID::air;
 
                             // Side polymers
                             if (dy == 0 && dz == -1) // right
                             {
-                                chunkIndex = GetChunkIndex(centerBlockX + 3 + dx, centerBlockY - lairDepth + 3 + dy, centerBlockZ + 12 + dz - 1);
-                                chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                                chunk_index = GetChunkIndex(center_block_x + 3 + dx, center_block_y - lair_depth + 3 + dy, center_block_z + 12 + dz - 1);
+                                chunk[chunk_index] = (uint16_t)BlockID::polymer;
                             }
                             else if (dz == 0 && dy != 0) // top and bottom
                             {
-                                chunkIndex = GetChunkIndex(centerBlockX + 3 + dx, centerBlockY - lairDepth + 3 + dy + dy, centerBlockZ + 12 + dz);
-                                chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                                chunk_index = GetChunkIndex(center_block_x + 3 + dx, center_block_y - lair_depth + 3 + dy + dy, center_block_z + 12 + dz);
+                                chunk[chunk_index] = (uint16_t)BlockID::polymer;
                             }
                         }
                     }
@@ -1426,40 +1427,40 @@ void GenerateChunk(uint16_t *chunk, int chunkX, int chunkZ, uint64_t seed)
                 {
                     for (int dy = -2; dy <= 2; dy++)
                     {
-                        int shaftX = centerBlockX + dx;
-                        int shaftY = (centerBlockY - lairDepth + 3) + dy;
-                        int shaftZ = (centerBlockZ - 4) - dz;
-                        chunkIndex = GetChunkIndex(shaftX, shaftY, shaftZ);
-                        chunk[chunkIndex] = (uint16_t)BlockID::air;
+                        int shaft_x = center_block_x + dx;
+                        int shaft_y = (center_block_y - lair_depth + 3) + dy;
+                        int shaft_z = (center_block_z - 4) - dz;
+                        chunk_index = GetChunkIndex(shaft_x, shaft_y, shaft_z);
+                        chunk[chunk_index] = (uint16_t)BlockID::air;
 
                         if (dy == 0)
                         {
                             // Left polymer
-                            chunkIndex = GetChunkIndex(centerBlockX - 3, shaftY, shaftZ);
-                            chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                            chunk_index = GetChunkIndex(center_block_x - 3, shaft_y, shaft_z);
+                            chunk[chunk_index] = (uint16_t)BlockID::polymer;
 
                             // Right polymer
-                            chunkIndex = GetChunkIndex(centerBlockX + 3, shaftY, shaftZ);
-                            chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                            chunk_index = GetChunkIndex(center_block_x + 3, shaft_y, shaft_z);
+                            chunk[chunk_index] = (uint16_t)BlockID::polymer;
                         }
 
                         if (dx == 0)
                         {
                             // Top polymer
-                            chunkIndex = GetChunkIndex(shaftX, centerBlockY - lairDepth + 6, shaftZ);
-                            chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                            chunk_index = GetChunkIndex(shaft_x, center_block_y - lair_depth + 6, shaft_z);
+                            chunk[chunk_index] = (uint16_t)BlockID::polymer;
 
                             // Bottom polymer
-                            chunkIndex = GetChunkIndex(shaftX, centerBlockY - lairDepth, shaftZ);
-                            chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                            chunk_index = GetChunkIndex(shaft_x, center_block_y - lair_depth, shaft_z);
+                            chunk[chunk_index] = (uint16_t)BlockID::polymer;
                         }
                     }
                 }
             }
 
             // Polymer on back wall
-            chunkIndex = GetChunkIndex(centerBlockX, centerBlockY - lairDepth + 3, centerBlockZ - 4 - 10);
-            chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+            chunk_index = GetChunkIndex(center_block_x, center_block_y - lair_depth + 3, center_block_z - 4 - 10);
+            chunk[chunk_index] = (uint16_t)BlockID::polymer;
 
             // Extra vertical shaft?
             if (RandomRange(0, 4) == 0)
@@ -1471,19 +1472,19 @@ void GenerateChunk(uint16_t *chunk, int chunkX, int chunkZ, uint64_t seed)
                         for (int dy = 0; dy <= 20; dy++)
                         {
                             // Carve
-                            chunkIndex = GetChunkIndex(centerBlockX + dx, centerBlockY - lairDepth - dy, centerBlockZ - 12 + dz);
-                            chunk[chunkIndex] = (uint16_t)BlockID::air;
+                            chunk_index = GetChunkIndex(center_block_x + dx, center_block_y - lair_depth - dy, center_block_z - 12 + dz);
+                            chunk[chunk_index] = (uint16_t)BlockID::air;
 
                             // Side polymers
                             if (dz == 0 && dx != 0)
                             {
-                                chunkIndex = GetChunkIndex(centerBlockX + dx + dx, centerBlockY - lairDepth - dy, centerBlockZ - 12);
-                                chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                                chunk_index = GetChunkIndex(center_block_x + dx + dx, center_block_y - lair_depth - dy, center_block_z - 12);
+                                chunk[chunk_index] = (uint16_t)BlockID::polymer;
                             }
                             else if (dx == 0 && dz != 0)
                             {
-                                chunkIndex = GetChunkIndex(centerBlockX, centerBlockY - lairDepth - dy, centerBlockZ - 12 + dz + dz);
-                                chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                                chunk_index = GetChunkIndex(center_block_x, center_block_y - lair_depth - dy, center_block_z - 12 + dz + dz);
+                                chunk[chunk_index] = (uint16_t)BlockID::polymer;
                             }
                         }
                     }
@@ -1500,19 +1501,19 @@ void GenerateChunk(uint16_t *chunk, int chunkX, int chunkZ, uint64_t seed)
                         for (int dx = 0; dx < 7; dx++)
                         {
                             // Carve
-                            chunkIndex = GetChunkIndex(centerBlockX - 3 - dx, centerBlockY - lairDepth + 3 + dy, centerBlockZ - 12 + dz);
-                            chunk[chunkIndex] = (uint16_t)BlockID::air;
+                            chunk_index = GetChunkIndex(center_block_x - 3 - dx, center_block_y - lair_depth + 3 + dy, center_block_z - 12 + dz);
+                            chunk[chunk_index] = (uint16_t)BlockID::air;
 
                             // Side polymers
                             if (dy == 0 && dz == 1) // left
                             {
-                                chunkIndex = GetChunkIndex(centerBlockX - 3 - dx, centerBlockY - lairDepth + 3 + dy, centerBlockZ - 12 + dz + 1);
-                                chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                                chunk_index = GetChunkIndex(center_block_x - 3 - dx, center_block_y - lair_depth + 3 + dy, center_block_z - 12 + dz + 1);
+                                chunk[chunk_index] = (uint16_t)BlockID::polymer;
                             }
                             else if (dz == 0 && dy != 0) // top and bottom
                             {
-                                chunkIndex = GetChunkIndex(centerBlockX - 3 - dx, centerBlockY - lairDepth + 3 + dy + dy, centerBlockZ - 12 + dz);
-                                chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                                chunk_index = GetChunkIndex(center_block_x - 3 - dx, center_block_y - lair_depth + 3 + dy + dy, center_block_z - 12 + dz);
+                                chunk[chunk_index] = (uint16_t)BlockID::polymer;
                             }
                         }
                     }
@@ -1529,19 +1530,19 @@ void GenerateChunk(uint16_t *chunk, int chunkX, int chunkZ, uint64_t seed)
                         for (int dx = 0; dx < 7; dx++)
                         {
                             // Carve
-                            chunkIndex = GetChunkIndex(centerBlockX + 3 + dx, centerBlockY - lairDepth + 3 + dy, centerBlockZ - 12 + dz);
-                            chunk[chunkIndex] = (uint16_t)BlockID::air;
+                            chunk_index = GetChunkIndex(center_block_x + 3 + dx, center_block_y - lair_depth + 3 + dy, center_block_z - 12 + dz);
+                            chunk[chunk_index] = (uint16_t)BlockID::air;
 
                             // Side polymers
                             if (dy == 0 && dz == 1) // right
                             {
-                                chunkIndex = GetChunkIndex(centerBlockX + 3 + dx, centerBlockY - lairDepth + 3 + dy, centerBlockZ - 12 + dz + 1);
-                                chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                                chunk_index = GetChunkIndex(center_block_x + 3 + dx, center_block_y - lair_depth + 3 + dy, center_block_z - 12 + dz + 1);
+                                chunk[chunk_index] = (uint16_t)BlockID::polymer;
                             }
                             else if (dz == 0 && dy != 0) // top and bottom
                             {
-                                chunkIndex = GetChunkIndex(centerBlockX + 3 + dx, centerBlockY - lairDepth + 3 + dy + dy, centerBlockZ - 12 + dz);
-                                chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                                chunk_index = GetChunkIndex(center_block_x + 3 + dx, center_block_y - lair_depth + 3 + dy + dy, center_block_z - 12 + dz);
+                                chunk[chunk_index] = (uint16_t)BlockID::polymer;
                             }
                         }
                     }
@@ -1558,40 +1559,40 @@ void GenerateChunk(uint16_t *chunk, int chunkX, int chunkZ, uint64_t seed)
                 {
                     for (int dy = -2; dy <= 2; dy++)
                     {
-                        int shaftX = (centerBlockX + 4) + dx;
-                        int shaftY = (centerBlockY - lairDepth + 3) + dy;
-                        int shaftZ = centerBlockZ + dz;
-                        chunkIndex = GetChunkIndex(shaftX, shaftY, shaftZ);
-                        chunk[chunkIndex] = (uint16_t)BlockID::air;
+                        int shaft_x = (center_block_x + 4) + dx;
+                        int shaft_y = (center_block_y - lair_depth + 3) + dy;
+                        int shaft_z = center_block_z + dz;
+                        chunk_index = GetChunkIndex(shaft_x, shaft_y, shaft_z);
+                        chunk[chunk_index] = (uint16_t)BlockID::air;
 
                         if (dy == 0)
                         {
                             // Left polymer
-                            chunkIndex = GetChunkIndex(shaftX, shaftY, centerBlockZ - 3);
-                            chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                            chunk_index = GetChunkIndex(shaft_x, shaft_y, center_block_z - 3);
+                            chunk[chunk_index] = (uint16_t)BlockID::polymer;
 
                             // Right polymer
-                            chunkIndex = GetChunkIndex(shaftX, shaftY, centerBlockZ + 3);
-                            chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                            chunk_index = GetChunkIndex(shaft_x, shaft_y, center_block_z + 3);
+                            chunk[chunk_index] = (uint16_t)BlockID::polymer;
                         }
 
                         if (dz == 0)
                         {
                             // Top polymer
-                            chunkIndex = GetChunkIndex(shaftX, centerBlockY - lairDepth + 6, shaftZ);
-                            chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                            chunk_index = GetChunkIndex(shaft_x, center_block_y - lair_depth + 6, shaft_z);
+                            chunk[chunk_index] = (uint16_t)BlockID::polymer;
 
                             // Bottom polymer
-                            chunkIndex = GetChunkIndex(shaftX, centerBlockY - lairDepth, shaftZ);
-                            chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                            chunk_index = GetChunkIndex(shaft_x, center_block_y - lair_depth, shaft_z);
+                            chunk[chunk_index] = (uint16_t)BlockID::polymer;
                         }
                     }
                 }
             }
 
             // Polymer on back wall
-            chunkIndex = GetChunkIndex(centerBlockX + 4 + 10, centerBlockY - lairDepth + 3, centerBlockZ);
-            chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+            chunk_index = GetChunkIndex(center_block_x + 4 + 10, center_block_y - lair_depth + 3, center_block_z);
+            chunk[chunk_index] = (uint16_t)BlockID::polymer;
 
             // Extra vertical shaft?
             if (RandomRange(0, 4) == 0)
@@ -1603,19 +1604,19 @@ void GenerateChunk(uint16_t *chunk, int chunkX, int chunkZ, uint64_t seed)
                         for (int dy = 0; dy <= 20; dy++)
                         {
                             // Carve
-                            chunkIndex = GetChunkIndex(centerBlockX + 4 + 8 + dx, centerBlockY - lairDepth - dy, centerBlockZ + dz);
-                            chunk[chunkIndex] = (uint16_t)BlockID::air;
+                            chunk_index = GetChunkIndex(center_block_x + 4 + 8 + dx, center_block_y - lair_depth - dy, center_block_z + dz);
+                            chunk[chunk_index] = (uint16_t)BlockID::air;
 
                             // Side polymers
                             if (dz == 0 && dx != 0)
                             {
-                                chunkIndex = GetChunkIndex(centerBlockX + 4 + 8 + dx + dx, centerBlockY - lairDepth - dy, centerBlockZ);
-                                chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                                chunk_index = GetChunkIndex(center_block_x + 4 + 8 + dx + dx, center_block_y - lair_depth - dy, center_block_z);
+                                chunk[chunk_index] = (uint16_t)BlockID::polymer;
                             }
                             else if (dx == 0 && dz != 0)
                             {
-                                chunkIndex = GetChunkIndex(centerBlockX + 4 + 8, centerBlockY - lairDepth - dy, centerBlockZ + dz + dz);
-                                chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                                chunk_index = GetChunkIndex(center_block_x + 4 + 8, center_block_y - lair_depth - dy, center_block_z + dz + dz);
+                                chunk[chunk_index] = (uint16_t)BlockID::polymer;
                             }
                         }
                     }
@@ -1632,19 +1633,19 @@ void GenerateChunk(uint16_t *chunk, int chunkX, int chunkZ, uint64_t seed)
                         for (int dz = 0; dz < 7; dz++)
                         {
                             // Carve
-                            chunkIndex = GetChunkIndex(centerBlockX + 12 + dx, centerBlockY - lairDepth + 3 + dy, centerBlockZ + 3 + dz);
-                            chunk[chunkIndex] = (uint16_t)BlockID::air;
+                            chunk_index = GetChunkIndex(center_block_x + 12 + dx, center_block_y - lair_depth + 3 + dy, center_block_z + 3 + dz);
+                            chunk[chunk_index] = (uint16_t)BlockID::air;
 
                             // Side polymers
                             if (dy == 0 && dx == -1)
                             {
-                                chunkIndex = GetChunkIndex(centerBlockX + 12 + dx - 1, centerBlockY - lairDepth + 3 + dy, centerBlockZ + 3 + dz);
-                                chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                                chunk_index = GetChunkIndex(center_block_x + 12 + dx - 1, center_block_y - lair_depth + 3 + dy, center_block_z + 3 + dz);
+                                chunk[chunk_index] = (uint16_t)BlockID::polymer;
                             }
                             else if (dx == 0 && dy != 0)
                             {
-                                chunkIndex = GetChunkIndex(centerBlockX + 12 + dx, centerBlockY - lairDepth + 3 + dy + dy, centerBlockZ + 3 + dz);
-                                chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                                chunk_index = GetChunkIndex(center_block_x + 12 + dx, center_block_y - lair_depth + 3 + dy + dy, center_block_z + 3 + dz);
+                                chunk[chunk_index] = (uint16_t)BlockID::polymer;
                             }
                         }
                     }
@@ -1661,19 +1662,19 @@ void GenerateChunk(uint16_t *chunk, int chunkX, int chunkZ, uint64_t seed)
                         for (int dz = 0; dz < 7; dz++)
                         {
                             // Carve
-                            chunkIndex = GetChunkIndex(centerBlockX + 12 + dx, centerBlockY - lairDepth + 3 + dy, centerBlockZ - 3 - dz);
-                            chunk[chunkIndex] = (uint16_t)BlockID::air;
+                            chunk_index = GetChunkIndex(center_block_x + 12 + dx, center_block_y - lair_depth + 3 + dy, center_block_z - 3 - dz);
+                            chunk[chunk_index] = (uint16_t)BlockID::air;
 
                             // Side polymers
                             if (dy == 0 && dx == -1)
                             {
-                                chunkIndex = GetChunkIndex(centerBlockX + 12 + dx - 1, centerBlockY - lairDepth + 3 + dy, centerBlockZ - 3 - dz);
-                                chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                                chunk_index = GetChunkIndex(center_block_x + 12 + dx - 1, center_block_y - lair_depth + 3 + dy, center_block_z - 3 - dz);
+                                chunk[chunk_index] = (uint16_t)BlockID::polymer;
                             }
                             else if (dx == 0 && dy != 0)
                             {
-                                chunkIndex = GetChunkIndex(centerBlockX + 12 + dx, centerBlockY - lairDepth + 3 + dy + dy, centerBlockZ - 3 - dz);
-                                chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                                chunk_index = GetChunkIndex(center_block_x + 12 + dx, center_block_y - lair_depth + 3 + dy + dy, center_block_z - 3 - dz);
+                                chunk[chunk_index] = (uint16_t)BlockID::polymer;
                             }
                         }
                     }
@@ -1690,40 +1691,40 @@ void GenerateChunk(uint16_t *chunk, int chunkX, int chunkZ, uint64_t seed)
                 {
                     for (int dy = -2; dy <= 2; dy++)
                     {
-                        int shaftX = (centerBlockX - 4) - dx;
-                        int shaftY = (centerBlockY - lairDepth + 3) + dy;
-                        int shaftZ = centerBlockZ + dz;
-                        chunkIndex = GetChunkIndex(shaftX, shaftY, shaftZ);
-                        chunk[chunkIndex] = (uint16_t)BlockID::air;
+                        int shaft_x = (center_block_x - 4) - dx;
+                        int shaft_y = (center_block_y - lair_depth + 3) + dy;
+                        int shaft_z = center_block_z + dz;
+                        chunk_index = GetChunkIndex(shaft_x, shaft_y, shaft_z);
+                        chunk[chunk_index] = (uint16_t)BlockID::air;
 
                         if (dy == 0)
                         {
                             // Left polymer
-                            chunkIndex = GetChunkIndex(shaftX, shaftY, centerBlockZ - 3);
-                            chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                            chunk_index = GetChunkIndex(shaft_x, shaft_y, center_block_z - 3);
+                            chunk[chunk_index] = (uint16_t)BlockID::polymer;
 
                             // Right polymer
-                            chunkIndex = GetChunkIndex(shaftX, shaftY, centerBlockZ + 3);
-                            chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                            chunk_index = GetChunkIndex(shaft_x, shaft_y, center_block_z + 3);
+                            chunk[chunk_index] = (uint16_t)BlockID::polymer;
                         }
 
                         if (dz == 0)
                         {
                             // Top polymer
-                            chunkIndex = GetChunkIndex(shaftX, centerBlockY - lairDepth + 6, shaftZ);
-                            chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                            chunk_index = GetChunkIndex(shaft_x, center_block_y - lair_depth + 6, shaft_z);
+                            chunk[chunk_index] = (uint16_t)BlockID::polymer;
 
                             // Bottom polymer
-                            chunkIndex = GetChunkIndex(shaftX, centerBlockY - lairDepth, shaftZ);
-                            chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                            chunk_index = GetChunkIndex(shaft_x, center_block_y - lair_depth, shaft_z);
+                            chunk[chunk_index] = (uint16_t)BlockID::polymer;
                         }
                     }
                 }
             }
 
             // Polymer on back wall
-            chunkIndex = GetChunkIndex(centerBlockX - 4 - 10, centerBlockY - lairDepth + 3, centerBlockZ);
-            chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+            chunk_index = GetChunkIndex(center_block_x - 4 - 10, center_block_y - lair_depth + 3, center_block_z);
+            chunk[chunk_index] = (uint16_t)BlockID::polymer;
 
             // Extra vertical shaft?
             if (RandomRange(0, 4) == 0)
@@ -1735,19 +1736,19 @@ void GenerateChunk(uint16_t *chunk, int chunkX, int chunkZ, uint64_t seed)
                         for (int dy = 0; dy <= 20; dy++)
                         {
                             // Carve
-                            chunkIndex = GetChunkIndex(centerBlockX - 4 - 8 + dx, centerBlockY - lairDepth - dy, centerBlockZ + dz);
-                            chunk[chunkIndex] = (uint16_t)BlockID::air;
+                            chunk_index = GetChunkIndex(center_block_x - 4 - 8 + dx, center_block_y - lair_depth - dy, center_block_z + dz);
+                            chunk[chunk_index] = (uint16_t)BlockID::air;
 
                             // Side polymers
                             if (dz == 0 && dx != 0)
                             {
-                                chunkIndex = GetChunkIndex(centerBlockX - 4 - 8 + dx + dx, centerBlockY - lairDepth - dy, centerBlockZ);
-                                chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                                chunk_index = GetChunkIndex(center_block_x - 4 - 8 + dx + dx, center_block_y - lair_depth - dy, center_block_z);
+                                chunk[chunk_index] = (uint16_t)BlockID::polymer;
                             }
                             else if (dx == 0 && dz != 0)
                             {
-                                chunkIndex = GetChunkIndex(centerBlockX - 4 - 8, centerBlockY - lairDepth - dy, centerBlockZ + dz + dz);
-                                chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                                chunk_index = GetChunkIndex(center_block_x - 4 - 8, center_block_y - lair_depth - dy, center_block_z + dz + dz);
+                                chunk[chunk_index] = (uint16_t)BlockID::polymer;
                             }
                         }
                     }
@@ -1764,19 +1765,19 @@ void GenerateChunk(uint16_t *chunk, int chunkX, int chunkZ, uint64_t seed)
                         for (int dz = 0; dz < 7; dz++)
                         {
                             // Carve
-                            chunkIndex = GetChunkIndex(centerBlockX - 12 + dx, centerBlockY - lairDepth + 3 + dy, centerBlockZ + 3 + dz);
-                            chunk[chunkIndex] = (uint16_t)BlockID::air;
+                            chunk_index = GetChunkIndex(center_block_x - 12 + dx, center_block_y - lair_depth + 3 + dy, center_block_z + 3 + dz);
+                            chunk[chunk_index] = (uint16_t)BlockID::air;
 
                             // Side polymers
                             if (dy == 0 && dx == 1)
                             {
-                                chunkIndex = GetChunkIndex(centerBlockX - 12 + dx + 1, centerBlockY - lairDepth + 3 + dy, centerBlockZ + 3 + dz);
-                                chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                                chunk_index = GetChunkIndex(center_block_x - 12 + dx + 1, center_block_y - lair_depth + 3 + dy, center_block_z + 3 + dz);
+                                chunk[chunk_index] = (uint16_t)BlockID::polymer;
                             }
                             else if (dx == 0 && dy != 0)
                             {
-                                chunkIndex = GetChunkIndex(centerBlockX - 12 + dx, centerBlockY - lairDepth + 3 + dy + dy, centerBlockZ + 3 + dz);
-                                chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                                chunk_index = GetChunkIndex(center_block_x - 12 + dx, center_block_y - lair_depth + 3 + dy + dy, center_block_z + 3 + dz);
+                                chunk[chunk_index] = (uint16_t)BlockID::polymer;
                             }
                         }
                     }
@@ -1793,19 +1794,19 @@ void GenerateChunk(uint16_t *chunk, int chunkX, int chunkZ, uint64_t seed)
                         for (int dz = 0; dz < 7; dz++)
                         {
                             // Carve
-                            chunkIndex = GetChunkIndex(centerBlockX - 12 + dx, centerBlockY - lairDepth + 3 + dy, centerBlockZ - 3 - dz);
-                            chunk[chunkIndex] = (uint16_t)BlockID::air;
+                            chunk_index = GetChunkIndex(center_block_x - 12 + dx, center_block_y - lair_depth + 3 + dy, center_block_z - 3 - dz);
+                            chunk[chunk_index] = (uint16_t)BlockID::air;
 
                             // Side polymers
                             if (dy == 0 && dx == 1)
                             {
-                                chunkIndex = GetChunkIndex(centerBlockX - 12 + dx + 1, centerBlockY - lairDepth + 3 + dy, centerBlockZ - 3 - dz);
-                                chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                                chunk_index = GetChunkIndex(center_block_x - 12 + dx + 1, center_block_y - lair_depth + 3 + dy, center_block_z - 3 - dz);
+                                chunk[chunk_index] = (uint16_t)BlockID::polymer;
                             }
                             else if (dx == 0 && dy != 0)
                             {
-                                chunkIndex = GetChunkIndex(centerBlockX - 12 + dx, centerBlockY - lairDepth + 3 + dy + dy, centerBlockZ - 3 - dz);
-                                chunk[chunkIndex] = (uint16_t)BlockID::polymer;
+                                chunk_index = GetChunkIndex(center_block_x - 12 + dx, center_block_y - lair_depth + 3 + dy + dy, center_block_z - 3 - dz);
+                                chunk[chunk_index] = (uint16_t)BlockID::polymer;
                             }
                         }
                     }
@@ -1817,46 +1818,46 @@ void GenerateChunk(uint16_t *chunk, int chunkX, int chunkZ, uint64_t seed)
     //
     // Crystal plants
     //
-    int spawnCrystalPlant = RandomRange(0, 40);
-    if (true || spawnCrystalPlant == 0)
+    int spawn_crystal_plant = RandomRange(0, 40);
+    if (spawn_crystal_plant == 0)
     {
-        int crystalPlantType = RandomRange(0, 5);
+        int crystal_plant_type = RandomRange(0, 5);
         BlockID crystal;
-        if (crystalPlantType == 0)
+        if (crystal_plant_type == 0)
             crystal = BlockID::blue_crystal;
-        else if (crystalPlantType < 3)
+        else if (crystal_plant_type < 3)
             crystal = BlockID::sulphur_crystal;
         else
             crystal = BlockID::boron_crystal;
 
-        int crystalPlantOrientation = RandomRange(1, 5);
-        int crystalPlantShape = RandomRange(0, CRYSTAL_PLANT_SHAPES.size());
-        auto shapeOffsets = CRYSTAL_PLANT_SHAPES[crystalPlantShape];
+        int crystal_plant_orientation = RandomRange(1, 5);
+        int crystal_plant_shape = RandomRange(0, CRYSTAL_PLANT_SHAPES.size());
+        auto shape_offsets = CRYSTAL_PLANT_SHAPES[crystal_plant_shape];
 
-        int paddingNeeded = shapeOffsets[0].x;
-        int baseBlockX = RandomRange(paddingNeeded, CHUNK_SIZE - paddingNeeded);
-        int baseBlockZ = RandomRange(paddingNeeded, CHUNK_SIZE - paddingNeeded);
-        int baseBlockY;
+        int padding_needed = shape_offsets[0].x;
+        int base_block_x = RandomRange(padding_needed, CHUNK_SIZE - padding_needed);
+        int base_block_z = RandomRange(padding_needed, CHUNK_SIZE - padding_needed);
+        int base_block_y;
         for (int y = 63; y < WORLD_HEIGHT_LIMIT; y++)
         {
-            chunkIndex = GetChunkIndex(baseBlockX, y, baseBlockZ);
-            if (chunk[chunkIndex + 1] == (uint16_t)BlockID::air)
+            chunk_index = GetChunkIndex(base_block_x, y, base_block_z);
+            if (chunk[chunk_index + 1] == (uint16_t)BlockID::air)
             {
-                if (chunk[chunkIndex] == (uint16_t)BlockID::topsoil || chunk[chunkIndex] == (uint16_t)BlockID::sand)
+                if (chunk[chunk_index] == (uint16_t)BlockID::topsoil || chunk[chunk_index] == (uint16_t)BlockID::sand)
                 {
-                    baseBlockY = y;
-                    for (int i = 1; i < shapeOffsets.size(); i++)
+                    base_block_y = y;
+                    for (int i = 1; i < shape_offsets.size(); i++)
                     {
-                        glm::vec3 offset = shapeOffsets[i];
-                        if (crystalPlantOrientation == 2) // 90 degrees
+                        glm::vec3 offset = shape_offsets[i];
+                        if (crystal_plant_orientation == 2) // 90 degrees
                             (offset.x, offset.z) = (-offset.z, offset.x);
-                        else if (crystalPlantOrientation == 3) // 180 degrees
+                        else if (crystal_plant_orientation == 3) // 180 degrees
                             (offset.x, offset.z) = (-offset.x, -offset.z);
-                        else if (crystalPlantOrientation == 4) // 270 degrees
+                        else if (crystal_plant_orientation == 4) // 270 degrees
                             (offset.x, offset.z) = (offset.z, -offset.x);
 
-                        chunkIndex = GetChunkIndex(baseBlockX + offset.x, baseBlockY + offset.y, baseBlockZ + offset.z);
-                        chunk[chunkIndex] = (uint16_t)crystal;
+                        chunk_index = GetChunkIndex(base_block_x + offset.x, base_block_y + offset.y, base_block_z + offset.z);
+                        chunk[chunk_index] = (uint16_t)crystal;
                     }
                 }
                 break;
@@ -1867,66 +1868,64 @@ void GenerateChunk(uint16_t *chunk, int chunkX, int chunkZ, uint64_t seed)
     //
     // Trees
     //
-    int numberOfTrees = RandomRange(1, 4);
-    for (int i = 0; i < numberOfTrees; i++)
+    int num_trees = RandomRange(1, 4);
+    for (int i = 0; i < num_trees; i++)
     {
-        int treeType = RandomRange(0, 10);
-        int treeOrientation = RandomRange(1, 5);
+        int tree_type = RandomRange(0, 10);
+        int tree_orientation = RandomRange(1, 5);
 
-        int treeShape;
-        std::vector<TreeBlock> treeData;
-        if (treeType < 5) // Green light tree
+        int tree_shape;
+        std::vector<TreeBlock> tree_data;
+        if (tree_type < 5) // Green light tree
         {
-            treeShape = RandomRange(0, GREEN_LIGHT_TREE_SHAPES.size());
-            treeData = GREEN_LIGHT_TREE_SHAPES[treeShape];
+            tree_shape = RandomRange(0, GREEN_LIGHT_TREE_SHAPES.size());
+            tree_data = GREEN_LIGHT_TREE_SHAPES[tree_shape];
         }
-        else if (treeType < 8) // Color wood tree
+        else if (tree_type < 8) // Color wood tree
         {
-            treeShape = RandomRange(0, COLOR_WOOD_TREE_SHAPES.size());
-            treeData = COLOR_WOOD_TREE_SHAPES[treeShape];
+            tree_shape = RandomRange(0, COLOR_WOOD_TREE_SHAPES.size());
+            tree_data = COLOR_WOOD_TREE_SHAPES[tree_shape];
         }
         else // Spiral light tree
         {
-            treeShape = RandomRange(0, SPIRAL_LIGHT_TREE_SHAPES.size());
-            treeData = SPIRAL_LIGHT_TREE_SHAPES[treeShape];
+            tree_shape = RandomRange(0, SPIRAL_LIGHT_TREE_SHAPES.size());
+            tree_data = SPIRAL_LIGHT_TREE_SHAPES[tree_shape];
         }
 
-        int paddingNeeded = treeData[0].local_x;
-        int baseBlockX = RandomRange(paddingNeeded, CHUNK_SIZE - paddingNeeded);
-        int baseBlockZ = RandomRange(paddingNeeded, CHUNK_SIZE - paddingNeeded);
-        int baseBlockY;
+        int padding_needed = tree_data[0].local_x;
+        int base_block_x = RandomRange(padding_needed, CHUNK_SIZE - padding_needed);
+        int base_block_z = RandomRange(padding_needed, CHUNK_SIZE - padding_needed);
+        int base_block_y;
         for (int y = 63; y < WORLD_HEIGHT_LIMIT; y++)
         {
-            chunkIndex = GetChunkIndex(baseBlockX, y, baseBlockZ);
-            if (chunk[chunkIndex + 1] == (uint16_t)BlockID::air)
+            chunk_index = GetChunkIndex(base_block_x, y, base_block_z);
+            if (chunk[chunk_index + 1] == (uint16_t)BlockID::air)
             {
-                if (chunk[chunkIndex] == (uint16_t)BlockID::topsoil || chunk[chunkIndex] == (uint16_t)BlockID::sand)
+                if (chunk[chunk_index] == (uint16_t)BlockID::topsoil || chunk[chunk_index] == (uint16_t)BlockID::sand)
                 {
-                    baseBlockY = y;
-                    for (int j = 1; j < treeData.size(); j++)
+                    base_block_y = y;
+                    for (int j = 1; j < tree_data.size(); j++)
                     {
-                        TreeBlock treeBlock = treeData[j];
-                        if (treeOrientation == 2) // 90 degrees
-                            (treeBlock.local_x, treeBlock.local_z) = (-treeBlock.local_z, treeBlock.local_x);
-                        else if (treeOrientation == 3) // 180 degrees
-                            (treeBlock.local_x, treeBlock.local_z) = (-treeBlock.local_x, -treeBlock.local_z);
-                        else if (treeOrientation == 4) // 270 degrees
-                            (treeBlock.local_x, treeBlock.local_z) = (treeBlock.local_z, -treeBlock.local_x);
+                        TreeBlock tree_block = tree_data[j];
+                        if (tree_orientation == 2) // 90 degrees
+                            (tree_block.local_x, tree_block.local_z) = (-tree_block.local_z, tree_block.local_x);
+                        else if (tree_orientation == 3) // 180 degrees
+                            (tree_block.local_x, tree_block.local_z) = (-tree_block.local_x, -tree_block.local_z);
+                        else if (tree_orientation == 4) // 270 degrees
+                            (tree_block.local_x, tree_block.local_z) = (tree_block.local_z, -tree_block.local_x);
 
-                        chunkIndex = GetChunkIndex(baseBlockX + treeBlock.local_x, baseBlockY + treeBlock.local_y, baseBlockZ + treeBlock.local_z);
-                        chunk[chunkIndex] = (uint16_t)treeBlock.block;
+                        chunk_index = GetChunkIndex(base_block_x + tree_block.local_x, base_block_y + tree_block.local_y, base_block_z + tree_block.local_z);
+                        chunk[chunk_index] = (uint16_t)tree_block.block;
 
                         // Partial fix for overhanging trees when placed on an edge
-                        if (treeBlock.local_y == 1 && chunk[chunkIndex - 1] == (uint16_t)BlockID::air && chunk[chunkIndex - 2] != (uint16_t)BlockID::air)
-                            chunk[chunkIndex - 1] = (uint16_t)treeBlock.block;
+                        if (tree_block.local_y == 1 && chunk[chunk_index - 1] == (uint16_t)BlockID::air && chunk[chunk_index - 2] != (uint16_t)BlockID::air)
+                            chunk[chunk_index - 1] = (uint16_t)tree_block.block;
                     }
                 }
                 break;
             }
         }
     }
-
-    //UnityEngine.Random.state = initialRandomState; // Reset so we don't interfere with anything else (but maybe every use of Random should be based on the seed?)
 }
 
 #endif

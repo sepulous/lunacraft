@@ -31,12 +31,6 @@ static const uint8_t _perm[] = {
     138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180 
 };
 
-static inline long Floor(double x)
-{
-    long sign_bit = static_cast<long>(std::signbit(x));
-    return (long)x - sign_bit;
-}
-
 static inline double Grad(uint8_t hash, double x, double y)
 {
     uint8_t h = hash & 7;
@@ -63,8 +57,8 @@ double SimplexNoise(double x, double y)
     double s = (x + y) * F;
     double xs = x + s;
     double ys = y + s;
-    long i = Floor(xs);
-    long j = Floor(ys);
+    long i = xs > 0 ? (long)xs : (long)xs - 1;
+    long j = ys > 0 ? (long)ys : (long)ys - 1;
 
     double t = (i + j) * G;
     double X0 = i - t;
@@ -72,9 +66,17 @@ double SimplexNoise(double x, double y)
     double x0 = x - X0;
     double y0 = y - Y0;
 
-    bool sign_bit = std::signbit(x0 - y0);
-    long j1 = static_cast<long>(sign_bit);
-    long i1 = static_cast<long>(!sign_bit);
+    long i1, j1;
+    if (x0 > y0)
+    {
+        i1 = 1;
+        j1 = 0;
+    }
+    else
+    {
+        i1 = 0;
+        j1 = 1;
+    }
 
     double x1 = x0 - i1 + G;
     double y1 = y0 - j1 + G;
@@ -85,19 +87,28 @@ double SimplexNoise(double x, double y)
     long jj = static_cast<long>(static_cast<uint64_t>(j) & 0xFF); // j % 256
 
     double t0 = 0.5 - x0 * x0 - y0 * y0;
-    int t0_sign = static_cast<int>(std::signbit(t0));
-    t0 *= static_cast<double>(t0_sign + (1 - t0_sign)*t0);
-    n0 = (1 - t0_sign) * (t0 * t0 * Grad(_perm[ii + _perm[jj]], x0, y0));
+    if (t0 < 0.0) n0 = 0.0;
+    else
+    {
+        t0 *= t0;
+        n0 = t0 * t0 * Grad(_perm[ii + _perm[jj]], x0, y0);
+    }
 
     double t1 = 0.5 - x1 * x1 - y1 * y1;
-    int t1_sign = static_cast<int>(std::signbit(t1));
-    t1 *= static_cast<double>(t1_sign + (1 - t1_sign)*t1);
-    n1 = (1 - t1_sign) * (t1 * t1 * Grad(_perm[ii + i1 + _perm[jj + j1]], x1, y1));
+    if (t1 < 0.0) n1 = 0.0;
+    else
+    {
+        t1 *= t1;
+        n1 = t1 * t1 * Grad(_perm[ii + i1 + _perm[jj + j1]], x1, y1);
+    }
 
     double t2 = 0.5 - x2 * x2 - y2 * y2;
-    int t2_sign = static_cast<int>(std::signbit(t2));
-    t2 *= static_cast<double>(t2_sign + (1 - t2_sign)*t2);
-    n2 = (1 - t2_sign) * (t2 * t2 * Grad(_perm[ii + 1 + _perm[jj + 1]], x2, y2));
+    if (t2 < 0.0) n2 = 0.0;
+    else
+    {
+        t2 *= t2;
+        n2 = t2 * t2 * Grad(_perm[ii + 1 + _perm[jj + 1]], x2, y2);
+    }
 
     return 20.0 * (n0 + n1 + n2) + 0.5; // in [0, 1]
 }
