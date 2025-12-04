@@ -24,32 +24,121 @@
 #include "block.h"
 #include "skybox.h"
 #include "constants.h"
+#include "helpers.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_STATIC
 #include <stb_image/stb_image.h>
 
+
+
+struct Plane
+{
+    glm::vec3 normal;
+    float     d;
+};
+
+void extractPlane(const glm::mat4& m, int a, int b, Plane& p)
+{
+    p.normal.x = m[0][3] + m[0][a] * b;
+    p.normal.y = m[1][3] + m[1][a] * b;
+    p.normal.z = m[2][3] + m[2][a] * b;
+    p.d        = m[3][3] + m[3][a] * b;
+
+    float len = glm::length(p.normal);
+    p.normal /= len;
+    p.d      /= len;
+};
+
+bool isBoxInFrustum(const Plane frustum[6],
+                    const glm::vec3& min,
+                    const glm::vec3& max)
+{
+    for (int i = 0; i < 6; i++)
+    {
+        const Plane& p = frustum[i];
+
+        // Compute the most positive point relative to plane normal
+        glm::vec3 positive{
+            (p.normal.x >= 0 ? max.x : min.x),
+            (p.normal.y >= 0 ? max.y : min.y),
+            (p.normal.z >= 0 ? max.z : min.z),
+        };
+
+        // If that point is behind the plane, box is outside
+        if (glm::dot(p.normal, positive) + p.d < 0)
+            return false;
+    }
+
+    return true;
+}
+
+
+
+std::unordered_map<BlockID, glm::vec3> ATLAS_TILE_MAP = {
+    {BlockID::aluminum,        glm::vec3(32, 32, 32)},
+    {BlockID::aluminum_ore,    glm::vec3(17, 17, 17)},
+    {BlockID::amethyst_ore,    glm::vec3(168, 168, 168)},
+    {BlockID::beacon,          glm::vec3(89, 90, 104)},
+    {BlockID::beryllium,       glm::vec3(140, 140, 140)},
+    {BlockID::calcite,         glm::vec3(112, 112, 112)},
+    {BlockID::carbon,          glm::vec3(73, 73, 73)},
+    {BlockID::chalchanthite,   glm::vec3(182, 182, 182)},
+    {BlockID::dirt,            glm::vec3(1, 1, 1)},
+    {BlockID::feldspar,        glm::vec3(154, 154, 154)},
+    {BlockID::gold_ore,        glm::vec3(45, 45, 45)},
+    {BlockID::granite,         glm::vec3(155, 155, 155)},
+    {BlockID::graphite,        glm::vec3(126, 126, 126)},
+    {BlockID::gravel,          glm::vec3(5, 5, 5)},
+    {BlockID::light,           glm::vec3(9, 9, 9)}, // NOTE: There are four variants in the atlas
+    {BlockID::magnetite,       glm::vec3(18, 18, 18)},
+    {BlockID::molybdenum_ore,  glm::vec3(31, 31, 31)},
+    {BlockID::moon_bark,       glm::vec3(118, 118, 118)}, // NOTE: Might actually be different on top and bottom
+    {BlockID::moon_leaf,       glm::vec3(6, 6, 6)},
+    {BlockID::moon_wood,       glm::vec3(33, 19, 33)},
+    {BlockID::neptunium,       glm::vec3(86, 86, 86)},
+    {BlockID::notchium,        glm::vec3(44, 44, 44)},
+    {BlockID::notchium_ore,    glm::vec3(74, 74, 74)},
+    {BlockID::phosphate,       glm::vec3(113, 113, 113)},
+    {BlockID::polymer,         glm::vec3(30, 30, 30)},
+    {BlockID::quartz_ore,      glm::vec3(169, 169, 169)},
+    {BlockID::rock,            glm::vec3(3, 3, 3)},
+    {BlockID::sand,            glm::vec3(2, 2, 2)}, // NOTE: Not certain about this one
+    {BlockID::shale_gravel,    glm::vec3(16, 16, 16)},
+    {BlockID::silver_ore,      glm::vec3(59, 59, 59)},
+    {BlockID::snow,            glm::vec3(4, 4, 4)},
+    {BlockID::sulphur_ore,     glm::vec3(141, 141, 141)},
+    {BlockID::titanium,        glm::vec3(88, 88, 88)},
+    {BlockID::titanium_ore,    glm::vec3(87, 87, 87)},
+    {BlockID::topsoil,         glm::vec3(14, 0, 1)},
+    {BlockID::xenostone,       glm::vec3(127, 127, 127)},
+    {BlockID::zircon_ore,      glm::vec3(183, 183, 183)},
+    {BlockID::water,           glm::vec3(7, 7, 7)},
+    {BlockID::sulphur_crystal, glm::vec3(21, 21, 21)},
+    {BlockID::blue_crystal,    glm::vec3(58, 58, 58)},
+    {BlockID::boron_crystal,   glm::vec3(22, 22, 22)},
+    {BlockID::glass,           glm::vec3(35, 35, 35)},
+    {BlockID::minilight_pz,    glm::vec3(9, 9, 9)},
+    {BlockID::minilight_nz,    glm::vec3(9, 9, 9)},
+    {BlockID::minilight_px,    glm::vec3(9, 9, 9)},
+    {BlockID::minilight_nx,    glm::vec3(9, 9, 9)},
+    {BlockID::minilight_py,    glm::vec3(9, 9, 9)},
+    {BlockID::minilight_ny,    glm::vec3(9, 9, 9)}
+};
+
 static glm::vec2 viewport = {1280, 720};
 static glm::mat4 ui_window_to_virtual = glm::mat4(1.0f);
 static glm::mat4 ui_virtual_to_window = glm::mat4(1.0f);
 
+static MouseState mouse_state;
 enum class GameState {MAIN_MENU, IN_GAME};
 static GameState game_state = GameState::MAIN_MENU;
 static bool loading_moon = false;
 static float loading_moon_progress = 0; // TODO: Progress bar
-static MouseState mouse_state;
 
 static std::vector<Chunk> loaded_chunks;
 
 static Player player;
-static float last_collision_check = 0;
-static float last_fixed_update = 0;
-
-GLuint water_vao;
-std::vector<BlockVertex> water_vertices;
-
-GLuint crystal_vao;
-std::vector<BlockVertex> crystal_vertices;
 
 float pitch = 0;
 float yaw = -90;
@@ -180,14 +269,14 @@ static void _CreateMoon(int moon, MoonSettings moon_settings)
             // Create chunk data
             Chunk chunk;
             chunk.position = {chunk_x, chunk_z};
-            chunk.chunk_data = new uint16_t[BLOCKS_IN_CHUNK];
-            GenerateChunk(chunk.chunk_data, chunk_x, chunk_z, moon_settings.seed);
+            chunk.blocks = new uint16_t[BLOCKS_IN_CHUNK];
+            GenerateChunk(chunk.blocks, chunk_x, chunk_z, moon_settings.seed);
 
             // Save chunk to file
             uint64_t chunk_id = CombineChunkCoordinates(chunk_x, chunk_z);
             std::filesystem::path chunk_path = chunk_dir / (std::to_string(chunk_id) + ".chunk");
             std::ofstream chunk_file(chunk_path, std::ios::binary);
-            chunk_file.write(reinterpret_cast<char *>(chunk.chunk_data), BLOCKS_IN_CHUNK * sizeof(uint16_t));
+            chunk_file.write(reinterpret_cast<char *>(chunk.blocks), BLOCKS_IN_CHUNK * sizeof(uint16_t));
             chunk_file.close();
 
             // Generate vertex data
@@ -207,7 +296,7 @@ static void _CreateMoon(int moon, MoonSettings moon_settings)
 
                     for (int localBlockZ = 1; localBlockZ <= CHUNK_SIZE; localBlockZ++)
                     {
-                        BlockID current_block = static_cast<BlockID>(chunk.chunk_data[GetChunkIndex(localBlockX, localBlockY, localBlockZ)]);
+                        BlockID current_block = static_cast<BlockID>(chunk.blocks[GetChunkIndex(localBlockX, localBlockY, localBlockZ)]);
 
                         glm::vec3 block_world_pos = glm::vec3(
                             chunk.position.x * CHUNK_SIZE + (localBlockX - 1),
@@ -226,7 +315,7 @@ static void _CreateMoon(int moon, MoonSettings moon_settings)
                                     glm::vec2 neighbor_offset = NEIGHBOR_OFFSETS[i];
                                     glm::mat2x3 vertex_offsets = VERTEX_OFFSETS[i];
 
-                                    BlockID neighbor = static_cast<BlockID>(chunk.chunk_data[GetChunkIndex(localBlockX + neighbor_offset.x, localBlockY + neighbor_offset.y, localBlockZ)]);
+                                    BlockID neighbor = static_cast<BlockID>(chunk.blocks[GetChunkIndex(localBlockX + neighbor_offset.x, localBlockY + neighbor_offset.y, localBlockZ)]);
                                     bool face_visible = ShouldRenderFace(base_block, neighbor);
                                     if (face_visible)
                                     {
@@ -245,7 +334,7 @@ static void _CreateMoon(int moon, MoonSettings moon_settings)
                                 glm::vec2 neighbor_offset = NEIGHBOR_OFFSETS[i];
                                 glm::mat2x3 vertex_offsets = VERTEX_OFFSETS[i];
 
-                                BlockID neighbor = static_cast<BlockID>(chunk.chunk_data[GetChunkIndex(localBlockX + neighbor_offset.x, localBlockY + neighbor_offset.y, localBlockZ)]);
+                                BlockID neighbor = static_cast<BlockID>(chunk.blocks[GetChunkIndex(localBlockX + neighbor_offset.x, localBlockY + neighbor_offset.y, localBlockZ)]);
                                 bool face_visible = ShouldRenderFace(current_block, neighbor);
                                 if (current_block == base_block && face_visible)
                                 {
@@ -281,7 +370,7 @@ static void _CreateMoon(int moon, MoonSettings moon_settings)
                             }
                         }
 
-                        BlockID behind = static_cast<BlockID>(chunk.chunk_data[GetChunkIndex(localBlockX, localBlockY, localBlockZ - 1)]);
+                        BlockID behind = static_cast<BlockID>(chunk.blocks[GetChunkIndex(localBlockX, localBlockY, localBlockZ - 1)]);
                         bool face_visible = ShouldRenderFace(current_block, behind);
                         if (current_block != BlockID::air && face_visible)
                         {
@@ -295,7 +384,7 @@ static void _CreateMoon(int moon, MoonSettings moon_settings)
                             });
                         }
 
-                        BlockID in_front = static_cast<BlockID>(chunk.chunk_data[GetChunkIndex(localBlockX, localBlockY, localBlockZ + 1)]);
+                        BlockID in_front = static_cast<BlockID>(chunk.blocks[GetChunkIndex(localBlockX, localBlockY, localBlockZ + 1)]);
                         face_visible = ShouldRenderFace(current_block, in_front);
                         if (current_block != BlockID::air && face_visible)
                         {
@@ -339,20 +428,35 @@ static void _CreateMoon(int moon, MoonSettings moon_settings)
                         int side = quad.face == 0 ? 0 : (quad.face == 2 ? 2 : 1);
                         glm::vec2 tile_origin = TILE_ORIGINS[quad.block_type][side];
 
+                        // BlockVertex block_vertices[] = {
+                        //     BlockVertex(quad.vert_2 + glm::vec3(0, 0, quad.length),           glm::vec2(1.0f, quad.length),               tile_origin, glm::vec3(0)), // 0
+                        //     BlockVertex(quad.vert_1,                                          glm::vec2(0.0f, 0.0f),                      tile_origin, glm::vec3(0)), // 1
+                        //     BlockVertex(quad.vert_2,                                          glm::vec2(1.0f, 0.0f),                      tile_origin, glm::vec3(0)), // 2
+                        //     BlockVertex(quad.vert_1 + glm::vec3(0, 0, quad.length),           glm::vec2(0.0f, quad.length),               tile_origin, glm::vec3(0)), // 3
+                        //     BlockVertex(quad.vert_1 + glm::vec3(0, 0, quad.length),           glm::vec2(quad.length, 0.0f),               tile_origin, glm::vec3(0)), // 4
+                        //     BlockVertex(quad.vert_2 + glm::vec3(0, 0, quad.length),           glm::vec2(quad.length, 1.0f),               tile_origin, glm::vec3(0)), // 5
+                        //     BlockVertex(quad.vert_2,                                          glm::vec2(0.0f, 1.0f),                      tile_origin, glm::vec3(0)), // 6
+                        //     BlockVertex(quad.vert_1,                                          glm::vec2(quad.length, 0.0f),               tile_origin, glm::vec3(0)), // 7
+                        //     BlockVertex(quad.vert_2,                                          glm::vec2(quad.length, 1.0f),               tile_origin, glm::vec3(0)), // 8
+                        //     BlockVertex(quad.vert_1 + glm::vec3(0, 0, quad.length),           glm::vec2(0.0f, 0.0f),                      tile_origin, glm::vec3(0)), // 9
+                        //     BlockVertex(quad.vert_2 + glm::vec3(0, 0, quad.length),           glm::vec2(0.0f, 1.0f),                      tile_origin, glm::vec3(0)), // 10
+                        //     BlockVertex(quad.vert_2 + glm::vec3(0, quad.height, quad.length), glm::vec2(1.0f, quad.length + quad.height), tile_origin, glm::vec3(0)), // 11
+                        //     BlockVertex(quad.vert_1 + glm::vec3(0, quad.height, quad.length), glm::vec2(0.0f, quad.length + quad.height), tile_origin, glm::vec3(0)), // 12
+                        // };
                         BlockVertex block_vertices[] = {
-                            BlockVertex(quad.vert_2 + glm::vec3(0, 0, quad.length),           glm::vec2(1.0f, quad.length),               tile_origin, glm::vec3(0)), // 0
-                            BlockVertex(quad.vert_1,                                          glm::vec2(0.0f, 0.0f),                      tile_origin, glm::vec3(0)), // 1
-                            BlockVertex(quad.vert_2,                                          glm::vec2(1.0f, 0.0f),                      tile_origin, glm::vec3(0)), // 2
-                            BlockVertex(quad.vert_1 + glm::vec3(0, 0, quad.length),           glm::vec2(0.0f, quad.length),               tile_origin, glm::vec3(0)), // 3
-                            BlockVertex(quad.vert_1 + glm::vec3(0, 0, quad.length),           glm::vec2(quad.length, 0.0f),               tile_origin, glm::vec3(0)), // 4
-                            BlockVertex(quad.vert_2 + glm::vec3(0, 0, quad.length),           glm::vec2(quad.length, 1.0f),               tile_origin, glm::vec3(0)), // 5
-                            BlockVertex(quad.vert_2,                                          glm::vec2(0.0f, 1.0f),                      tile_origin, glm::vec3(0)), // 6
-                            BlockVertex(quad.vert_1,                                          glm::vec2(quad.length, 0.0f),               tile_origin, glm::vec3(0)), // 7
-                            BlockVertex(quad.vert_2,                                          glm::vec2(quad.length, 1.0f),               tile_origin, glm::vec3(0)), // 8
-                            BlockVertex(quad.vert_1 + glm::vec3(0, 0, quad.length),           glm::vec2(0.0f, 0.0f),                      tile_origin, glm::vec3(0)), // 9
-                            BlockVertex(quad.vert_2 + glm::vec3(0, 0, quad.length),           glm::vec2(0.0f, 1.0f),                      tile_origin, glm::vec3(0)), // 10
-                            BlockVertex(quad.vert_2 + glm::vec3(0, quad.height, quad.length), glm::vec2(1.0f, quad.length + quad.height), tile_origin, glm::vec3(0)), // 11
-                            BlockVertex(quad.vert_1 + glm::vec3(0, quad.height, quad.length), glm::vec2(0.0f, quad.length + quad.height), tile_origin, glm::vec3(0)), // 12
+                            BlockVertex(quad.vert_2 + glm::vec3(0, 0, quad.length),           glm::vec4(1.0f, quad.length, tile_origin),               glm::vec3(0)), // 0
+                            BlockVertex(quad.vert_1,                                          glm::vec4(0.0f, 0.0f, tile_origin),                      glm::vec3(0)), // 1
+                            BlockVertex(quad.vert_2,                                          glm::vec4(1.0f, 0.0f, tile_origin),                      glm::vec3(0)), // 2
+                            BlockVertex(quad.vert_1 + glm::vec3(0, 0, quad.length),           glm::vec4(0.0f, quad.length, tile_origin),               glm::vec3(0)), // 3
+                            BlockVertex(quad.vert_1 + glm::vec3(0, 0, quad.length),           glm::vec4(quad.length, 0.0f, tile_origin),               glm::vec3(0)), // 4
+                            BlockVertex(quad.vert_2 + glm::vec3(0, 0, quad.length),           glm::vec4(quad.length, 1.0f, tile_origin),               glm::vec3(0)), // 5
+                            BlockVertex(quad.vert_2,                                          glm::vec4(0.0f, 1.0f, tile_origin),                      glm::vec3(0)), // 6
+                            BlockVertex(quad.vert_1,                                          glm::vec4(quad.length, 0.0f, tile_origin),               glm::vec3(0)), // 7
+                            BlockVertex(quad.vert_2,                                          glm::vec4(quad.length, 1.0f, tile_origin),               glm::vec3(0)), // 8
+                            BlockVertex(quad.vert_1 + glm::vec3(0, 0, quad.length),           glm::vec4(0.0f, 0.0f, tile_origin),                      glm::vec3(0)), // 9
+                            BlockVertex(quad.vert_2 + glm::vec3(0, 0, quad.length),           glm::vec4(0.0f, 1.0f, tile_origin),                      glm::vec3(0)), // 10
+                            BlockVertex(quad.vert_2 + glm::vec3(0, quad.height, quad.length), glm::vec4(1.0f, quad.length + quad.height, tile_origin), glm::vec3(0)), // 11
+                            BlockVertex(quad.vert_1 + glm::vec3(0, quad.height, quad.length), glm::vec4(0.0f, quad.length + quad.height, tile_origin), glm::vec3(0)), // 12
                         };
                         
                         int index_start = quad.face * 6;
@@ -363,12 +467,10 @@ static void _CreateMoon(int moon, MoonSettings moon_settings)
                             else
                                 block_vertices[block_indices[i]].face_normal = face_normals[quad.face];
 
-                            if (quad.block_type == BlockID::water)
-                                water_vertices.push_back(block_vertices[block_indices[i]]);
-                            else if (quad.block_type == BlockID::sulphur_crystal || quad.block_type == BlockID::boron_crystal || quad.block_type == BlockID::blue_crystal)
-                                crystal_vertices.push_back(block_vertices[block_indices[i]]);
+                            if (BlockIsOpaque(quad.block_type))
+                                chunk.opaque_vertices.push_back(block_vertices[block_indices[i]]);
                             else
-                                chunk.vertices.push_back(block_vertices[block_indices[i]]);
+                                chunk.transparent_vertices.push_back(block_vertices[block_indices[i]]);
                         }
                     }
                 }
@@ -422,7 +524,7 @@ bool TestAABBWorld(const AABB& box)
                     if ((int)chunk.position.x == chunk_x && (int)chunk.position.y == chunk_z)
                     {
                         glm::vec3 local_block_pos = GetLocalBlockPos(glm::vec3(x, y, z));
-                        if ((BlockID)chunk.chunk_data[GetChunkIndex(local_block_pos.x, local_block_pos.y, local_block_pos.z)] != BlockID::air)
+                        if ((BlockID)chunk.blocks[GetChunkIndex(local_block_pos.x, local_block_pos.y, local_block_pos.z)] != BlockID::air)
                             return true;
                         break;
                     }
@@ -475,73 +577,30 @@ int main()
     ShaderManager::CompileAllShaders();
     Soundlib::Init();
 
-    UIRescale();
-    UIMainMenu ui_main_menu(window);
-    UILoadMoonMenu ui_load_moon_menu;
-
-    Skybox skybox;
-
-    /////////////////////////////////////////////////////////
-    // Load texture atlas
+    /////////////////////////////////////////
     int width, height, nrChannels;
     stbi_set_flip_vertically_on_load(true);
     std::filesystem::path atlas_path = Storage::IMAGE_DIR / "texture_atlas.png";
     unsigned char *texture_atlas_data = stbi_load(atlas_path.c_str(), &width, &height, &nrChannels, 0);
 
-    unsigned int texture_atlas;
+    GLuint texture_atlas;
     glGenTextures(1, &texture_atlas);
-
     glBindTexture(GL_TEXTURE_2D, texture_atlas);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture_atlas_data);
     glGenerateMipmap(GL_TEXTURE_2D);
 
     stbi_image_free(texture_atlas_data);
-    /////////////////////////////////////////////////////////
+    /////////////////////////////////////////
 
-    /////////////////////////////////////////////////////////
+    UIRescale();
+    UIMainMenu ui_main_menu(window);
+    UILoadMoonMenu ui_load_moon_menu;
 
-    // Water rendering data
-    unsigned int water_vao;
-    glGenVertexArrays(1, &water_vao);
-    glBindVertexArray(water_vao);
-
-    unsigned int water_vbo;
-    glGenBuffers(1, &water_vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, water_vbo);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)(5 * sizeof(float)));
-    glEnableVertexAttribArray(2);
-    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)(7 * sizeof(float)));
-    glEnableVertexAttribArray(3);
-
-    // Crystal rendering data
-    unsigned int crystal_vao;
-    glGenVertexArrays(1, &crystal_vao);
-    glBindVertexArray(crystal_vao);
-
-    unsigned int crystal_vbo;
-    glGenBuffers(1, &crystal_vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, crystal_vbo);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)(5 * sizeof(float)));
-    glEnableVertexAttribArray(2);
-    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)(7 * sizeof(float)));
-    glEnableVertexAttribArray(3);
-
-    /////////////////////////////////////////////////////////
+    Skybox skybox;
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -550,11 +609,18 @@ int main()
     float last_frame_time = 0;
     const float fixed_delta_time = 0.02f;
     float accumulator = 0;
+    float last_fps_update = 0;
     while (!glfwWindowShouldClose(window))
     {
         float current_time = glfwGetTime();
         delta_time = current_time - last_frame_time;
         last_frame_time = current_time;
+
+        if (current_time - last_fps_update > 0.5f)
+        {
+            printf("FPS: %f\n", (1 / delta_time));
+            last_fps_update = current_time;
+        }
 
         //
         // Input
@@ -622,52 +688,57 @@ int main()
             {
                 ui_main_menu.Render(delta_time);
                 ui_load_moon_menu.Render();
+
                 if (loading_moon_progress >= 1.0f) // Only runs once when loading in
                 {
-                    // Buffer water data
-                    glBindBuffer(GL_ARRAY_BUFFER, water_vbo);
-                    glBufferData(GL_ARRAY_BUFFER, water_vertices.size() * sizeof(BlockVertex), water_vertices.data(), GL_STATIC_DRAW);
-
-                    // Buffer crystal data
-                    glBindBuffer(GL_ARRAY_BUFFER, crystal_vbo);
-                    glBufferData(GL_ARRAY_BUFFER, crystal_vertices.size() * sizeof(BlockVertex), crystal_vertices.data(), GL_STATIC_DRAW);
-
-                    // Buffer opaque data
                     for (Chunk& chunk : loaded_chunks)
                     {
-                        // VAO
-                        glGenVertexArrays(1, &chunk.vao);
-                        glBindVertexArray(chunk.vao);
+                        // Opaques
+                        glGenVertexArrays(1, &chunk.opaque_vao);
+                        glBindVertexArray(chunk.opaque_vao);
 
-                        // VBO
-                        glGenBuffers(1, &chunk.vbo);
-                        glBindBuffer(GL_ARRAY_BUFFER, chunk.vbo);
-                        glBufferData(GL_ARRAY_BUFFER, chunk.vertices.size() * sizeof(BlockVertex), chunk.vertices.data(), GL_STATIC_DRAW);
+                        glGenBuffers(1, &chunk.opaque_vbo);
+                        glBindBuffer(GL_ARRAY_BUFFER, chunk.opaque_vbo);
+                        glBufferData(GL_ARRAY_BUFFER, chunk.opaque_vertices.size() * sizeof(BlockVertex), chunk.opaque_vertices.data(), GL_STATIC_DRAW);
 
-                        // BlockVertex attribute pointers
-                        // Position
                         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)0);
                         glEnableVertexAttribArray(0);
-                        // UV coords
-                        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)(3 * sizeof(float)));
+                        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)(3 * sizeof(float)));
                         glEnableVertexAttribArray(1);
-                        // Tile index
-                        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)(5 * sizeof(float)));
+                        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)(7 * sizeof(float)));
                         glEnableVertexAttribArray(2);
-                        // Face normal
-                        glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)(7 * sizeof(float)));
-                        glEnableVertexAttribArray(3);
+
+                        // Transparents
+                        glGenVertexArrays(1, &chunk.transparent_vao);
+                        glBindVertexArray(chunk.transparent_vao);
+
+                        glGenBuffers(1, &chunk.transparent_vbo);
+                        glBindBuffer(GL_ARRAY_BUFFER, chunk.transparent_vbo);
+                        glBufferData(GL_ARRAY_BUFFER, chunk.transparent_vertices.size() * sizeof(BlockVertex), chunk.transparent_vertices.data(), GL_STATIC_DRAW);
+
+                        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)0);
+                        glEnableVertexAttribArray(0);
+                        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)(3 * sizeof(float)));
+                        glEnableVertexAttribArray(1);
+                        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)(7 * sizeof(float)));
+                        glEnableVertexAttribArray(2);
                     }
+
                     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
                     if (glfwRawMouseMotionSupported())
                         glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE); // More natural mouse motion
                     glfwSetCursorPosCallback(window, mouse_callback);
+
                     game_state = GameState::IN_GAME;
                 }
             }
         }
         else // IN_GAME
         {
+            //
+            // Updates
+            //
+
             accumulator += delta_time;
 
             // Physics updates
@@ -733,64 +804,68 @@ int main()
             player.Update();
 
             //
-            // Render chunks
+            // Rendering
             //
+
+            glm::mat4 view = glm::lookAt(player.camera.position, player.camera.position + player.camera.forward, player.camera.up);
+            glm::mat4 projection = glm::perspective(glm::radians(45.0f), viewport.x / viewport.y, 0.1f, 300.0f);
+            glm::mat4 view_projection = projection * view;
 
             glEnable(GL_DEPTH_TEST);
             glEnable(GL_CULL_FACE);
 
-            glm::mat4 view;
-            glm::mat4 projection = glm::perspective(glm::radians(45.0f), viewport.x / viewport.y, 0.1f, 300.0f);
-
+            // Render world
             Shader block_shader = ShaderManager::BLOCK_SHADER;
             block_shader.Use();
 
-            // Render opaques
-            view = glm::lookAt(player.camera.position, player.camera.position + player.camera.forward, player.camera.up);
-            glUniformMatrix4fv(glGetUniformLocation(block_shader.GetID(), "view"), 1, GL_FALSE, glm::value_ptr(view));
-            glUniformMatrix4fv(glGetUniformLocation(block_shader.GetID(), "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+            glUniformMatrix4fv(glGetUniformLocation(block_shader.GetID(), "view_projection"), 1, GL_FALSE, glm::value_ptr(view_projection));
 
-            glm::vec3 main_light = glm::normalize(glm::vec3(1.0f, -1.0f, 0.0f));
-            glUniform3f(glGetUniformLocation(block_shader.GetID(), "MainLight"), 1.0f, -1.0f, 0.0f);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, texture_atlas);
 
-            glm::vec3 camera_forward_xz_normalized = glm::normalize(glm::vec3(player.camera.forward.x, 0, player.camera.forward.z));
-            glm::vec3 camera_position_xz = glm::vec3(player.camera.position.x, 0, player.camera.position.z) - (float)CHUNK_SIZE * camera_forward_xz_normalized;
+            Plane frustum[6];
+            extractPlane(view_projection, 0,  1, frustum[0]); // Left
+            extractPlane(view_projection, 0, -1, frustum[1]); // Right
+            extractPlane(view_projection, 1,  1, frustum[2]); // Bottom
+            extractPlane(view_projection, 1, -1, frustum[3]); // Top
+            extractPlane(view_projection, 2,  1, frustum[4]); // Near
+            extractPlane(view_projection, 2, -1, frustum[5]); // Far
+
+            std::vector<Chunk *> visible_chunks;
+
+            // Render opaque blocks
             for (Chunk& chunk : loaded_chunks)
             {
-                glm::vec3 chunk_world_position = glm::vec3(CHUNK_SIZE * (chunk.position.x + 0.5f), 0, CHUNK_SIZE * (chunk.position.y + 0.5f));
-                glm::vec3 displacement_xz_normalized = glm::normalize(chunk_world_position - camera_position_xz);
-                float cos_angle = glm::dot(displacement_xz_normalized, camera_forward_xz_normalized);
-                if (cos_angle >= glm::cos(glm::radians(45.0f)))
+                float x0 = chunk.position.x * CHUNK_SIZE;
+                float x1 = x0 + CHUNK_SIZE;
+                float z0 = chunk.position.y * CHUNK_SIZE;
+                float z1 = z0 + CHUNK_SIZE;
+                float y0 = 0;
+                float y1 = WORLD_HEIGHT_LIMIT;
+
+                glm::vec3 min(x0, y0, z0);
+                glm::vec3 max(x1, y1, z1);
+
+                if (isBoxInFrustum(frustum, min, max))
                 {
-                    glBindVertexArray(chunk.vao);
-                    glActiveTexture(GL_TEXTURE0);
-                    glBindTexture(GL_TEXTURE_2D, texture_atlas);
-                    glDrawArrays(GL_TRIANGLES, 0, chunk.vertices.size());
-                    glBindVertexArray(0);
+                    glBindVertexArray(chunk.opaque_vao);
+                    glDrawArrays(GL_TRIANGLES, 0, chunk.opaque_vertices.size());
+                    visible_chunks.push_back(&chunk);
                 }
             }
 
-            // Render water
-            glBindVertexArray(water_vao);
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, texture_atlas);
-            glDrawArrays(GL_TRIANGLES, 0, water_vertices.size());
-            glBindVertexArray(0);
+            // Render transparent blocks
+            for (Chunk *chunk : visible_chunks)
+            {
+                glBindVertexArray(chunk->transparent_vao);
+                glDrawArrays(GL_TRIANGLES, 0, chunk->transparent_vertices.size());
+            }
 
-            // Render crystals
-            glBindVertexArray(crystal_vao);
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, texture_atlas);
-            glDrawArrays(GL_TRIANGLES, 0, crystal_vertices.size());
-            glBindVertexArray(0);
-
-            //
             // Render skybox
-            //
-
-            view = glm::mat4(glm::mat3(glm::lookAt(player.camera.position, player.camera.position + player.camera.forward, player.camera.up)));
+            view = glm::mat4(glm::mat3(view));
+            view_projection = projection * view;
             float skybox_angle = 0.02f * current_time;
-            skybox.Update(projection * view, skybox_angle);
+            skybox.Update(view_projection, skybox_angle);
             skybox.Render();
         }
 
