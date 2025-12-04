@@ -757,7 +757,11 @@ UIResetMoonMenu::UIResetMoonMenu()
         reset_button_position.x + (reset_button_size.x / 2.0f) - (reset_text_size.x / 2.0f),
         reset_button_position.y + (reset_button_size.y / 2.0f) - (reset_text_size.y / 2.0f)
     });
-    //_reset_button.SetClickAction([this]() {  });
+    _reset_button.SetClickAction([this]() {
+        std::filesystem::path moon_path = Storage::MOON_DIR / (std::string("moon") + std::to_string(_moon));
+        std::filesystem::remove_all(moon_path);
+        SetActive(false);
+    });
 }
 
 void UIResetMoonMenu::SetMoon(int moon)
