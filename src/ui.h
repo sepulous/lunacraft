@@ -103,6 +103,7 @@ class UIButton
         void SetSize(glm::vec2 size);
         void SetText(std::string text, float font_size, glm::vec4 color);
         void SetClickAction(std::function<void()> click_action);
+        bool IsClicked();
         void Update(MouseState mouse_state);
         void Render();
 
@@ -269,8 +270,10 @@ class UIResetMoonMenu
     public:
         UIResetMoonMenu();
         void SetMoon(int moon);
+        int GetMoon();
         void SetActive(bool status);
         bool IsActive();
+        bool ResetClicked();
         void Update(MouseState mouse_state);
         void Render();
 };
@@ -293,8 +296,31 @@ class UIMainMenu
 
     public:
         UIMainMenu(GLFWwindow *window);
+        void RefreshMoonButtonText();
         void Update(float delta_time, MouseState mouse_state);
         void Render(float delta_time);
+};
+
+class UIPauseMenu
+{
+    private:
+        bool _active = false;
+        bool _quit_clicked = false;
+        bool _resume_clicked = false;
+        UIImage _background;
+        UIButton _resume_button;
+        UIButton _options_button;
+        UIButton _quit_button;
+        UIOptionsMenu _options_menu;
+
+    public:
+        UIPauseMenu();
+        void SetActive(bool value);
+        bool IsActive();
+        bool QuitClicked();
+        bool ResumeClicked();
+        void Update(MouseState mouse_state);
+        void Render();
 };
 
 #endif

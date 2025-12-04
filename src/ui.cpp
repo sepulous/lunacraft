@@ -4,6 +4,7 @@
 #include <vector>
 #include <filesystem>
 #include <sstream>
+#include <algorithm>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -69,14 +70,46 @@ UIMainMenu::UIMainMenu(GLFWwindow *window)
     i = 0;
     for (UIButton& moon_button : _moon_buttons)
     {
-        // TODO: Set click action to LoadMoon(_moon) if the moon already exists
         glm::vec2 button_position = {595, 705 - i*(105 + 25)};
         glm::vec2 button_size = {820, 105};
         moon_button.SetSize(button_size);
         moon_button.SetPosition(button_position);
-        moon_button.SetClickAction([this, i]() { _moon_settings_menu.SetMoon(i); _moon_settings_menu.SetActive(true); });
 
-        std::string button_text = std::string("Moon ") + "ABCD"[i] + " - Unexplored";
+        std::string button_text;
+        std::string moon_folder = Storage::MOON_DIR / (std::string("moon") + std::to_string(i));
+        if (std::filesystem::exists(moon_folder))
+        {
+            int chunk_count = std::count_if(
+                std::filesystem::directory_iterator(moon_folder),
+                std::filesystem::directory_iterator{},
+                [](const std::filesystem::directory_entry& e){ return e.is_regular_file(); }
+            );
+
+            if (chunk_count == 0)
+            {
+                button_text = std::string("Moon ") + "ABCD"[i] + " - Unexplored";
+                moon_button.SetClickAction([this, i]() {
+                    _moon_settings_menu.SetMoon(i);
+                    _moon_settings_menu.SetActive(true);
+                });
+            }
+            else
+            {
+                float distance_traveled = glm::sqrt(chunk_count);
+                std::ostringstream text;
+                text << "Moon " << "ABCD"[i] << " - " << std::fixed << std::setprecision(1) << distance_traveled << " Sq km";
+                button_text = text.str();
+                moon_button.SetClickAction([i]() { LoadMoon(i); });
+            }
+        }
+        else
+        {
+            button_text = std::string("Moon ") + "ABCD"[i] + " - Unexplored";
+            moon_button.SetClickAction([this, i]() {
+                _moon_settings_menu.SetMoon(i);
+                _moon_settings_menu.SetActive(true);
+            });
+        }
         glm::vec2 text_size = UIText::GetTextSizeInPixels(button_text, 0.5f);
         moon_button.GetText().SetPosition({
             button_position.x + (button_size.x / 2.0f) - (text_size.x / 2.0f),
@@ -102,7 +135,10 @@ UIMainMenu::UIMainMenu(GLFWwindow *window)
             button_position.y + (button_size.y / 2.0f) - (text_size.y / 2.0f)
         });
         reset_button.SetText("Reset", 0.425f, {0.9f, 0.0f, 0.0f, 1.0f});
-        reset_button.SetClickAction([this, i]() { _reset_moon_menu.SetMoon(i); _reset_moon_menu.SetActive(true); });
+        reset_button.SetClickAction([this, i]() {
+            _reset_moon_menu.SetMoon(i);
+            _reset_moon_menu.SetActive(true);
+        });
 
         i++;
     }
@@ -138,6 +174,60 @@ UIMainMenu::UIMainMenu(GLFWwindow *window)
     glfwSetKeyCallback(window, HandleTextInput);
 }
 
+void UIMainMenu::RefreshMoonButtonText()
+{
+    int i = 0;
+    for (UIButton& moon_button : _moon_buttons)
+    {
+        glm::vec2 button_position = {595, 705 - i*(105 + 25)};
+        glm::vec2 button_size = {820, 105};
+
+        std::string button_text;
+        std::string moon_folder = Storage::MOON_DIR / (std::string("moon") + std::to_string(i));
+        if (std::filesystem::exists(moon_folder))
+        {
+            int chunk_count = std::count_if(
+                std::filesystem::directory_iterator(moon_folder),
+                std::filesystem::directory_iterator{},
+                [](const std::filesystem::directory_entry& e){ return e.is_regular_file(); }
+            );
+
+            if (chunk_count == 0)
+            {
+                button_text = std::string("Moon ") + "ABCD"[i] + " - Unexplored";
+                moon_button.SetClickAction([this, i]() {
+                    _moon_settings_menu.SetMoon(i);
+                    _moon_settings_menu.SetActive(true);
+                });
+            }
+            else
+            {
+                float distance_traveled = glm::sqrt(chunk_count);
+                std::ostringstream text;
+                text << "Moon " << "ABCD"[i] << " - " << std::fixed << std::setprecision(1) << distance_traveled << " Sq km";
+                button_text = text.str();
+                moon_button.SetClickAction([i]() { LoadMoon(i); });
+            }
+        }
+        else
+        {
+            button_text = std::string("Moon ") + "ABCD"[i] + " - Unexplored";
+            moon_button.SetClickAction([this, i]() {
+                _moon_settings_menu.SetMoon(i);
+                _moon_settings_menu.SetActive(true);
+            });
+        }
+        glm::vec2 text_size = UIText::GetTextSizeInPixels(button_text, 0.5f);
+        moon_button.GetText().SetPosition({
+            button_position.x + (button_size.x / 2.0f) - (text_size.x / 2.0f),
+            button_position.y + (button_size.y / 2.0f) - (text_size.y / 2.0f)
+        });
+        moon_button.SetText(button_text, 0.5f, {0.0f, 0.0f, 0.0f, 1.0f});
+
+        i++;
+    }
+}
+
 void UIMainMenu::Update(float delta_time, MouseState mouse_state)
 {
     if (_moon_settings_menu.IsActive())
@@ -151,6 +241,8 @@ void UIMainMenu::Update(float delta_time, MouseState mouse_state)
     else if (_reset_moon_menu.IsActive())
     {
         _reset_moon_menu.Update(mouse_state);
+        if (_reset_moon_menu.ResetClicked())
+            RefreshMoonButtonText();
     }
     else // Player can't interact with buttons behind active menus
     {
@@ -769,6 +861,11 @@ void UIResetMoonMenu::SetMoon(int moon)
     _moon = moon;
 }
 
+int UIResetMoonMenu::GetMoon()
+{
+    return _moon;
+}
+
 void UIResetMoonMenu::SetActive(bool status)
 {
     _active = status;
@@ -777,6 +874,11 @@ void UIResetMoonMenu::SetActive(bool status)
 bool UIResetMoonMenu::IsActive()
 {
     return _active;
+}
+
+bool UIResetMoonMenu::ResetClicked()
+{
+    return _reset_button.IsClicked();
 }
 
 void UIResetMoonMenu::Update(MouseState mouse_state)
@@ -791,6 +893,104 @@ void UIResetMoonMenu::Render()
     _title.Render();
     _cancel_button.Render();
     _reset_button.Render();
+}
+
+//
+// Pause Menu
+//
+
+UIPauseMenu::UIPauseMenu()
+{
+    _background.LoadImage(Storage::IMAGE_DIR / "ui" / "ui_black.png", GL_NEAREST);
+    _background.SetPosition({0, 0});
+    _background.SetSize({VIRTUAL_UI_WIDTH, VIRTUAL_UI_HEIGHT});
+
+    glm::vec2 resume_button_size = {400, 100};
+    glm::vec2 resume_button_position = {(VIRTUAL_UI_WIDTH / 2.0f) - (resume_button_size.x / 2.0f), 700};
+    _resume_button.SetSize(resume_button_size);
+    _resume_button.SetPosition(resume_button_position);
+    _resume_button.SetText("Resume", 0.6f, {0.0f, 0.0f, 0.0f, 1.0f});
+    glm::vec2 resume_text_size = UIText::GetTextSizeInPixels("Resume", 0.6f);
+    _resume_button.GetText().SetPosition({
+        resume_button_position.x + (resume_button_size.x / 2.0f) - (resume_text_size.x / 2.0f),
+        resume_button_position.y + (resume_button_size.y / 2.0f) - (resume_text_size.y / 2.0f)
+    });
+    _resume_button.SetClickAction([this]() { SetActive(false); });
+
+    glm::vec2 options_button_size = {400, 100};
+    glm::vec2 options_button_position = {(VIRTUAL_UI_WIDTH / 2.0f) - (options_button_size.x / 2.0f), 500};
+    _options_button.SetSize(options_button_size);
+    _options_button.SetPosition(options_button_position);
+    _options_button.SetText("Options", 0.6f, {0.0f, 0.0f, 0.0f, 1.0f});
+    glm::vec2 options_text_size = UIText::GetTextSizeInPixels("Options", 0.6f);
+    _options_button.GetText().SetPosition({
+        options_button_position.x + (options_button_size.x / 2.0f) - (options_text_size.x / 2.0f),
+        options_button_position.y + (options_button_size.y / 2.0f) - (options_text_size.y / 2.0f)
+    });
+    _options_button.SetClickAction([this]() { _options_menu.SetActive(true); });
+
+    glm::vec2 quit_button_size = {400, 100};
+    glm::vec2 quit_button_position = {(VIRTUAL_UI_WIDTH / 2.0f) - (quit_button_size.x / 2.0f), 300};
+    _quit_button.SetSize(quit_button_size);
+    _quit_button.SetPosition(quit_button_position);
+    _quit_button.SetText("Quit", 0.6f, {0.0f, 0.0f, 0.0f, 1.0f});
+    glm::vec2 quit_text_size = UIText::GetTextSizeInPixels("Quit", 0.6f);
+    _quit_button.GetText().SetPosition({
+        quit_button_position.x + (quit_button_size.x / 2.0f) - (quit_text_size.x / 2.0f),
+        quit_button_position.y + (quit_button_size.y / 2.0f) - (quit_text_size.y / 2.0f)
+    });
+}
+
+void UIPauseMenu::SetActive(bool value)
+{
+    _active = value;
+}
+
+bool UIPauseMenu::IsActive()
+{
+    return _active;
+}
+
+bool UIPauseMenu::QuitClicked()
+{
+    return _quit_clicked;
+}
+
+bool UIPauseMenu::ResumeClicked()
+{
+    return _resume_clicked;
+}
+
+void UIPauseMenu::Update(MouseState mouse_state)
+{
+    if (_options_menu.IsActive())
+    {
+        _options_menu.Update(mouse_state);
+    }
+    else
+    {
+        _resume_button.Update(mouse_state);
+        _options_button.Update(mouse_state);
+        _quit_button.Update(mouse_state);
+        _resume_clicked = _resume_button.IsClicked();
+        _quit_clicked = _quit_button.IsClicked();
+    }
+}
+
+void UIPauseMenu::Render()
+{
+    Shader image_shader = ShaderManager::UI_IMAGE_SHADER;
+    image_shader.Use();
+
+    image_shader.SetFloat("opacity", 0.4f);
+    _background.Render();
+    image_shader.SetFloat("opacity", 1.0f);
+
+    _resume_button.Render();
+    _options_button.Render();
+    _quit_button.Render();
+    if (_options_menu.IsActive())
+        _options_menu.Render();
 }
 
 //
@@ -1416,6 +1616,11 @@ void UIButton::SetText(std::string text, float font_size, glm::vec4 color)
 void UIButton::SetClickAction(std::function<void()> click_action)
 {
     _ClickAction = click_action;
+}
+
+bool UIButton::IsClicked()
+{
+    return _clicked;
 }
 
 void UIButton::Update(MouseState mouse_state)
