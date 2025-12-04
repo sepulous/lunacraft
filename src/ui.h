@@ -146,6 +146,7 @@ class UISlider
         UIButton _slider_level;
         UIImage _slider_handle;
         UIImage _slider_handle_held;
+        UIText _slider_value_text;
 
     public:
         UISlider();

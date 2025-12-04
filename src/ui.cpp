@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <filesystem>
+#include <sstream>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -599,7 +600,7 @@ UIOptionsMenu::UIOptionsMenu()
     _render_distance_slider.SetDiscrete(true);
     _render_distance_slider.SetPosition({bg_pos_x + option_text_align_x1 + 25, 445});
     _render_distance_slider.SetSize({240, 20});
-    _render_distance_slider.SetBounds({1.0f, 8.0f});
+    _render_distance_slider.SetBounds({1.0f, 16.0f});
     _render_distance_slider.SetValue(current_options.render_distance);
 
     // Show GUI
@@ -1530,6 +1531,8 @@ UISlider::UISlider()
     _slider_level.SetImage(Storage::IMAGE_DIR / "ui" / "ui_slider_level.png");
     _slider_handle.LoadImage(Storage::IMAGE_DIR / "ui" / "ui_slider_handle.png");
     _slider_handle_held.LoadImage(Storage::IMAGE_DIR / "ui" / "ui_slider_handle_held.png");
+    _slider_value_text.SetFontSize(0.5f);
+    _slider_value_text.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
 }
 
 void UISlider::SetValue(float level)
@@ -1542,6 +1545,17 @@ void UISlider::SetValue(float level)
     _slider_level.SetSize({handle_pos_x - _position.x + 20, _size.y});
     _slider_handle.SetPosition({handle_pos_x, _position.y - 20});
     _slider_handle_held.SetPosition({handle_pos_x, _position.y - 20});
+    _slider_value_text.SetPosition({handle_pos_x + 30, _position.y + 30});
+    if (_discrete)
+    {
+        _slider_value_text.SetText(std::to_string((int)_value));
+    }
+    else
+    {
+        std::ostringstream value_text;
+        value_text << std::fixed << std::setprecision(2) << _value;
+        _slider_value_text.SetText(value_text.str());
+    }
 }
 
 float UISlider::GetValue()
@@ -1610,6 +1624,17 @@ void UISlider::Update(MouseState mouse_state)
         _slider_level.SetSize({handle_pos_x - _position.x + 20, _size.y});
         _slider_handle.SetPosition({handle_pos_x, _position.y - 20});
         _slider_handle_held.SetPosition({handle_pos_x, _position.y - 20});
+        _slider_value_text.SetPosition({handle_pos_x + 30, _position.y + 30});
+        if (_discrete)
+        {
+            _slider_value_text.SetText(std::to_string((int)_value));
+        }
+        else
+        {
+            std::ostringstream value_text;
+            value_text << std::fixed << std::setprecision(2) << _value;
+            _slider_value_text.SetText(value_text.str());
+        }
     }
 }
 
@@ -1618,9 +1643,14 @@ void UISlider::Render()
     _slider_bg.Render();
     _slider_level.Render();
     if (_held)
+    {
         _slider_handle_held.Render();
+        _slider_value_text.Render();
+    }
     else
+    {
         _slider_handle.Render();
+    }
 }
 
 //
