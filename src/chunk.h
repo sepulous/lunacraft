@@ -12,19 +12,26 @@
 
 #include "block.h"
 
-struct Chunk
+class Chunk
 {
-    // Chunk data
-    glm::vec2 position;
-    uint16_t *blocks;
+    private:
+        glm::vec2 _position;
+        uint16_t *_blocks;
+        std::vector<BlockVertex> _opaque_vertices;
+        GLuint _opaque_vao;
+        GLuint _opaque_vbo;
+        std::vector<BlockVertex> _transparent_vertices;
+        GLuint _transparent_vao;
+        GLuint _transparent_vbo;
 
-    // Rendering data
-    std::vector<BlockVertex> opaque_vertices;
-    GLuint opaque_vao;
-    GLuint opaque_vbo;
-    std::vector<BlockVertex> transparent_vertices;
-    GLuint transparent_vao;
-    GLuint transparent_vbo;
+    public:
+        Chunk(glm::vec2 position);
+        glm::vec2 GetPosition();
+        uint16_t *GetBlocks();
+        void BuildVertices();
+        void BufferVertices();
+        void RenderOpaques();
+        void RenderTransparents();
 };
 
 #endif
