@@ -1027,10 +1027,10 @@ void GenerateChunk(uint16_t *chunk, int chunk_x, int chunk_z, uint64_t seed)
     const int GRAVEL_OFFSET = 1 * (CHUNK_SIZE + 2)*(CHUNK_SIZE + 2);
     const int DIRT_OFFSET   = 2 * (CHUNK_SIZE + 2)*(CHUNK_SIZE + 2);
     const int SAND_OFFSET   = 3 * (CHUNK_SIZE + 2)*(CHUNK_SIZE + 2);
-    GenerateHeightMap(&height_maps[ROCK_OFFSET], chunk_x, chunk_z, seed, 16, 0.4, 0.4, 4, 2);
-    GenerateHeightMap(&height_maps[GRAVEL_OFFSET], chunk_x, chunk_z, seed, 4, 0.4, 0.6, 2, 2);
-    GenerateHeightMap(&height_maps[DIRT_OFFSET], chunk_x, chunk_z, seed, 3, 0.4, 0.4, 3, 2);
-    GenerateHeightMap(&height_maps[SAND_OFFSET], chunk_x, chunk_z, seed, 2, 0.4, 0.8, 2, 2);
+    GenerateHeightMap(&height_maps[ROCK_OFFSET], chunk_x, chunk_z, seed, 14, 0.2, 0.4, 4, 2);
+    GenerateHeightMap(&height_maps[GRAVEL_OFFSET], chunk_x, chunk_z, seed, 4, 0.2, 0.6, 2, 2);
+    GenerateHeightMap(&height_maps[DIRT_OFFSET], chunk_x, chunk_z, seed, 3, 0.2, 0.6, 3, 2);
+    GenerateHeightMap(&height_maps[SAND_OFFSET], chunk_x, chunk_z, seed, 2, 0.2, 0.8, 2, 2);
 
     int chunk_index = 0;
     for (int x = 0; x < CHUNK_SIZE + 2; x++)
