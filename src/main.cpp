@@ -93,9 +93,10 @@ void UIUpdateTransforms()
 
 static void _CreateMoon(int moon, MoonSettings moon_settings)
 {
-    constexpr size_t BLOCKS_IN_CHUNK = (CHUNK_SIZE + 2) * (CHUNK_SIZE + 2) * WORLD_HEIGHT_LIMIT;
+    constexpr size_t BLOCKS_IN_CHUNK = CHUNK_SIZE * CHUNK_SIZE * WORLD_HEIGHT_LIMIT;
     int render_distance = OptionsManager::GetOptions().render_distance;
-    int chunks_to_process = (2*render_distance + 1) * (2*render_distance + 1);
+    int chunks_to_process = (2*render_distance + 1 + 2) * (2*render_distance + 1 + 2) // Generation
+                          + (2*render_distance + 1) * (2*render_distance + 1); // Meshing
     int chunks_processed = 0;
 
     std::filesystem::path moon_dir = Storage::MOON_DIR / (std::string("moon") + std::to_string(moon));
@@ -115,11 +116,12 @@ static void _CreateMoon(int moon, MoonSettings moon_settings)
     player_data_file.write(reinterpret_cast<char *>(&player_data), sizeof(PlayerData));
     player_data_file.close();
 
-    for (int chunk_x = -render_distance; chunk_x <= render_distance; chunk_x++)
+    for (int chunk_x = -render_distance - 1; chunk_x <= render_distance + 1; chunk_x++)
     {
-        for (int chunk_z = -render_distance; chunk_z <= render_distance; chunk_z++)
+        for (int chunk_z = -render_distance - 1; chunk_z <= render_distance + 1; chunk_z++)
         {
             Chunk chunk({chunk_x, chunk_z});
+            chunk.SetIsBorderChunk(chunk_x == -render_distance - 1 || chunk_x == render_distance + 1 || chunk_z == -render_distance - 1 || chunk_z == render_distance + 1);
 
             GenerateChunk(chunk.GetBlocks(), chunk_x, chunk_z, moon_settings.seed);
 
@@ -130,9 +132,17 @@ static void _CreateMoon(int moon, MoonSettings moon_settings)
             chunk_file.write(reinterpret_cast<char *>(chunk.GetBlocks()), BLOCKS_IN_CHUNK * sizeof(uint16_t));
             chunk_file.close();
 
-            chunk.BuildVertices();
-
             loaded_chunks.push_back(chunk);
+            chunks_processed++;
+            loading_moon_progress = (float)chunks_processed / (float)chunks_to_process;
+        }
+    }
+
+    for (Chunk& chunk : loaded_chunks)
+    {
+        if (!chunk.IsBorderChunk())
+        {
+            chunk.BuildVertices(loaded_chunks);
             chunks_processed++;
             loading_moon_progress = (float)chunks_processed / (float)chunks_to_process;
         }
@@ -187,23 +197,27 @@ static void _LoadMoon(int moon)
         uint64_t chunk_id = std::stoull(chunk_entry.path().stem().string());
         glm::vec2 chunk_pos = DecombineChunkCoordinates(chunk_id);
         // TODO: This isn't necessary once we add dynamic chunk loading
-        if (chunks_to_process == chunk_count || (chunk_pos.x >= player_chunk_pos.x - render_distance && chunk_pos.x <= player_chunk_pos.x + render_distance && chunk_pos.y >= player_chunk_pos.y - render_distance && chunk_pos.y <= player_chunk_pos.y + render_distance))
+        if (chunks_to_process == chunk_count || (chunk_pos.x >= player_chunk_pos.x - render_distance - 1 && chunk_pos.x <= player_chunk_pos.x + render_distance + 1 && chunk_pos.y >= player_chunk_pos.y - render_distance - 1 && chunk_pos.y <= player_chunk_pos.y + render_distance + 1))
         {
             // Initialize chunk
             Chunk chunk(chunk_pos);
+            chunk.SetIsBorderChunk(chunk_pos.x == player_chunk_pos.x - render_distance - 1 || chunk_pos.x == player_chunk_pos.x + render_distance + 1 || chunk_pos.y == player_chunk_pos.y - render_distance - 1 || chunk_pos.y == player_chunk_pos.y + render_distance + 1);
 
             // Read blocks
             std::ifstream chunk_file(chunk_entry.path(), std::ios::binary);
             chunk_file.read(reinterpret_cast<char *>(chunk.GetBlocks()), BLOCKS_IN_CHUNK * sizeof(uint16_t));
             chunk_file.close();
 
-            // Build rendering data
-            chunk.BuildVertices();
-
             loaded_chunks.push_back(chunk);
             chunks_processed++;
             loading_moon_progress = (float)chunks_processed / (float)chunks_to_process;
         }
+    }
+
+    for (Chunk& chunk : loaded_chunks)
+    {
+        if (!chunk.IsBorderChunk())
+            chunk.BuildVertices(loaded_chunks);
     }
 }
 
@@ -481,7 +495,8 @@ int main()
                 if (loading_moon_progress >= 1.0f) // Only runs once when loading in
                 {
                     for (Chunk& chunk : loaded_chunks)
-                        chunk.BufferVertices();
+                        if (!chunk.IsBorderChunk())
+                            chunk.BufferVertices();
 
                     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
                     glfwSetCursorPos(window, last_mouse_x, last_mouse_y);
@@ -622,21 +637,24 @@ int main()
             // Render opaque blocks
             for (Chunk& chunk : loaded_chunks)
             {
-                glm::vec2 chunk_pos = chunk.GetPosition();
-                float x0 = chunk_pos.x * CHUNK_SIZE;
-                float y0 = 0;
-                float z0 = chunk_pos.y * CHUNK_SIZE;
-                float x1 = x0 + CHUNK_SIZE;
-                float y1 = WORLD_HEIGHT_LIMIT;
-                float z1 = z0 + CHUNK_SIZE;
-
-                glm::vec3 min(x0, y0, z0);
-                glm::vec3 max(x1, y1, z1);
-
-                if (ChunkInFrustum(frustum, min, max))
+                if (!chunk.IsBorderChunk())
                 {
-                    chunk.RenderOpaques();
-                    visible_chunks.push_back(&chunk);
+                    glm::vec2 chunk_pos = chunk.GetPosition();
+                    float x0 = chunk_pos.x * CHUNK_SIZE;
+                    float y0 = 0;
+                    float z0 = chunk_pos.y * CHUNK_SIZE;
+                    float x1 = x0 + CHUNK_SIZE;
+                    float y1 = WORLD_HEIGHT_LIMIT;
+                    float z1 = z0 + CHUNK_SIZE;
+
+                    glm::vec3 min(x0, y0, z0);
+                    glm::vec3 max(x1, y1, z1);
+
+                    if (ChunkInFrustum(frustum, min, max))
+                    {
+                        chunk.RenderOpaques();
+                        visible_chunks.push_back(&chunk);
+                    }
                 }
             }
 

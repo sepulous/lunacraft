@@ -10,11 +10,54 @@
 #include "constants.h"
 #include "helpers.h"
 #include "block.h"
+#include "mesher.h"
 
 Chunk::Chunk(glm::vec2 position)
 {
     _position = position;
-    _blocks = new uint16_t[(CHUNK_SIZE + 2) * (CHUNK_SIZE + 2) * WORLD_HEIGHT_LIMIT];
+    _blocks = new uint16_t[CHUNK_SIZE * CHUNK_SIZE * WORLD_HEIGHT_LIMIT];
+}
+
+Chunk::Chunk(Chunk&& other) noexcept
+{
+    _is_border_chunk = other._is_border_chunk;
+    _opaque_vao = other._opaque_vao;
+    _opaque_vbo = other._opaque_vbo;
+    _transparent_vao = other._transparent_vao;
+    _transparent_vbo = other._transparent_vbo;
+    _position = other._position;
+    _opaque_vertices = std::move(other._opaque_vertices);
+    _transparent_vertices = std::move(other._transparent_vertices);
+    _blocks = other._blocks;
+    other._blocks = nullptr;
+}
+
+Chunk& Chunk::operator=(Chunk&& other) noexcept
+{
+    if (this != &other)
+    {
+        _is_border_chunk = other._is_border_chunk;
+        _opaque_vao = other._opaque_vao;
+        _opaque_vbo = other._opaque_vbo;
+        _transparent_vao = other._transparent_vao;
+        _transparent_vbo = other._transparent_vbo;
+        _position = other._position;
+        _opaque_vertices = std::move(other._opaque_vertices);
+        _transparent_vertices = std::move(other._transparent_vertices);
+        _blocks = other._blocks;
+        other._blocks = nullptr;
+    }
+    return *this;
+}
+
+void Chunk::SetIsBorderChunk(bool value)
+{
+    _is_border_chunk = value;
+}
+
+bool Chunk::IsBorderChunk()
+{
+    return _is_border_chunk;
 }
 
 glm::vec2 Chunk::GetPosition()
@@ -72,7 +115,7 @@ void Chunk::BufferVertices()
     glEnableVertexAttribArray(2);
 }
 
-void Chunk::BuildVertices()
+void Chunk::BuildVertices(std::vector<Chunk>& loaded_chunks)
 {
     std::unordered_map<BlockID, glm::vec3> ATLAS_TILE_MAP = {
         {BlockID::aluminum,        glm::vec3(32, 32, 32)},
@@ -147,219 +190,107 @@ void Chunk::BuildVertices()
         )});
     }
 
-    struct Quad
+    std::vector<Chunk *> neighbor_chunks(4, nullptr); // {front, right, back, left}
+    for (Chunk& chunk : loaded_chunks)
     {
-        BlockID block_type;
-        glm::vec3 vert_1;
-        glm::vec3 vert_2;
-        float length; // along +z
-        float height; // along +y
-        int face;
-    };
+        if ((int)chunk._position.x == (int)_position.x && (int)chunk._position.y == (int)_position.y + 1)
+            neighbor_chunks[0] = &chunk;
+        else if ((int)chunk._position.x == (int)_position.x + 1 && (int)chunk._position.y == (int)_position.y)
+            neighbor_chunks[1] = &chunk;
+        else if ((int)chunk._position.x == (int)_position.x && (int)chunk._position.y == (int)_position.y - 1)
+            neighbor_chunks[2] = &chunk;
+        else if ((int)chunk._position.x == (int)_position.x - 1 && (int)chunk._position.y == (int)_position.y)
+            neighbor_chunks[3] = &chunk;
+    }
 
-    glm::vec2 NEIGHBOR_OFFSETS[] = {
-        glm::vec2(0, 1),
-        glm::vec2(1, 0),
-        glm::vec2(0, -1),
-        glm::vec2(-1, 0)
-    };
+    std::vector<BlockQuad> quads = GreedyMesh(_blocks, neighbor_chunks);
 
-    glm::mat2x3 VERTEX_OFFSETS[] = {
-        glm::mat2x3(
-            -0.5f, 0.5f, -0.5f, // top (+y) left
-            0.5f, 0.5f, -0.5f // top (+y) right
-        ),
-        glm::mat2x3(
-            0.5f, -0.5f, -0.5f, // left (+x) bottom (v1)
-            0.5f, 0.5f, -0.5f // left (+x) top (v2)
-        ),
-        glm::mat2x3(
-            -0.5f, -0.5f, -0.5f, // bottom (-y) left
-            0.5f, -0.5f, -0.5f // bottom (-y) right
-        ),
-        glm::mat2x3(
-            -0.5f, -0.5f, -0.5f, // right (-x) bottom
-            -0.5f, 0.5f, -0.5f // right (-x) top
-        )
-    };
-
-    for (int localBlockX = 1; localBlockX <= CHUNK_SIZE; localBlockX++)
+    for (BlockQuad quad : quads)
     {
-        for (int localBlockY = 1; localBlockY < WORLD_HEIGHT_LIMIT - 1; localBlockY++) // TODO: Fix these indices (just avoiding out-of-bounds in neighbor checks)
+        // Determine vertex normal
+        glm::vec3 normal = glm::normalize(glm::cross(quad.du, quad.dv));
+        if (quad.back_face)
+            normal = -normal;
+        int nonzero_normal_comp = normal.x + normal.y + normal.z; // Only one is nonzero
+
+        // Determine texture atlas tile
+        int side = normal.y > 0 ? 2 : (normal.y < 0 ? 0 : 1);
+        glm::vec2 tile_origin = TILE_ORIGINS[quad.block][side];
+
+        // Determine global base vertex position
+        glm::vec3 base_pos;
+        if (normal.x != 0)
+            base_pos = {quad.base.x + 0.5f + CHUNK_SIZE * _position.x, quad.base.y - 0.5f, quad.base.z - 0.5f + CHUNK_SIZE * _position.y};
+        else if (normal.y != 0)
+            base_pos = {quad.base.x - 0.5f + CHUNK_SIZE * _position.x, quad.base.y + 0.5f, quad.base.z - 0.5f + CHUNK_SIZE * _position.y};
+        else
+            base_pos = {quad.base.x - 0.5f + CHUNK_SIZE * _position.x, quad.base.y - 0.5f, quad.base.z + 0.5f + CHUNK_SIZE * _position.y};
+
+        // Determine texture tiling repeats
+        int quad_width, quad_height;
+        if (normal.y != 0)
         {
-            BlockID base_block = BlockID::unknown;
+            quad_width = quad.du.x;
+            quad_height = quad.dv.z;
+        }
+        else if (normal.z != 0)
+        {
+            quad_width = quad.du.x;
+            quad_height = quad.dv.y;
+        }
+        else
+        {
+            quad_width = quad.du.z;
+            quad_height = quad.dv.y;
+        }
 
-            std::vector<Quad> all_quads;
-            Quad new_quads[] = {
-                {BlockID::unknown, glm::vec3(0), glm::vec3(0), 0, 0, 0}, // top (+y)
-                {BlockID::unknown, glm::vec3(0), glm::vec3(0), 0, 0, 1}, // left (+x)
-                {BlockID::unknown, glm::vec3(0), glm::vec3(0), 0, 0, 2}, // bottom (-y)
-                {BlockID::unknown, glm::vec3(0), glm::vec3(0), 0, 0, 3}  // right (-x)
-            };
+        BlockVertex vert_1(base_pos,                     {0,          0,           tile_origin}, normal);
+        BlockVertex vert_2(base_pos + quad.dv,           {0,          quad_height, tile_origin}, normal);
+        BlockVertex vert_3(base_pos + quad.dv + quad.du, {quad_width, quad_height, tile_origin}, normal);
+        BlockVertex vert_4(base_pos + quad.dv + quad.du, {quad_width, quad_height, tile_origin}, normal);
+        BlockVertex vert_5(base_pos + quad.du,           {quad_width, 0,           tile_origin}, normal);
+        BlockVertex vert_6(base_pos,                     {0,          0,           tile_origin}, normal);
 
-            for (int localBlockZ = 1; localBlockZ <= CHUNK_SIZE; localBlockZ++)
+        if (BlockIsOpaque(quad.block))
+        {
+            if (nonzero_normal_comp < 0)
             {
-                BlockID current_block = static_cast<BlockID>(_blocks[GetChunkIndex(localBlockX, localBlockY, localBlockZ)]);
-
-                glm::vec3 block_world_pos = glm::vec3(
-                    _position.x * CHUNK_SIZE + (localBlockX - 1),
-                    localBlockY,
-                    _position.y * CHUNK_SIZE + (localBlockZ - 1)
-                );
-
-                if (base_block == BlockID::unknown)
-                {
-                    if (current_block != BlockID::air)
-                    {
-                        base_block = current_block;
-
-                        for (int i = 0; i < 4; i++) // top -> right -> bottom -> left
-                        {
-                            glm::vec2 neighbor_offset = NEIGHBOR_OFFSETS[i];
-                            glm::mat2x3 vertex_offsets = VERTEX_OFFSETS[i];
-
-                            BlockID neighbor = static_cast<BlockID>(_blocks[GetChunkIndex(localBlockX + neighbor_offset.x, localBlockY + neighbor_offset.y, localBlockZ)]);
-                            bool face_visible = ShouldRenderFace(base_block, neighbor);
-                            if (face_visible)
-                            {
-                                new_quads[i].vert_1 = block_world_pos + vertex_offsets[0];
-                                new_quads[i].vert_2 = block_world_pos + vertex_offsets[1];
-                                new_quads[i].length = 1;
-                            }
-                            new_quads[i].block_type = base_block;
-                        }
-                    }
-                }
-                else
-                {
-                    for (int i = 0; i < 4; i++) // top -> right -> bottom -> left
-                    {
-                        glm::vec2 neighbor_offset = NEIGHBOR_OFFSETS[i];
-                        glm::mat2x3 vertex_offsets = VERTEX_OFFSETS[i];
-
-                        BlockID neighbor = static_cast<BlockID>(_blocks[GetChunkIndex(localBlockX + neighbor_offset.x, localBlockY + neighbor_offset.y, localBlockZ)]);
-                        bool face_visible = ShouldRenderFace(current_block, neighbor);
-                        if (current_block == base_block && face_visible)
-                        {
-                            if (new_quads[i].length == 0)
-                            {
-                                new_quads[i].vert_1 = block_world_pos + vertex_offsets[0];
-                                new_quads[i].vert_2 = block_world_pos + vertex_offsets[1];
-                            }
-                            new_quads[i].length++;
-                        }
-                        else
-                        {
-                            if (new_quads[i].length > 0)
-                            {
-                                all_quads.push_back(new_quads[i]);
-                                new_quads[i].length = 0;
-                            }
-
-                            if (face_visible && current_block != BlockID::air)
-                            {
-                                new_quads[i].vert_1 = block_world_pos + vertex_offsets[0];
-                                new_quads[i].vert_2 = block_world_pos + vertex_offsets[1];
-                                new_quads[i].length = 1;
-                            }
-                        }
-                    }
-
-                    if (base_block != current_block && current_block != BlockID::air)
-                    {
-                        base_block = current_block;
-                        for (int i = 0; i < 4; i++)
-                            new_quads[i].block_type = base_block;
-                    }
-                }
-
-                BlockID behind = static_cast<BlockID>(_blocks[GetChunkIndex(localBlockX, localBlockY, localBlockZ - 1)]);
-                bool face_visible = ShouldRenderFace(current_block, behind);
-                if (current_block != BlockID::air && face_visible)
-                {
-                    all_quads.push_back({
-                        current_block,
-                        block_world_pos + glm::vec3(-0.5f, -0.5f, -0.5f),
-                        block_world_pos + glm::vec3(0.5f, -0.5f, -0.5f),
-                        0, // length = 0
-                        1, // height = 1
-                        5 // back
-                    });
-                }
-
-                BlockID in_front = static_cast<BlockID>(_blocks[GetChunkIndex(localBlockX, localBlockY, localBlockZ + 1)]);
-                face_visible = ShouldRenderFace(current_block, in_front);
-                if (current_block != BlockID::air && face_visible)
-                {
-                    all_quads.push_back({
-                        current_block,
-                        block_world_pos + glm::vec3(-0.5f, -0.5f, +0.5f),
-                        block_world_pos + glm::vec3(0.5f, -0.5f, +0.5f),
-                        0, // length = 0
-                        1, // height = 1
-                        4 // front
-                    });
-                }
+                _opaque_vertices.push_back(vert_1);
+                _opaque_vertices.push_back(vert_2);
+                _opaque_vertices.push_back(vert_3);
+                _opaque_vertices.push_back(vert_4);
+                _opaque_vertices.push_back(vert_5);
+                _opaque_vertices.push_back(vert_6);
             }
-
-            // Push remaining valid quads
-            for (Quad quad : new_quads)
-                if (quad.length > 0)
-                    all_quads.push_back(quad);
-
-            // Push quad vertices
-            constexpr unsigned int block_indices[] = {
-                11, 2, 1, 1, 12, 11, // +y
-                7, 8, 9, 9, 8, 10, // +x
-                0, 1, 2, 3, 1, 0, // -y
-                1, 4, 5, 5, 6, 1, // -x
-                1, 2, 11, 11, 12, 1, // +z
-                11, 2, 1, 1, 12, 11, // -z
-            };
-
-            glm::vec3 face_normals[] = {
-                glm::vec3(0, 1, 0),
-                glm::vec3(1, 0, 0),
-                glm::vec3(0, -1, 0),
-                glm::vec3(-1, 0, 0),
-                glm::vec3(0, 0, 1),
-                glm::vec3(0, 0, -1)
-            };
-
-            for (Quad quad : all_quads)
+            else
             {
-                int side = quad.face == 0 ? 0 : (quad.face == 2 ? 2 : 1);
-                glm::vec2 tile_origin = TILE_ORIGINS[quad.block_type][side];
-
-                BlockVertex block_vertices[] = {
-                    BlockVertex(quad.vert_2 + glm::vec3(0, 0, quad.length),           glm::vec4(1.0f, quad.length, tile_origin),               glm::vec3(0)), // 0
-                    BlockVertex(quad.vert_1,                                          glm::vec4(0.0f, 0.0f, tile_origin),                      glm::vec3(0)), // 1
-                    BlockVertex(quad.vert_2,                                          glm::vec4(1.0f, 0.0f, tile_origin),                      glm::vec3(0)), // 2
-                    BlockVertex(quad.vert_1 + glm::vec3(0, 0, quad.length),           glm::vec4(0.0f, quad.length, tile_origin),               glm::vec3(0)), // 3
-                    BlockVertex(quad.vert_1 + glm::vec3(0, 0, quad.length),           glm::vec4(quad.length, 0.0f, tile_origin),               glm::vec3(0)), // 4
-                    BlockVertex(quad.vert_2 + glm::vec3(0, 0, quad.length),           glm::vec4(quad.length, 1.0f, tile_origin),               glm::vec3(0)), // 5
-                    BlockVertex(quad.vert_2,                                          glm::vec4(0.0f, 1.0f, tile_origin),                      glm::vec3(0)), // 6
-                    BlockVertex(quad.vert_1,                                          glm::vec4(quad.length, 0.0f, tile_origin),               glm::vec3(0)), // 7
-                    BlockVertex(quad.vert_2,                                          glm::vec4(quad.length, 1.0f, tile_origin),               glm::vec3(0)), // 8
-                    BlockVertex(quad.vert_1 + glm::vec3(0, 0, quad.length),           glm::vec4(0.0f, 0.0f, tile_origin),                      glm::vec3(0)), // 9
-                    BlockVertex(quad.vert_2 + glm::vec3(0, 0, quad.length),           glm::vec4(0.0f, 1.0f, tile_origin),                      glm::vec3(0)), // 10
-                    BlockVertex(quad.vert_2 + glm::vec3(0, quad.height, quad.length), glm::vec4(1.0f, quad.length + quad.height, tile_origin), glm::vec3(0)), // 11
-                    BlockVertex(quad.vert_1 + glm::vec3(0, quad.height, quad.length), glm::vec4(0.0f, quad.length + quad.height, tile_origin), glm::vec3(0)), // 12
-                };
-                
-                int index_start = quad.face * 6;
-                for (int i = index_start; i < index_start + 6; i++)
-                {
-                    if (quad.block_type == BlockID::light)
-                        block_vertices[block_indices[i]].face_normal = glm::vec3(0); // Just a hack so light blocks are "unlit"
-                    else
-                        block_vertices[block_indices[i]].face_normal = face_normals[quad.face];
-
-                    if (BlockIsOpaque(quad.block_type))
-                        _opaque_vertices.push_back(block_vertices[block_indices[i]]);
-                    else
-                        _transparent_vertices.push_back(block_vertices[block_indices[i]]);
-                }
+                _opaque_vertices.push_back(vert_6);
+                _opaque_vertices.push_back(vert_5);
+                _opaque_vertices.push_back(vert_4);
+                _opaque_vertices.push_back(vert_3);
+                _opaque_vertices.push_back(vert_2);
+                _opaque_vertices.push_back(vert_1);
+            }
+        }
+        else
+        {
+            if (nonzero_normal_comp < 0)
+            {
+                _transparent_vertices.push_back(vert_1);
+                _transparent_vertices.push_back(vert_2);
+                _transparent_vertices.push_back(vert_3);
+                _transparent_vertices.push_back(vert_4);
+                _transparent_vertices.push_back(vert_5);
+                _transparent_vertices.push_back(vert_6);
+            }
+            else
+            {
+                _transparent_vertices.push_back(vert_6);
+                _transparent_vertices.push_back(vert_5);
+                _transparent_vertices.push_back(vert_4);
+                _transparent_vertices.push_back(vert_3);
+                _transparent_vertices.push_back(vert_2);
+                _transparent_vertices.push_back(vert_1);
             }
         }
     }

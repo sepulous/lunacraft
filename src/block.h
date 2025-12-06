@@ -65,8 +65,8 @@ enum class BlockID : uint16_t
 
 struct BlockVertex
 {
-    glm::vec3 position;
-    glm::vec4 uv;
+    glm::vec3 position; // Global coordinates
+    glm::vec4 uv; // {repeat_width, repeat_height, tile_origin_x, tile_origin_y}
     glm::vec3 face_normal;
     
     BlockVertex(glm::vec3 position, glm::vec4 uv, glm::vec3 face_normal) : position(position), uv(uv), face_normal(face_normal) {}

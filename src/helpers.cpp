@@ -3,9 +3,10 @@
 #include "constants.h"
 #include "block.h"
 
+// This is tied to how the chunks are generated (see chunk_gen.h)
 int GetChunkIndex(int x, int y, int z)
 {
-    return y + WORLD_HEIGHT_LIMIT * z + (WORLD_HEIGHT_LIMIT * (CHUNK_SIZE + 2)) * x;
+    return y + (WORLD_HEIGHT_LIMIT * z) + (WORLD_HEIGHT_LIMIT * CHUNK_SIZE * x);
 }
 
 bool BlockShouldBeRendered(uint16_t *chunk, BlockID block, int localBlockX, int localBlockY, int localBlockZ)
@@ -42,7 +43,7 @@ bool BlockIsOpaque(BlockID block)
 bool ShouldRenderFace(BlockID face_block, BlockID face_neighbor)
 {
     // TODO: Add minilights (after figuring out how to just have one minilight block)
-    return !BlockIsOpaque(face_neighbor) && face_block != face_neighbor;
+    return face_block != BlockID::air && !BlockIsOpaque(face_neighbor) && face_block != face_neighbor;
 }
 
 glm::vec3 GetLocalBlockPos(glm::vec3 globalBlockPos)
@@ -64,7 +65,7 @@ glm::vec3 GetLocalBlockPos(glm::vec3 globalBlockPos)
     else
         localBlockPosZ = globalBlockPosZ + chunkZ*CHUNK_SIZE;
 
-    return glm::vec3(localBlockPosX + 1, globalBlockPos.y, localBlockPosZ + 1);
+    return glm::vec3(localBlockPosX, globalBlockPos.y, localBlockPosZ);
 }
 
 uint64_t CombineChunkCoordinates(int chunk_x, int chunk_z)

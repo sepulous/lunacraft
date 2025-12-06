@@ -15,6 +15,7 @@
 class Chunk
 {
     private:
+        bool _is_border_chunk = false;
         glm::vec2 _position;
         uint16_t *_blocks;
         std::vector<BlockVertex> _opaque_vertices;
@@ -26,9 +27,20 @@ class Chunk
 
     public:
         Chunk(glm::vec2 position);
+
+        // Copy
+        Chunk(const Chunk&) = default;
+        Chunk& operator=(const Chunk&) = default;
+
+        // Move
+        Chunk(Chunk&& other) noexcept;
+        Chunk& operator=(Chunk&& other) noexcept;
+
+        void SetIsBorderChunk(bool value);
+        bool IsBorderChunk();
         glm::vec2 GetPosition();
         uint16_t *GetBlocks();
-        void BuildVertices();
+        void BuildVertices(std::vector<Chunk>& loaded_chunks);
         void BufferVertices();
         void RenderOpaques();
         void RenderTransparents();
