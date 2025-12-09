@@ -91,123 +91,95 @@ void UIUpdateTransforms()
     ui_window_to_virtual = glm::inverse(ui_virtual_to_window);
 }
 
-static void _CreateMoon(int moon, MoonSettings moon_settings)
+static void _LoadMoon(int moon, MoonSettings moon_settings)
 {
     constexpr size_t BLOCKS_IN_CHUNK = CHUNK_SIZE * CHUNK_SIZE * WORLD_HEIGHT_LIMIT;
     int render_distance = OptionsManager::GetOptions().render_distance;
-    int chunks_to_process = (2*render_distance + 1 + 2) * (2*render_distance + 1 + 2) // Generation
-                          + (2*render_distance + 1) * (2*render_distance + 1); // Meshing
+    int chunks_to_process = (2*render_distance + 1 + 2) * (2*render_distance + 1 + 2) // Generation/loading
+                          + (2*render_distance + 1) * (2*render_distance + 1);        // Meshing
     int chunks_processed = 0;
 
+    bool existing_moon;
     std::filesystem::path moon_dir = Storage::MOON_DIR / (std::string("moon") + std::to_string(moon));
-    std::filesystem::path chunk_dir = moon_dir / "chunks";
-    if (!std::filesystem::exists(moon_dir))
+    existing_moon = std::filesystem::exists(moon_dir);
+    if (!existing_moon)
         std::filesystem::create_directory(moon_dir);
-    if (!std::filesystem::exists(chunk_dir))
+
+    std::filesystem::path chunk_dir = moon_dir / "chunks";
+    if (!existing_moon) // Chunk folder doesn't exist if moon folder doesn't
         std::filesystem::create_directory(chunk_dir);
 
-    // Default player data
-    PlayerData player_data;
-    player_data.health = player.health;
-    player_data.suit_status = player.suit_status;
-    player_data.position = player.position;
-    player_data.camera_rotation = {player.camera.pitch, player.camera.yaw};
-    std::ofstream player_data_file(moon_dir / "player.dat", std::ios::binary);
-    player_data_file.write(reinterpret_cast<char *>(&player_data), sizeof(PlayerData));
-    player_data_file.close();
-
-    for (int chunk_x = -render_distance - 1; chunk_x <= render_distance + 1; chunk_x++)
+    // Player data
+    std::filesystem::path player_data_path = moon_dir / "player.dat";
+    if (std::filesystem::exists(player_data_path))
     {
-        for (int chunk_z = -render_distance - 1; chunk_z <= render_distance + 1; chunk_z++)
-        {
-            Chunk chunk({chunk_x, 0, chunk_z});
-            chunk.SetIsBorderChunk(chunk_x == -render_distance - 1 || chunk_x == render_distance + 1 || chunk_z == -render_distance - 1 || chunk_z == render_distance + 1);
+        PlayerData player_data;
+        std::ifstream player_data_file(player_data_path, std::ios::binary);
+        player_data_file.read(reinterpret_cast<char *>(&player_data), sizeof(PlayerData));
+        player_data_file.close();
 
-            GenerateChunk(chunk.GetBlocks(), chunk_x, chunk_z, moon_settings.seed);
+        player.position = player_data.position;
+        player.prev_position = player.position;
+        player.next_position = player.position;
+        player.health = player_data.health;
+        player.suit_status = player_data.suit_status;
+        player.camera.pitch = player_data.camera_rotation.x;
+        player.camera.yaw = player_data.camera_rotation.y;
+    }
+    else
+    {
+        PlayerData player_data;
+        player_data.health = player.health;
+        player_data.suit_status = player.suit_status;
+        player_data.position = player.position;
+        player_data.camera_rotation = {player.camera.pitch, player.camera.yaw};
 
-            // Save chunk to file
-            uint64_t chunk_id = ChunkCoordsToID({chunk_x, 0, chunk_z});
-            std::filesystem::path chunk_path = chunk_dir / (std::to_string(chunk_id) + ".chunk");
-            std::ofstream chunk_file(chunk_path, std::ios::binary);
-            chunk_file.write(reinterpret_cast<char *>(chunk.GetBlocks()), BLOCKS_IN_CHUNK * sizeof(uint16_t));
-            chunk_file.close();
-
-            loaded_chunks.push_back(chunk);
-            chunks_processed++;
-            loading_moon_progress = (float)chunks_processed / (float)chunks_to_process;
-        }
+        std::ofstream player_data_file(player_data_path, std::ios::binary);
+        player_data_file.write(reinterpret_cast<char *>(&player_data), sizeof(PlayerData));
+        player_data_file.close();
     }
 
-    for (Chunk& chunk : loaded_chunks)
+    // Moon data
+    std::filesystem::path moon_data_path = moon_dir / "moon.dat";
+    if (std::filesystem::exists(moon_data_path))
     {
-        if (!chunk.IsBorderChunk())
-        {
-            chunk.BuildVertices(loaded_chunks);
-            chunks_processed++;
-            loading_moon_progress = (float)chunks_processed / (float)chunks_to_process;
-        }
+        std::ifstream moon_data_file(moon_data_path, std::ios::binary);
+        moon_data_file.read(reinterpret_cast<char *>(&moon_settings), sizeof(MoonSettings));
+        moon_data_file.close();
+    }
+    else
+    {
+        std::ofstream moon_data_file(moon_data_path, std::ios::binary);
+        moon_data_file.write(reinterpret_cast<char *>(&moon_settings), sizeof(MoonSettings));
+        moon_data_file.close();
     }
 
-    // Save moon data
-    std::ofstream moon_data_file(Storage::MOON_DIR / (std::string("moon") + std::to_string(moon)) / "moon.dat", std::ios::binary);
-    moon_data_file.write(reinterpret_cast<char *>(&moon_settings), sizeof(MoonSettings));
-    moon_data_file.close();
-}
-
-void CreateMoon(int moon, MoonSettings moon_settings)
-{
-    loading_moon = true;
-    active_moon = moon;
-    std::thread worker(_CreateMoon, moon, moon_settings);
-    worker.detach();
-}
-
-static void _LoadMoon(int moon)
-{
-    std::filesystem::path chunk_folder = Storage::MOON_DIR / (std::string("moon") + std::to_string(moon)) / "chunks";
-    int chunk_count = std::count_if(
-        std::filesystem::directory_iterator(chunk_folder),
-        std::filesystem::directory_iterator{},
-        [](const std::filesystem::directory_entry& e){ return e.is_regular_file(); }
-    );
-
-    constexpr size_t BLOCKS_IN_CHUNK = (CHUNK_SIZE + 2) * (CHUNK_SIZE + 2) * WORLD_HEIGHT_LIMIT;
-    int render_distance = OptionsManager::GetOptions().render_distance;
-    int chunks_to_process = glm::min((2*render_distance + 1) * (2*render_distance + 1), chunk_count); //  TODO: Once we dynamically load chunks this isn't necessary
-    int chunks_processed = 0;
-
-    // Load player data
-    PlayerData player_data;
-    std::ifstream player_data_file(Storage::MOON_DIR / (std::string("moon") + std::to_string(moon)) / "player.dat", std::ios::binary);
-    player_data_file.read(reinterpret_cast<char *>(&player_data), sizeof(PlayerData));
-    player_data_file.close();
-
-    player.position = player_data.position;
-    player.prev_position = player.position;
-    player.next_position = player.position;
-    player.health = player_data.health;
-    player.suit_status = player_data.suit_status;
-    player.camera.pitch = player_data.camera_rotation.x;
-    player.camera.yaw = player_data.camera_rotation.y;
-
-    // Load moon
-    //glm::vec2 player_chunk_pos = {glm::floor(player.position.x / CHUNK_SIZE), glm::floor(player.position.z / CHUNK_SIZE)};
+    // Loading chunks...
     glm::ivec3 player_chunk_coords = VoxelToChunk({player.position.x, player.position.y, player.position.z});
-    for (const auto& chunk_entry : std::filesystem::directory_iterator(chunk_folder))
+    for (int chunk_x = player_chunk_coords.x - render_distance - 1; chunk_x <= player_chunk_coords.x + render_distance + 1; chunk_x++)
     {
-        uint64_t chunk_id = std::stoull(chunk_entry.path().stem().string());
-        glm::ivec3 chunk_coords = ChunkIDToCoords(chunk_id);
-        // TODO: This isn't necessary once we add dynamic chunk loading
-        if (chunks_to_process == chunk_count || (chunk_coords.x >= player_chunk_coords.x - render_distance - 1 && chunk_coords.x <= player_chunk_coords.x + render_distance + 1 && chunk_coords.z >= player_chunk_coords.z - render_distance - 1 && chunk_coords.z <= player_chunk_coords.z + render_distance + 1))
+        for (int chunk_z = player_chunk_coords.z - render_distance - 1; chunk_z <= player_chunk_coords.z + render_distance + 1; chunk_z++)
         {
-            // Initialize chunk
+            glm::ivec3 chunk_coords = {chunk_x, 0, chunk_z};
             Chunk chunk(chunk_coords);
-            chunk.SetIsBorderChunk(chunk_coords.x == player_chunk_coords.x - render_distance - 1 || chunk_coords.x == player_chunk_coords.x + render_distance + 1 || chunk_coords.z == player_chunk_coords.z - render_distance - 1 || chunk_coords.z == player_chunk_coords.z + render_distance + 1);
+            chunk.SetIsBorderChunk(chunk_x == player_chunk_coords.x - render_distance - 1 || chunk_x == player_chunk_coords.x + render_distance + 1 || chunk_z == player_chunk_coords.z - render_distance - 1 || chunk_z == player_chunk_coords.z + render_distance + 1);
 
-            // Read blocks
-            std::ifstream chunk_file(chunk_entry.path(), std::ios::binary);
-            chunk_file.read(reinterpret_cast<char *>(chunk.GetBlocks()), BLOCKS_IN_CHUNK * sizeof(uint16_t));
-            chunk_file.close();
+            uint64_t chunk_id = ChunkCoordsToID(chunk_coords);
+            std::filesystem::path chunk_file_path = chunk_dir / (std::to_string(chunk_id) + ".chunk");
+            if (std::filesystem::exists(chunk_file_path))
+            {
+                std::ifstream chunk_file(chunk_file_path, std::ios::binary);
+                chunk_file.read(reinterpret_cast<char *>(chunk.GetBlocks()), BLOCKS_IN_CHUNK * sizeof(uint16_t));
+                chunk_file.close();
+            }
+            else
+            {
+                GenerateChunk(chunk.GetBlocks(), chunk_x, chunk_z, moon_settings.seed);
+
+                std::ofstream chunk_file(chunk_file_path, std::ios::binary);
+                chunk_file.write(reinterpret_cast<char *>(chunk.GetBlocks()), BLOCKS_IN_CHUNK * sizeof(uint16_t));
+                chunk_file.close();
+            }
 
             loaded_chunks.push_back(chunk);
             chunks_processed++;
@@ -215,18 +187,23 @@ static void _LoadMoon(int moon)
         }
     }
 
+    // Building geometry...
     for (Chunk& chunk : loaded_chunks)
     {
         if (!chunk.IsBorderChunk())
+        {
             chunk.BuildVertices(loaded_chunks);
+            chunks_processed++;
+            loading_moon_progress = (float)chunks_processed / (float)chunks_to_process;
+        }
     }
 }
 
-void LoadMoon(int moon)
+void LoadMoon(int moon, MoonSettings moon_settings)
 {
     loading_moon = true;
     active_moon = moon;
-    std::thread worker(_LoadMoon, moon);
+    std::thread worker(_LoadMoon, moon, moon_settings);
     worker.detach();
 }
 

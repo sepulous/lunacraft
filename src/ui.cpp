@@ -27,8 +27,7 @@
 #define STBTT_STATIC
 #include <stb_truetype/stb_truetype.h>
 
-extern void CreateMoon(int, MoonSettings);
-extern void LoadMoon(int);
+extern void LoadMoon(int, MoonSettings);
 
 int LAST_INPUT_KEY = ' ';
 bool LAST_INPUT_KEY_HANDLED = true;
@@ -99,7 +98,7 @@ UIMainMenu::UIMainMenu(GLFWwindow *window)
                 std::ostringstream text;
                 text << "Moon " << "ABCD"[i] << " - " << std::fixed << std::setprecision(1) << distance_traveled << " Sq km";
                 button_text = text.str();
-                moon_button.SetClickAction([i]() { LoadMoon(i); });
+                moon_button.SetClickAction([i]() { LoadMoon(i, MoonSettings()); });
             }
         }
         else
@@ -206,7 +205,7 @@ void UIMainMenu::RefreshMoonButtonText()
                 std::ostringstream text;
                 text << "Moon " << "ABCD"[i] << " - " << std::fixed << std::setprecision(1) << distance_traveled << " Sq km";
                 button_text = text.str();
-                moon_button.SetClickAction([i]() { LoadMoon(i); });
+                moon_button.SetClickAction([i]() { LoadMoon(i, MoonSettings()); });
             }
         }
         else
@@ -495,7 +494,7 @@ UIMoonSettingsMenu::UIMoonSettingsMenu()
         moon_settings.seed = seed_hash;
 
         SetActive(false);
-        CreateMoon(_moon, moon_settings);
+        LoadMoon(_moon, moon_settings);
     });
 }
 
