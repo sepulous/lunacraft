@@ -905,39 +905,39 @@ UIPauseMenu::UIPauseMenu()
     _background.SetPosition({0, 0});
     _background.SetSize({VIRTUAL_UI_WIDTH, VIRTUAL_UI_HEIGHT});
 
-    glm::vec2 resume_button_size = {400, 100};
-    glm::vec2 resume_button_position = {(VIRTUAL_UI_WIDTH / 2.0f) - (resume_button_size.x / 2.0f), 700};
-    _resume_button.SetSize(resume_button_size);
+    glm::vec2 button_size = {520, 120};
+    float text_scale = 0.6f;
+
+    glm::vec2 resume_button_position = {(VIRTUAL_UI_WIDTH / 2.0f) - (button_size.x / 2.0f), 700};
+    _resume_button.SetSize(button_size);
     _resume_button.SetPosition(resume_button_position);
-    _resume_button.SetText("Resume", 0.6f, {0.0f, 0.0f, 0.0f, 1.0f});
-    glm::vec2 resume_text_size = UIText::GetTextSizeInPixels("Resume", 0.6f);
+    _resume_button.SetText("Resume", text_scale, {0.0f, 0.0f, 0.0f, 1.0f});
+    glm::vec2 resume_text_size = UIText::GetTextSizeInPixels("Resume", text_scale);
     _resume_button.GetText().SetPosition({
-        resume_button_position.x + (resume_button_size.x / 2.0f) - (resume_text_size.x / 2.0f),
-        resume_button_position.y + (resume_button_size.y / 2.0f) - (resume_text_size.y / 2.0f)
+        resume_button_position.x + (button_size.x / 2.0f) - (resume_text_size.x / 2.0f),
+        resume_button_position.y + (button_size.y / 2.0f) - (resume_text_size.y / 2.0f)
     });
     _resume_button.SetClickAction([this]() { SetActive(false); });
 
-    glm::vec2 options_button_size = {400, 100};
-    glm::vec2 options_button_position = {(VIRTUAL_UI_WIDTH / 2.0f) - (options_button_size.x / 2.0f), 500};
-    _options_button.SetSize(options_button_size);
+    glm::vec2 options_button_position = {(VIRTUAL_UI_WIDTH / 2.0f) - (button_size.x / 2.0f), 500};
+    _options_button.SetSize(button_size);
     _options_button.SetPosition(options_button_position);
-    _options_button.SetText("Options", 0.6f, {0.0f, 0.0f, 0.0f, 1.0f});
-    glm::vec2 options_text_size = UIText::GetTextSizeInPixels("Options", 0.6f);
+    _options_button.SetText("Options", text_scale, {0.0f, 0.0f, 0.0f, 1.0f});
+    glm::vec2 options_text_size = UIText::GetTextSizeInPixels("Options", text_scale);
     _options_button.GetText().SetPosition({
-        options_button_position.x + (options_button_size.x / 2.0f) - (options_text_size.x / 2.0f),
-        options_button_position.y + (options_button_size.y / 2.0f) - (options_text_size.y / 2.0f)
+        options_button_position.x + (button_size.x / 2.0f) - (options_text_size.x / 2.0f),
+        options_button_position.y + (button_size.y / 2.0f) - (options_text_size.y / 2.0f)
     });
     _options_button.SetClickAction([this]() { _options_menu.SetActive(true); });
 
-    glm::vec2 quit_button_size = {400, 100};
-    glm::vec2 quit_button_position = {(VIRTUAL_UI_WIDTH / 2.0f) - (quit_button_size.x / 2.0f), 300};
-    _quit_button.SetSize(quit_button_size);
+    glm::vec2 quit_button_position = {(VIRTUAL_UI_WIDTH / 2.0f) - (button_size.x / 2.0f), 300};
+    _quit_button.SetSize(button_size);
     _quit_button.SetPosition(quit_button_position);
-    _quit_button.SetText("Quit", 0.6f, {0.0f, 0.0f, 0.0f, 1.0f});
-    glm::vec2 quit_text_size = UIText::GetTextSizeInPixels("Quit", 0.6f);
+    _quit_button.SetText("Save & Quit", text_scale, {0.0f, 0.0f, 0.0f, 1.0f});
+    glm::vec2 quit_text_size = UIText::GetTextSizeInPixels("Save & Quit", text_scale);
     _quit_button.GetText().SetPosition({
-        quit_button_position.x + (quit_button_size.x / 2.0f) - (quit_text_size.x / 2.0f),
-        quit_button_position.y + (quit_button_size.y / 2.0f) - (quit_text_size.y / 2.0f)
+        quit_button_position.x + (button_size.x / 2.0f) - (quit_text_size.x / 2.0f),
+        quit_button_position.y + (button_size.y / 2.0f) - (quit_text_size.y / 2.0f)
     });
 }
 
