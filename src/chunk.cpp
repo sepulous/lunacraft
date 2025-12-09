@@ -227,22 +227,8 @@ void Chunk::BuildVertices(std::vector<Chunk>& loaded_chunks)
             base_pos = {quad.base.x - 0.5f + CHUNK_SIZE * _position.x, quad.base.y - 0.5f, quad.base.z + 0.5f + CHUNK_SIZE * _position.y};
 
         // Determine texture tiling repeats
-        int quad_width, quad_height;
-        if (normal.y != 0)
-        {
-            quad_width = quad.du.x;
-            quad_height = quad.dv.z;
-        }
-        else if (normal.z != 0)
-        {
-            quad_width = quad.du.x;
-            quad_height = quad.dv.y;
-        }
-        else
-        {
-            quad_width = quad.du.z;
-            quad_height = quad.dv.y;
-        }
+        int quad_width = glm::length(quad.du);
+        int quad_height = glm::length(quad.dv);
 
         BlockVertex vert_1(base_pos,                     {0,          0,           tile_origin}, normal);
         BlockVertex vert_2(base_pos + quad.dv,           {0,          quad_height, tile_origin}, normal);
@@ -253,7 +239,7 @@ void Chunk::BuildVertices(std::vector<Chunk>& loaded_chunks)
 
         if (BlockIsOpaque(quad.block))
         {
-            if (nonzero_normal_comp < 0)
+            if (!quad.back_face)
             {
                 _opaque_vertices.push_back(vert_1);
                 _opaque_vertices.push_back(vert_2);
@@ -274,7 +260,7 @@ void Chunk::BuildVertices(std::vector<Chunk>& loaded_chunks)
         }
         else
         {
-            if (nonzero_normal_comp < 0)
+            if (!quad.back_face)
             {
                 _transparent_vertices.push_back(vert_1);
                 _transparent_vertices.push_back(vert_2);

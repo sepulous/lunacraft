@@ -11,6 +11,7 @@
 
 enum class BlockID : uint16_t
 {
+    air,
     aluminum,
     aluminum_ore,
     amethyst_ore,
@@ -50,7 +51,6 @@ enum class BlockID : uint16_t
     xenostone,
     zircon_ore,
     water,
-    air,
     sulphur_crystal,
     blue_crystal,
     boron_crystal,

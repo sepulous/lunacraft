@@ -83,8 +83,8 @@ double SimplexNoise(double x, double y)
     double x2 = x0 - 1.0 + 2.0 * G;
     double y2 = y0 - 1.0 + 2.0 * G;
 
-    long ii = static_cast<long>(static_cast<uint64_t>(i) & 0xFF); // i % 256
-    long jj = static_cast<long>(static_cast<uint64_t>(j) & 0xFF); // j % 256
+    long ii = (long)((uint16_t)i & 0xFF); // i % 256
+    long jj = (long)((uint16_t)j & 0xFF); // j % 256
 
     double t0 = 0.5 - x0 * x0 - y0 * y0;
     if (t0 < 0.0) n0 = 0.0;

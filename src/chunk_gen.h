@@ -11,7 +11,7 @@
 
 #include "block.h"
 #include "constants.h"
-#include "simplex.h"
+#include "simplex_noise.h"
 #include "helpers.h"
 
 std::vector<std::vector<glm::vec3>> CRYSTAL_PLANT_SHAPES = {

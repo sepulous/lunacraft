@@ -380,6 +380,9 @@ int main()
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+    bool wireframe = false;
+    float last_wireframe_toggle = 0;
+
     float delta_time;
     float last_frame_time = 0;
     const float fixed_delta_time = 0.02f;
@@ -418,6 +421,12 @@ int main()
         {
             mouse_state.left_clicked = false;
             mouse_state.left_held = false;
+        }
+
+        if (glfwGetKey(window, GLFW_KEY_Y) == GLFW_PRESS && current_time - last_wireframe_toggle > 0.2f)
+        {
+            wireframe = !wireframe;
+            last_wireframe_toggle = current_time;
         }
 
         // Cursor position is unbounded (and thus meaningless) when disabled. We don't care about the cursor position in that case anyway.
@@ -513,6 +522,7 @@ int main()
         }
         else // IN_GAME
         {
+
             //
             // Updates
             //
@@ -622,6 +632,9 @@ int main()
             glEnable(GL_DEPTH_TEST);
             glEnable(GL_CULL_FACE);
 
+            if (wireframe)
+                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
             Shader block_shader = ShaderManager::BLOCK_SHADER;
             block_shader.Use();
 
@@ -629,6 +642,8 @@ int main()
 
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, texture_atlas);
+
+            glDepthFunc(GL_LESS);
 
             Plane frustum[6];
             GetFrustumPlanes(view_projection, frustum);
@@ -671,12 +686,13 @@ int main()
             skybox.Update(view_projection, skybox_angle);
             skybox.Render();
 
+            if (wireframe)
+                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
             glDepthFunc(GL_LEQUAL);
 
             if (ui_pause_menu.IsActive())
                 ui_pause_menu.Render();
-
-            glDepthFunc(GL_LESS);
         }
 
         glfwSwapBuffers(window);
