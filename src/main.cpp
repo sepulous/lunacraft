@@ -501,6 +501,7 @@ int main()
                 ui_main_menu.Render(delta_time);
                 ui_load_moon_menu.Render();
 
+                ui_load_moon_menu.SetProgressLevel(loading_moon_progress);
                 if (loading_moon_progress >= 1.0f) // Only runs once when loading in
                 {
                     for (Chunk& chunk : loaded_chunks)

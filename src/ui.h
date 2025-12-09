@@ -161,6 +161,24 @@ class UISlider
         void Render();
 };
 
+// This is just a simplified UISlider
+class UIProgressBar
+{
+    private:
+        float _level = 0; // in [0, 1]
+        glm::vec2 _position;
+        glm::vec2 _size;
+        UIButton _slider_bg;
+        UIButton _slider_level;
+
+    public:
+        UIProgressBar();
+        void SetLevel(float value);
+        void SetPosition(glm::vec2 position);
+        void SetSize(glm::vec2 size);
+        void Render();
+};
+
 class UITextBox
 {
     private:
@@ -188,11 +206,15 @@ class UILoadMoonMenu
         bool _active = false;
         UIImage _background;
         UIText _title;
+        UIProgressBar _progress_bar;
+        UIText _status;
+        int _stage = 0;
 
     public:
         UILoadMoonMenu();
         void SetActive(bool status);
         bool IsActive();
+        void SetProgressLevel(float level);
         void Update();
         void Render();
 };

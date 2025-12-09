@@ -590,6 +590,19 @@ UILoadMoonMenu::UILoadMoonMenu()
     _title.SetText("Inserting astronaut...");
     _title.SetFontSize(0.4f);
     _title.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
+
+    // Progress bar
+    glm::vec2 progress_bar_size = {400, 20};
+    _progress_bar.SetPosition({bg_pos_x + (bg_width / 2.0f) - (progress_bar_size.x / 2.0f), bg_pos_y + bg_height - 200});
+    _progress_bar.SetSize(progress_bar_size);
+
+    // Status text
+    glm::vec2 status_size = UIText::GetTextSizeInPixels("Loading chunks...", 0.4f);
+    glm::vec2 status_position = {bg_pos_x + (bg_width / 2.0f) - (status_size.x / 2.0f), bg_pos_y + bg_height - 300};
+    _status.SetPosition(status_position);
+    _status.SetText("Loading chunks...");
+    _status.SetFontSize(0.4f);
+    _status.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
 }
 
 void UILoadMoonMenu::SetActive(bool status)
@@ -602,6 +615,35 @@ bool UILoadMoonMenu::IsActive()
     return _active;
 }
 
+void UILoadMoonMenu::SetProgressLevel(float level)
+{
+    _progress_bar.SetLevel(level);
+    int stage = level < 0.5f ? 0 : 1;
+    if (stage != _stage)
+    {
+        float bg_width = 780;
+        float bg_height = 420;
+        float bg_pos_x = (VIRTUAL_UI_WIDTH / 2.0f) - (bg_width / 2.0f);
+        float bg_pos_y = (VIRTUAL_UI_HEIGHT / 2.0f) - (bg_height / 2.0f);
+        if (stage == 0) // Loading chunks...
+        {
+            glm::vec2 status_size = UIText::GetTextSizeInPixels("Loading chunks...", 0.4f);
+            glm::vec2 status_position = {bg_pos_x + (bg_width / 2.0f) - (status_size.x / 2.0f), bg_pos_y + bg_height - 300};
+            _status.SetPosition(status_position);
+            _status.SetText("Loading chunks...");
+        }
+        else // Building geometry...
+        {
+            glm::vec2 status_size = UIText::GetTextSizeInPixels("Building geometry...", 0.4f);
+            glm::vec2 status_position = {bg_pos_x + (bg_width / 2.0f) - (status_size.x / 2.0f), bg_pos_y + bg_height - 300};
+            _status.SetPosition(status_position);
+            _status.SetText("Building geometry...");
+        }
+
+        _stage = stage;
+    }
+}
+
 void UILoadMoonMenu::Update()
 {
     
@@ -611,6 +653,8 @@ void UILoadMoonMenu::Render()
 {
     _background.Render();
     _title.Render();
+    _progress_bar.Render();
+    _status.Render();
 }
 
 //
@@ -1861,6 +1905,43 @@ void UISlider::Render()
         _slider_handle.Render();
     }
 }
+
+//
+// Progress Bar
+//
+
+UIProgressBar::UIProgressBar()
+{
+    _slider_bg.SetImage(Storage::IMAGE_DIR / "ui" / "ui_slider_bg.png");
+    _slider_level.SetImage(Storage::IMAGE_DIR / "ui" / "ui_slider_level.png");
+}
+
+void UIProgressBar::SetLevel(float level)
+{
+    _level = glm::clamp(level, 0.0f, 1.0f);
+    _slider_level.SetSize({_level * _size.x, _size.y});
+}
+
+void UIProgressBar::SetPosition(glm::vec2 position)
+{
+    _position = position;
+    _slider_bg.SetPosition(position);
+    _slider_level.SetPosition(position);
+}
+
+void UIProgressBar::SetSize(glm::vec2 size)
+{
+    _size = size;
+    _slider_bg.SetSize(size);
+    _slider_level.SetSize(size);
+}
+
+void UIProgressBar::Render()
+{
+    _slider_bg.Render();
+    _slider_level.Render();
+}
+
 
 //
 // Text Box
