@@ -195,6 +195,7 @@ class UITextBox
         UITextBox();
         void SetPosition(glm::vec2 position);
         void SetSize(glm::vec2 size);
+        void SetText(std::string text);
         std::string GetText();
         void Update(float delta_time, MouseState mouse_state);
         void Render();
@@ -245,6 +246,7 @@ class UIMoonSettingsMenu
         void SetMoon(int moon);
         void SetActive(bool status);
         bool IsActive();
+        void Reset();
         void Update(float delta_time, MouseState mouse_state);
         void Render();
 };
@@ -319,6 +321,7 @@ class UIMainMenu
     public:
         UIMainMenu(GLFWwindow *window);
         void RefreshMoonButtonText();
+        void ResetMoonSettings();
         void Update(float delta_time, MouseState mouse_state);
         void Render(float delta_time);
 };

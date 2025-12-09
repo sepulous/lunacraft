@@ -515,6 +515,7 @@ int main()
                     glfwSetCursorPosCallback(window, MovePlayerCamera);
                     MovePlayerCamera(window, last_mouse_x, last_mouse_y);
 
+                    ui_main_menu.ResetMoonSettings();
                     loading_moon = false;
                     loading_moon_progress = 0;
                     game_state = GameState::IN_GAME;

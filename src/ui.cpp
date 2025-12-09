@@ -228,6 +228,11 @@ void UIMainMenu::RefreshMoonButtonText()
     }
 }
 
+void UIMainMenu::ResetMoonSettings()
+{
+    _moon_settings_menu.Reset();
+}
+
 void UIMainMenu::Update(float delta_time, MouseState mouse_state)
 {
     if (_moon_settings_menu.IsActive())
@@ -372,7 +377,7 @@ UIMoonSettingsMenu::UIMoonSettingsMenu()
     float setting_text_align_x = 580;
     float setting_font_size = 0.4f;
 
-    // Tree  cover
+    // Tree cover
     float tree_text_width = UIText::GetTextSizeInPixels("Tree Cover:", setting_font_size).x;
     _tree_cover.SetPosition({bg_pos_x + setting_text_align_x - tree_text_width, 700});
     _tree_cover.SetText("Tree Cover:");
@@ -507,6 +512,26 @@ void UIMoonSettingsMenu::SetActive(bool status)
 bool UIMoonSettingsMenu::IsActive()
 {
     return _active;
+}
+
+void UIMoonSettingsMenu::Reset()
+{
+    // Reset sliders and seed textbox
+    _tree_cover_slider.SetValue(2.0f);
+    _roughness_slider.SetValue(2.0f);
+    _wildlife_slider.SetValue(2.0f);
+    _seed_textbox.SetText("");
+    
+    // Reset gamemode stuff
+    float bg_width = 1200;
+    float bg_height = 700;
+    float bg_pos_x = (VIRTUAL_UI_WIDTH / 2.0f) - (bg_width / 2.0f);
+    float bg_pos_y = (VIRTUAL_UI_HEIGHT / 2.0f) - (bg_height / 2.0f);
+    float mode_text_width = UIText::GetTextSizeInPixels("Survive on an alien moon", 0.3f).x;
+    _mode_description.SetPosition({bg_pos_x + (bg_width / 2.0f) - (mode_text_width / 2.0f), bg_pos_y + 230});
+    _mode_description.SetText("Survive on an alien moon");
+    _explore_button.SetToggled(true);
+    _creative_button.SetToggled(false);
 }
 
 void UIMoonSettingsMenu::Update(float delta_time, MouseState mouse_state)
@@ -1971,6 +1996,12 @@ void UITextBox::SetSize(glm::vec2 size)
 {
     _size = size;
     _box.SetSize(size);
+}
+
+void UITextBox::SetText(std::string text)
+{
+    _text.SetText(text);
+    _text_str = text;
 }
 
 std::string UITextBox::GetText()
