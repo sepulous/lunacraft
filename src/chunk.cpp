@@ -12,9 +12,9 @@
 #include "block.h"
 #include "mesher.h"
 
-Chunk::Chunk(glm::vec2 position)
+Chunk::Chunk(glm::ivec3 coords)
 {
-    _position = position;
+    _coords = coords;
     _blocks = new uint16_t[CHUNK_SIZE * CHUNK_SIZE * WORLD_HEIGHT_LIMIT];
 }
 
@@ -25,7 +25,7 @@ Chunk::Chunk(Chunk&& other) noexcept
     _opaque_vbo = other._opaque_vbo;
     _transparent_vao = other._transparent_vao;
     _transparent_vbo = other._transparent_vbo;
-    _position = other._position;
+    _coords = other._coords;
     _opaque_vertices = std::move(other._opaque_vertices);
     _transparent_vertices = std::move(other._transparent_vertices);
     _blocks = other._blocks;
@@ -41,7 +41,7 @@ Chunk& Chunk::operator=(Chunk&& other) noexcept
         _opaque_vbo = other._opaque_vbo;
         _transparent_vao = other._transparent_vao;
         _transparent_vbo = other._transparent_vbo;
-        _position = other._position;
+        _coords = other._coords;
         _opaque_vertices = std::move(other._opaque_vertices);
         _transparent_vertices = std::move(other._transparent_vertices);
         _blocks = other._blocks;
@@ -60,9 +60,9 @@ bool Chunk::IsBorderChunk()
     return _is_border_chunk;
 }
 
-glm::vec2 Chunk::GetPosition()
+glm::ivec3 Chunk::GetCoords()
 {
-    return _position;
+    return _coords;
 }
 
 uint16_t *Chunk::GetBlocks()
@@ -193,13 +193,13 @@ void Chunk::BuildVertices(std::vector<Chunk>& loaded_chunks)
     std::vector<Chunk *> neighbor_chunks(4, nullptr); // {front, right, back, left}
     for (Chunk& chunk : loaded_chunks)
     {
-        if ((int)chunk._position.x == (int)_position.x && (int)chunk._position.y == (int)_position.y + 1)
+        if (chunk._coords.x == _coords.x && chunk._coords.z == _coords.z + 1)
             neighbor_chunks[0] = &chunk;
-        else if ((int)chunk._position.x == (int)_position.x + 1 && (int)chunk._position.y == (int)_position.y)
+        else if (chunk._coords.x == _coords.x + 1 && chunk._coords.z == _coords.z)
             neighbor_chunks[1] = &chunk;
-        else if ((int)chunk._position.x == (int)_position.x && (int)chunk._position.y == (int)_position.y - 1)
+        else if (chunk._coords.x == _coords.x && chunk._coords.z == _coords.z - 1)
             neighbor_chunks[2] = &chunk;
-        else if ((int)chunk._position.x == (int)_position.x - 1 && (int)chunk._position.y == (int)_position.y)
+        else if (chunk._coords.x == _coords.x - 1 && chunk._coords.z == _coords.z)
             neighbor_chunks[3] = &chunk;
     }
 
@@ -220,11 +220,11 @@ void Chunk::BuildVertices(std::vector<Chunk>& loaded_chunks)
         // Determine global base vertex position
         glm::vec3 base_pos;
         if (normal.x != 0)
-            base_pos = {quad.base.x + 0.5f + CHUNK_SIZE * _position.x, quad.base.y - 0.5f, quad.base.z - 0.5f + CHUNK_SIZE * _position.y};
+            base_pos = {quad.base.x + 0.5f + CHUNK_SIZE * _coords.x, quad.base.y - 0.5f, quad.base.z - 0.5f + CHUNK_SIZE * _coords.z};
         else if (normal.y != 0)
-            base_pos = {quad.base.x - 0.5f + CHUNK_SIZE * _position.x, quad.base.y + 0.5f, quad.base.z - 0.5f + CHUNK_SIZE * _position.y};
+            base_pos = {quad.base.x - 0.5f + CHUNK_SIZE * _coords.x, quad.base.y + 0.5f, quad.base.z - 0.5f + CHUNK_SIZE * _coords.z};
         else
-            base_pos = {quad.base.x - 0.5f + CHUNK_SIZE * _position.x, quad.base.y - 0.5f, quad.base.z + 0.5f + CHUNK_SIZE * _position.y};
+            base_pos = {quad.base.x - 0.5f + CHUNK_SIZE * _coords.x, quad.base.y - 0.5f, quad.base.z + 0.5f + CHUNK_SIZE * _coords.z};
 
         // Determine texture tiling repeats
         int quad_width = glm::length(quad.du);

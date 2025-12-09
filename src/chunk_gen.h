@@ -987,8 +987,8 @@ void GenerateHeightMap(int *heightMap, int chunkX, int chunkZ, uint64_t seed, fl
     float amplitude0 = amplitude;
     float divFactor = 32.0f - 4.0f * terrainRoughness;
     float heightLimit;
-    double offset_x = static_cast<double>(splitmix64(seed) & 0xFFFFFFFF);
-    double offset_z = static_cast<double>(splitmix64(seed) & 0xFFFFFFFF);
+    double offset_x = (double)(splitmix64(seed) & 0xFFFFFFFF);
+    double offset_z = (double)(splitmix64(seed) & 0xFFFFFFFF);
 
     for (int x = 0; x < CHUNK_SIZE; x++)
     {

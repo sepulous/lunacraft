@@ -120,13 +120,13 @@ static void _CreateMoon(int moon, MoonSettings moon_settings)
     {
         for (int chunk_z = -render_distance - 1; chunk_z <= render_distance + 1; chunk_z++)
         {
-            Chunk chunk({chunk_x, chunk_z});
+            Chunk chunk({chunk_x, 0, chunk_z});
             chunk.SetIsBorderChunk(chunk_x == -render_distance - 1 || chunk_x == render_distance + 1 || chunk_z == -render_distance - 1 || chunk_z == render_distance + 1);
 
             GenerateChunk(chunk.GetBlocks(), chunk_x, chunk_z, moon_settings.seed);
 
             // Save chunk to file
-            uint64_t chunk_id = CombineChunkCoordinates(chunk_x, chunk_z);
+            uint64_t chunk_id = ChunkCoordsToID({chunk_x, 0, chunk_z});
             std::filesystem::path chunk_path = chunk_dir / (std::to_string(chunk_id) + ".chunk");
             std::ofstream chunk_file(chunk_path, std::ios::binary);
             chunk_file.write(reinterpret_cast<char *>(chunk.GetBlocks()), BLOCKS_IN_CHUNK * sizeof(uint16_t));
@@ -191,17 +191,18 @@ static void _LoadMoon(int moon)
     player.camera.yaw = player_data.camera_rotation.y;
 
     // Load moon
-    glm::vec2 player_chunk_pos = {glm::floor(player.position.x / CHUNK_SIZE), glm::floor(player.position.z / CHUNK_SIZE)};
+    //glm::vec2 player_chunk_pos = {glm::floor(player.position.x / CHUNK_SIZE), glm::floor(player.position.z / CHUNK_SIZE)};
+    glm::ivec3 player_chunk_coords = VoxelToChunk({player.position.x, player.position.y, player.position.z});
     for (const auto& chunk_entry : std::filesystem::directory_iterator(chunk_folder))
     {
         uint64_t chunk_id = std::stoull(chunk_entry.path().stem().string());
-        glm::vec2 chunk_pos = DecombineChunkCoordinates(chunk_id);
+        glm::ivec3 chunk_coords = ChunkIDToCoords(chunk_id);
         // TODO: This isn't necessary once we add dynamic chunk loading
-        if (chunks_to_process == chunk_count || (chunk_pos.x >= player_chunk_pos.x - render_distance - 1 && chunk_pos.x <= player_chunk_pos.x + render_distance + 1 && chunk_pos.y >= player_chunk_pos.y - render_distance - 1 && chunk_pos.y <= player_chunk_pos.y + render_distance + 1))
+        if (chunks_to_process == chunk_count || (chunk_coords.x >= player_chunk_coords.x - render_distance - 1 && chunk_coords.x <= player_chunk_coords.x + render_distance + 1 && chunk_coords.z >= player_chunk_coords.z - render_distance - 1 && chunk_coords.z <= player_chunk_coords.z + render_distance + 1))
         {
             // Initialize chunk
-            Chunk chunk(chunk_pos);
-            chunk.SetIsBorderChunk(chunk_pos.x == player_chunk_pos.x - render_distance - 1 || chunk_pos.x == player_chunk_pos.x + render_distance + 1 || chunk_pos.y == player_chunk_pos.y - render_distance - 1 || chunk_pos.y == player_chunk_pos.y + render_distance + 1);
+            Chunk chunk(chunk_coords);
+            chunk.SetIsBorderChunk(chunk_coords.x == player_chunk_coords.x - render_distance - 1 || chunk_coords.x == player_chunk_coords.x + render_distance + 1 || chunk_coords.z == player_chunk_coords.z - render_distance - 1 || chunk_coords.z == player_chunk_coords.z + render_distance + 1);
 
             // Read blocks
             std::ifstream chunk_file(chunk_entry.path(), std::ios::binary);
@@ -277,27 +278,26 @@ bool ChunkInFrustum(const Plane frustum[6], const glm::vec3& chunk_min, const gl
 
 bool TestAABBWorld(const AABB& box)
 {
-    float minX = glm::round(box.center.x - box.extents.x);
-    float maxX = glm::round(box.center.x + box.extents.x);
-    float minY = glm::round(box.center.y - box.extents.y);
-    float maxY = glm::round(box.center.y + box.extents.y);
-    float minZ = glm::round(box.center.z - box.extents.z);
-    float maxZ = glm::round(box.center.z + box.extents.z);
+    float min_x = glm::round(box.center.x - box.extents.x);
+    float max_x = glm::round(box.center.x + box.extents.x);
+    float min_y = glm::round(box.center.y - box.extents.y);
+    float max_y = glm::round(box.center.y + box.extents.y);
+    float min_z = glm::round(box.center.z - box.extents.z);
+    float max_z = glm::round(box.center.z + box.extents.z);
 
-    for (int x = minX; x <= maxX; x++)
+    for (int x = min_x; x <= max_x; x++)
     {
-        for (int y = minY; y <= maxY; y++)
+        for (int y = min_y; y <= max_y; y++)
         {
-            for (int z = minZ; z <= maxZ; z++)
+            for (int z = min_z; z <= max_z; z++)
             {
-                int chunk_x = glm::floor((float)x / CHUNK_SIZE);
-                int chunk_z = glm::floor((float)z / CHUNK_SIZE);
+                glm::ivec3 box_chunk_coords = VoxelToChunk({x, y, z});
                 for (Chunk& chunk : loaded_chunks)
                 {
-                    glm::vec2 chunk_pos = chunk.GetPosition();
-                    if ((int)chunk_pos.x == chunk_x && (int)chunk_pos.y == chunk_z)
+                    glm::ivec3 chunk_coords = chunk.GetCoords();
+                    if (chunk_coords.x == box_chunk_coords.x && chunk_coords.z == box_chunk_coords.z)
                     {
-                        glm::vec3 local_block_pos = GetLocalBlockPos(glm::vec3(x, y, z));
+                        glm::ivec3 local_block_pos = GlobalToLocalVoxel({x, y, z});
                         if ((BlockID)chunk.GetBlocks()[GetChunkIndex(local_block_pos.x, local_block_pos.y, local_block_pos.z)] != BlockID::air)
                             return true;
                         break;
@@ -654,10 +654,10 @@ int main()
             {
                 if (!chunk.IsBorderChunk())
                 {
-                    glm::vec2 chunk_pos = chunk.GetPosition();
-                    float x0 = chunk_pos.x * CHUNK_SIZE;
+                    glm::ivec3 chunk_coords = chunk.GetCoords();
+                    float x0 = chunk_coords.x * CHUNK_SIZE;
                     float y0 = 0;
-                    float z0 = chunk_pos.y * CHUNK_SIZE;
+                    float z0 = chunk_coords.z * CHUNK_SIZE;
                     float x1 = x0 + CHUNK_SIZE;
                     float y1 = WORLD_HEIGHT_LIMIT;
                     float z1 = z0 + CHUNK_SIZE;

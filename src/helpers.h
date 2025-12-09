@@ -4,11 +4,13 @@
 #include "block.h"
 
 int GetChunkIndex(int x, int y, int z);
-bool BlockShouldBeRendered(uint16_t *chunk, BlockID block, int local_block_x, int local_block_y, int local_block_z);
 bool BlockIsOpaque(BlockID block);
-bool ShouldRenderFace(BlockID face_block, BlockID face_neighbor);
-glm::vec3 GetLocalBlockPos(glm::vec3 global_block_pos);
-uint64_t CombineChunkCoordinates(int chunk_x, int chunk_z);
-glm::vec2 DecombineChunkCoordinates(uint64_t combined);
+bool ShouldRenderFace(BlockID face, BlockID neighbor_face);
+uint64_t ChunkCoordsToID(glm::ivec3 chunk_coords);
+glm::ivec3 ChunkIDToCoords(uint64_t id);
+glm::ivec3 GetNearestVoxel(glm::vec3 global_pos);
+glm::ivec3 VoxelToChunk(glm::ivec3 voxel_pos);
+glm::ivec3 GlobalToLocalVoxel(glm::ivec3 voxel_pos);
+glm::ivec3 LocalToGlobalVoxel(glm::ivec3 voxel_pos, glm::ivec3 chunk_coord);
 
 #endif

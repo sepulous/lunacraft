@@ -3,36 +3,10 @@
 #include "constants.h"
 #include "block.h"
 
-// This is tied to how the chunks are generated (see chunk_gen.h)
 int GetChunkIndex(int x, int y, int z)
 {
+    // This formula is tied to the loop order when chunks are generated (see chunk_gen.h)
     return y + (WORLD_HEIGHT_LIMIT * z) + (WORLD_HEIGHT_LIMIT * CHUNK_SIZE * x);
-}
-
-bool BlockShouldBeRendered(uint16_t *chunk, BlockID block, int localBlockX, int localBlockY, int localBlockZ)
-{
-    uint16_t idCheck = (block == BlockID::water) ? 38 : 37;
-
-    // Top check
-    if (localBlockY < WORLD_HEIGHT_LIMIT - 1 && chunk[GetChunkIndex(localBlockX, localBlockY + 1, localBlockZ)] > idCheck)
-        return true;
-
-    // Bottom check
-    if (localBlockY > 0 && chunk[GetChunkIndex(localBlockX, localBlockY - 1, localBlockZ)] > idCheck)
-        return true;
-
-    // Front and back checks
-    bool backTest = chunk[GetChunkIndex(localBlockX, localBlockY, localBlockZ - 1)] > idCheck;
-    bool frontTest = chunk[GetChunkIndex(localBlockX, localBlockY, localBlockZ + 1)] > idCheck;
-
-    if (frontTest || backTest)
-        return true;
-
-    // Left and right checks
-    bool leftTest = chunk[GetChunkIndex(localBlockX - 1, localBlockY, localBlockZ)] > idCheck;
-    bool rightTest = chunk[GetChunkIndex(localBlockX + 1, localBlockY, localBlockZ)] > idCheck;
-
-    return leftTest || rightTest;
 }
 
 bool BlockIsOpaque(BlockID block)
@@ -40,46 +14,65 @@ bool BlockIsOpaque(BlockID block)
     return !(block == BlockID::air || block == BlockID::water || block == BlockID::sulphur_crystal || block == BlockID::boron_crystal || block == BlockID::blue_crystal || block == BlockID::glass);
 }
 
-bool ShouldRenderFace(BlockID face_block, BlockID face_neighbor)
+bool ShouldRenderFace(BlockID face, BlockID neighbor_face)
 {
     // TODO: Add minilights (after figuring out how to just have one minilight block)
-    return face_block != BlockID::air && !BlockIsOpaque(face_neighbor) && face_block != face_neighbor;
+    return face != BlockID::air && !BlockIsOpaque(neighbor_face) && face != neighbor_face;
 }
 
-glm::vec3 GetLocalBlockPos(glm::vec3 globalBlockPos)
+uint64_t ChunkCoordsToID(glm::ivec3 chunk_coords)
 {
-    int chunkX = glm::abs(glm::floor(globalBlockPos.x / CHUNK_SIZE));
-    int chunkZ = glm::abs(glm::floor(globalBlockPos.z / CHUNK_SIZE));
-    int globalBlockPosX = (int)globalBlockPos.x;
-    int globalBlockPosZ = (int)globalBlockPos.z;
-    int localBlockPosX;
-    int localBlockPosZ;
-
-    if (globalBlockPosX >= 0 || ((-globalBlockPosX) % CHUNK_SIZE == 0))
-        localBlockPosX = globalBlockPosX % CHUNK_SIZE;
-    else
-        localBlockPosX = globalBlockPosX + chunkX*CHUNK_SIZE;
-
-    if (globalBlockPosZ >= 0 || ((-globalBlockPosZ) % CHUNK_SIZE == 0))
-        localBlockPosZ = globalBlockPosZ % CHUNK_SIZE;
-    else
-        localBlockPosZ = globalBlockPosZ + chunkZ*CHUNK_SIZE;
-
-    return glm::vec3(localBlockPosX, globalBlockPos.y, localBlockPosZ);
-}
-
-uint64_t CombineChunkCoordinates(int chunk_x, int chunk_z)
-{
-    uint64_t combined = (uint64_t)((uint32_t)chunk_x);
+    uint64_t combined = (uint64_t)((uint32_t)chunk_coords.x);
     combined <<= (sizeof(uint64_t) * 8 / 2);
-    combined |= (uint64_t)((uint32_t)chunk_z);
+    combined |= (uint64_t)((uint32_t)chunk_coords.z);
     return combined;
 }
 
-glm::vec2 DecombineChunkCoordinates(uint64_t combined)
+glm::ivec3 ChunkIDToCoords(uint64_t id)
 {
-    int chunk_z = (int)((uint32_t)combined);
-    combined >>= (sizeof(uint64_t) * 8 / 2);
-    int chunk_x = (int)((uint32_t)combined);
-    return glm::vec2(chunk_x, chunk_z);
+    int chunk_z = (int)((uint32_t)id);
+    id >>= (sizeof(uint64_t) * 8 / 2);
+    int chunk_x = (int)((uint32_t)id);
+    return glm::ivec3(chunk_x, 0, chunk_z);
+}
+
+// Convert arbitrary global position to nearest voxel position
+glm::ivec3 GetNearestVoxel(glm::vec3 global_pos)
+{
+    return glm::ivec3(
+        glm::round(global_pos.x),
+        glm::round(global_pos.y),
+        glm::round(global_pos.z)
+    );
+}
+
+// Get chunk coordinate the voxel position belongs to
+glm::ivec3 VoxelToChunk(glm::ivec3 voxel_pos)
+{
+    return glm::ivec3(
+        glm::floor((float)voxel_pos.x / (float)CHUNK_SIZE),
+        0,
+        glm::floor((float)voxel_pos.z / (float)CHUNK_SIZE)
+    );
+}
+
+// Convert global voxel position to local (in chunk) voxel position
+glm::ivec3 GlobalToLocalVoxel(glm::ivec3 voxel_pos)
+{
+    glm::ivec3 chunk_coord = VoxelToChunk(voxel_pos);
+    return glm::ivec3(
+        voxel_pos.x - chunk_coord.x * CHUNK_SIZE,
+        voxel_pos.y,
+        voxel_pos.z - chunk_coord.z * CHUNK_SIZE
+    );
+}
+
+// Convert local (in chunk) voxel position to global voxel position
+glm::ivec3 LocalToGlobalVoxel(glm::ivec3 voxel_pos, glm::ivec3 chunk_coord)
+{
+    return glm::ivec3(
+        voxel_pos.x + chunk_coord.x * CHUNK_SIZE,
+        voxel_pos.y,
+        voxel_pos.z + chunk_coord.z * CHUNK_SIZE
+    );
 }

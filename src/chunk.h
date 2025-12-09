@@ -16,7 +16,7 @@ class Chunk
 {
     private:
         bool _is_border_chunk = false;
-        glm::vec2 _position;
+        glm::ivec3 _coords;
         uint16_t *_blocks;
         std::vector<BlockVertex> _opaque_vertices;
         GLuint _opaque_vao;
@@ -26,7 +26,7 @@ class Chunk
         GLuint _transparent_vbo;
 
     public:
-        Chunk(glm::vec2 position);
+        Chunk(glm::ivec3 coords);
 
         // Copy
         Chunk(const Chunk&) = default;
@@ -38,7 +38,7 @@ class Chunk
 
         void SetIsBorderChunk(bool value);
         bool IsBorderChunk();
-        glm::vec2 GetPosition();
+        glm::ivec3 GetCoords();
         uint16_t *GetBlocks();
         void BuildVertices(std::vector<Chunk>& loaded_chunks);
         void BufferVertices();
