@@ -230,6 +230,9 @@ void Chunk::BuildVertices(std::vector<Chunk>& loaded_chunks)
         int quad_width = glm::length(quad.du);
         int quad_height = glm::length(quad.dv);
 
+        if (quad.block == BlockID::light)
+            normal = {0, 0, 0};
+
         BlockVertex vert_1(base_pos,                     {0,          0,           tile_origin}, normal);
         BlockVertex vert_2(base_pos + quad.dv,           {0,          quad_height, tile_origin}, normal);
         BlockVertex vert_3(base_pos + quad.dv + quad.du, {quad_width, quad_height, tile_origin}, normal);
