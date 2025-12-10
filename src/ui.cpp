@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <sstream>
 #include <algorithm>
+#include <random>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -485,13 +486,31 @@ UIMoonSettingsMenu::UIMoonSettingsMenu()
         moon_settings.is_creative = _creative_button.IsToggled();
 
         std::string seed_text = _seed_textbox.GetText();
-        uint64_t seed_hash = 1469598103934665603ULL;
-        for (unsigned char c : seed_text)
+
+        // Trim whitespace in seed
+        std::stringstream trimmed_seed;
+        for (char c : seed_text)
+            if (c != ' ')
+                trimmed_seed << c;
+
+        uint64_t seed;
+        if (trimmed_seed.str().empty())
         {
-            seed_hash ^= c;
-            seed_hash *= 1099511628211ULL; // FNV prime
+            std::mt19937_64 rng(std::random_device{}());
+            std::uniform_int_distribution<uint64_t> dist(0, std::numeric_limits<uint64_t>::max());
+            seed = dist(rng);
         }
-        moon_settings.seed = seed_hash;
+        else
+        {
+            seed = 1469598103934665603ULL;
+            for (unsigned char c : trimmed_seed.str())
+            {
+                seed ^= c;
+                seed *= 1099511628211ULL; // FNV prime
+            }
+        }
+        
+        moon_settings.seed = seed;
 
         SetActive(false);
         LoadMoon(_moon, moon_settings);
