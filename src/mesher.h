@@ -26,7 +26,7 @@ struct BlockQuad
     
     For each axis, we consider all planes perpendicular to that axis slicing through the block faces (if N is the length of the chunk along the axis, there
     are N+1 such planes). It should be clear that each plane represents a set of block faces that could be rendered. For each of these planes, we first construct
-    a mask that indicates which block face, if any, should be rendered at each position, as well as whether it's a front or back face (encoded by the sign).
+    a mask that indicates which block face, if any, should be rendered at each position, as well as whether it's a front or back face.
 
     Then, for each column of this mask, we move up to the first renderable face. If none is found, we move on to the next column. If one is found, we begin with
     a 1x1 quad, and extend its height until a different mask value is reached. We then extend this new quad's width as far as possible to get the final quad.
