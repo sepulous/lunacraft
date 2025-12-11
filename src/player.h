@@ -66,6 +66,20 @@ class Player
                 is_jumping = false;
             }
         }
+
+        void UpdateCamera(double x_pos, double y_pos, double x_offset, double y_offset)
+        {
+            camera.yaw += x_offset * camera.sensitivity;
+            camera.pitch += y_offset * camera.sensitivity;
+            camera.pitch = glm::clamp(camera.pitch, -89.8f, 89.8f);
+
+            glm::vec3 direction;
+            direction.x = cos(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
+            direction.y = sin(glm::radians(camera.pitch));
+            direction.z = sin(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
+            camera.forward = glm::normalize(direction);
+            camera.right = glm::normalize(glm::cross(camera.forward, camera.up));
+        }
 };
 
 #endif

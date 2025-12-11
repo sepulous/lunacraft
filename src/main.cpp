@@ -2,8 +2,10 @@
 #include <string>
 #include <fstream>
 #include <vector>
+#include <queue>
 #include <map>
 #include <thread>
+#include <mutex>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -30,65 +32,38 @@
 #define STB_IMAGE_STATIC
 #include <stb_image/stb_image.h>
 
-static glm::vec2 viewport = {1280, 720};
-static glm::mat4 ui_window_to_virtual = glm::mat4(1.0f);
+enum class GameState {MAIN_MENU, IN_GAME};
+
+static glm::dvec2 viewport = {1280, 720};
 static glm::mat4 ui_virtual_to_window = glm::mat4(1.0f);
+static glm::dvec2 last_mouse_pos = {viewport.x / 2.0, viewport.y / 2.0};
 
 static MouseState mouse_state;
-enum class GameState {MAIN_MENU, IN_GAME};
 static GameState game_state = GameState::MAIN_MENU;
-static bool loading_moon = false;
-static float loading_moon_progress = 0; // TODO: Progress bar
+static float loading_moon_progress = 0; 
 
 static int active_moon = -1;
 static std::vector<Chunk> loaded_chunks;
 
+static std::queue<Chunk> new_chunks;
+static std::mutex new_chunks_mutex;
+
 static Player player;
 
-static double last_mouse_x = 1280.0 / 2.0;
-static double last_mouse_y = 720.0 / 2.0;
-void MovePlayerCamera(GLFWwindow *window, double x_pos, double y_pos)
+void UpdateCamera(GLFWwindow *window, double x_pos, double y_pos)
 {
-    float x_offset = x_pos - last_mouse_x;
-    float y_offset = last_mouse_y - y_pos; // Reversed since y ranges from bottom to top
-    last_mouse_x = x_pos;
-    last_mouse_y = y_pos;
-    player.camera.yaw += x_offset * player.camera.sensitivity;
-    player.camera.pitch += y_offset * player.camera.sensitivity;
-    player.camera.pitch = glm::clamp(player.camera.pitch, -89.8f, 89.8f);
-
-    glm::vec3 direction;
-    direction.x = cos(glm::radians(player.camera.yaw)) * cos(glm::radians(player.camera.pitch));
-    direction.y = sin(glm::radians(player.camera.pitch));
-    direction.z = sin(glm::radians(player.camera.yaw)) * cos(glm::radians(player.camera.pitch));
-    player.camera.forward = glm::normalize(direction);
-    player.camera.right = glm::normalize(glm::cross(player.camera.forward, player.camera.up));
+    float x_offset = x_pos - last_mouse_pos.x;
+    float y_offset = last_mouse_pos.y - y_pos; // Reversed since y ranges from bottom to top
+    last_mouse_pos = {x_pos, y_pos};
+    player.UpdateCamera(x_pos, y_pos, x_offset, y_offset);
 }
 
-// NOTE: Must compile shaders before calling this!
-void UIRescale()
+void LoadMoon(int moon, MoonSettings moon_settings)
 {
-    glm::mat4 proj = glm::ortho(0.0f, viewport.x, 0.0f, viewport.y, -1.0f, 1.0f);
-    glm::mat4 ui_matrix = proj * ui_virtual_to_window;
-
-    ShaderManager::UI_IMAGE_SHADER.Use();
-    glUniformMatrix4fv(glGetUniformLocation(ShaderManager::UI_IMAGE_SHADER.GetID(), "ui_matrix"), 1, GL_FALSE, glm::value_ptr(ui_matrix));
-
-    ShaderManager::UI_TEXT_SHADER.Use();
-    glUniformMatrix4fv(glGetUniformLocation(ShaderManager::UI_TEXT_SHADER.GetID(), "ui_matrix"), 1, GL_FALSE, glm::value_ptr(ui_matrix));
-}
-
-void UIUpdateTransforms()
-{
-    float scale = std::max(viewport.x / VIRTUAL_UI_WIDTH, viewport.y / VIRTUAL_UI_HEIGHT);
-    float scaled_virtual_width = VIRTUAL_UI_WIDTH * scale;
-    float scaled_virtual_height = VIRTUAL_UI_HEIGHT * scale;
-    float offset_x = (viewport.x - scaled_virtual_width)  * 0.5f;
-    float offset_y = (viewport.y - scaled_virtual_height) * 0.5f;
-    ui_virtual_to_window = glm::mat4(1.0f);
-    ui_virtual_to_window = glm::translate(ui_virtual_to_window, glm::vec3(offset_x, offset_y, 0.0f));
-    ui_virtual_to_window = glm::scale(ui_virtual_to_window, glm::vec3(scale, scale, 1.0f));
-    ui_window_to_virtual = glm::inverse(ui_virtual_to_window);
+    loading_moon_progress = 0.01f;
+    active_moon = moon;
+    std::thread worker(_LoadMoon, moon, moon_settings);
+    worker.detach();
 }
 
 static void _LoadMoon(int moon, MoonSettings moon_settings)
@@ -197,14 +172,6 @@ static void _LoadMoon(int moon, MoonSettings moon_settings)
             loading_moon_progress = (float)chunks_processed / (float)chunks_to_process;
         }
     }
-}
-
-void LoadMoon(int moon, MoonSettings moon_settings)
-{
-    loading_moon = true;
-    active_moon = moon;
-    std::thread worker(_LoadMoon, moon, moon_settings);
-    worker.detach();
 }
 
 struct Plane
@@ -317,11 +284,11 @@ int main()
     glfwSetFramebufferSizeCallback(window, [](GLFWwindow *window, int width, int height) {
         glViewport(0, 0, width, height);
         viewport = {width, height};
-        UIUpdateTransforms();
-        UIRescale();
+        UIUpdateTransforms(viewport, ui_virtual_to_window);
+        UIRescale(viewport, ui_virtual_to_window);
     });
     glViewport(0, 0, viewport.x, viewport.y);
-    UIUpdateTransforms();
+    UIUpdateTransforms(viewport, ui_virtual_to_window);
 
     Storage::Init();
     OptionsManager::Init();
@@ -347,10 +314,16 @@ int main()
     stbi_image_free(texture_atlas_data);
     /////////////////////////////////////////
 
-    UIRescale();
+    UIRescale(viewport, ui_virtual_to_window);
     UIMainMenu ui_main_menu(window);
     UILoadMoonMenu ui_load_moon_menu;
     UIPauseMenu ui_pause_menu;
+
+    Soundlib::Init();
+    Soundlib::SetListenerVolume(0.6f);
+    Soundlib::Sound music("/home/blake/Lunacraft/assets/sounds/theme1.mp3");
+    Soundlib::SoundSource source(music);
+    source.Play();
 
     Skybox skybox;
 
@@ -374,7 +347,7 @@ int main()
 
         if (current_time - last_fps_update > 0.5f)
         {
-            printf("FPS: %f\n", (1 / delta_time));
+            printf("FPS: %i\n", (int)(1 / delta_time));
             last_fps_update = current_time;
         }
 
@@ -412,7 +385,7 @@ int main()
             double mouse_x, mouse_y;
             glfwGetCursorPos(window, &mouse_x, &mouse_y);
 
-            glm::vec4 virtual_mouse = ui_window_to_virtual * glm::vec4(mouse_x, viewport.y - mouse_y, 0.0f, 1.0f);
+            glm::vec4 virtual_mouse = glm::inverse(ui_virtual_to_window) * glm::vec4(mouse_x, viewport.y - mouse_y, 0.0f, 1.0f);
             mouse_state.position.x = virtual_mouse.x;
             mouse_state.position.y = virtual_mouse.y;
         }
@@ -424,7 +397,7 @@ int main()
                 ui_pause_menu.SetActive(!ui_pause_menu.IsActive());
                 if (ui_pause_menu.IsActive())
                 {
-                    glfwGetCursorPos(window, &last_mouse_x, &last_mouse_y);
+                    glfwGetCursorPos(window, &last_mouse_pos.x, &last_mouse_pos.y);
                     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
                     glfwSetCursorPosCallback(window, nullptr);
                 }
@@ -432,10 +405,10 @@ int main()
                 {
                     
                     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-                    glfwSetCursorPos(window, last_mouse_x, last_mouse_y);
+                    glfwSetCursorPos(window, last_mouse_pos.x, last_mouse_pos.y);
                     if (glfwRawMouseMotionSupported())
                         glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE); // More natural mouse motion
-                    glfwSetCursorPosCallback(window, MovePlayerCamera);
+                    glfwSetCursorPosCallback(window, UpdateCamera);
                 }
 
                 last_pause_toggle_time = current_time;
@@ -468,7 +441,7 @@ int main()
         {
             glDepthFunc(GL_LEQUAL);
 
-            if (!loading_moon)
+            if (loading_moon_progress == 0)
             {
                 ui_main_menu.Update(delta_time, mouse_state);
                 ui_main_menu.Render(delta_time);
@@ -486,14 +459,13 @@ int main()
                             chunk.BufferVertices();
 
                     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-                    glfwSetCursorPos(window, last_mouse_x, last_mouse_y);
+                    glfwSetCursorPos(window, last_mouse_pos.x, last_mouse_pos.y);
                     if (glfwRawMouseMotionSupported())
                         glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE); // More natural mouse motion
-                    glfwSetCursorPosCallback(window, MovePlayerCamera);
-                    MovePlayerCamera(window, last_mouse_x, last_mouse_y);
+                    glfwSetCursorPosCallback(window, UpdateCamera);
+                    UpdateCamera(window, last_mouse_pos.x, last_mouse_pos.y);
 
                     ui_main_menu.ResetMoonSettings();
-                    loading_moon = false;
                     loading_moon_progress = 0;
                     game_state = GameState::IN_GAME;
                 }
@@ -501,7 +473,6 @@ int main()
         }
         else // IN_GAME
         {
-
             //
             // Updates
             //
@@ -529,10 +500,10 @@ int main()
                 else if (ui_pause_menu.ResumeClicked())
                 {
                     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-                    glfwSetCursorPos(window, last_mouse_x, last_mouse_y);
+                    glfwSetCursorPos(window, last_mouse_pos.x, last_mouse_pos.y);
                     if (glfwRawMouseMotionSupported())
                         glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE); // More natural mouse motion
-                    glfwSetCursorPosCallback(window, MovePlayerCamera);
+                    glfwSetCursorPosCallback(window, UpdateCamera);
                 }
             }
 
@@ -600,24 +571,21 @@ int main()
             // Non-physics updates
             player.Update();
 
+
             //
             // Rendering
             //
 
             glm::mat4 view = glm::lookAt(player.camera.position, player.camera.position + player.camera.forward, player.camera.up);
-            glm::mat4 projection = glm::perspective(glm::radians(45.0f), viewport.x / viewport.y, 0.1f, 300.0f);
+            glm::mat4 projection = glm::perspective(glm::radians(45.0), viewport.x / viewport.y, 0.1, 400.0);
             glm::mat4 view_projection = projection * view;
 
             glEnable(GL_DEPTH_TEST);
             glEnable(GL_CULL_FACE);
 
-            if (wireframe)
-                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
             Shader block_shader = ShaderManager::BLOCK_SHADER;
             block_shader.Use();
-
-            glUniformMatrix4fv(glGetUniformLocation(block_shader.GetID(), "view_projection"), 1, GL_FALSE, glm::value_ptr(view_projection));
+            block_shader.SetMat4("view_projection", view_projection);
 
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, texture_atlas);
@@ -627,6 +595,9 @@ int main()
             Plane frustum[6];
             GetFrustumPlanes(view_projection, frustum);
             std::vector<Chunk *> visible_chunks;
+
+            if (wireframe)
+                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
             // Render opaque blocks
             for (Chunk& chunk : loaded_chunks)
@@ -658,15 +629,15 @@ int main()
                 chunk->RenderTransparents();
             }
 
+            if (wireframe)
+                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
             // Render skybox
             view = glm::mat4(glm::mat3(view));
             view_projection = projection * view;
             float skybox_angle = 0.02f * current_time;
             skybox.Update(view_projection, skybox_angle);
             skybox.Render();
-
-            if (wireframe)
-                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
             glDepthFunc(GL_LEQUAL);
 

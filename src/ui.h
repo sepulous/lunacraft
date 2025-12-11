@@ -30,6 +30,10 @@ class UIButton;
 class UIImage;
 class UIText;
 
+// Helpers
+void UIRescale(glm::dvec2 viewport, glm::mat4 virtual_to_window);
+void UIUpdateTransforms(glm::dvec2 viewport, glm::mat4& virtual_to_window);
+
 /////////////////////////////////////
 
 class UIImage

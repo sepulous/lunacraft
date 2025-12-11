@@ -211,7 +211,6 @@ void Chunk::BuildVertices(std::vector<Chunk>& loaded_chunks)
         glm::vec3 normal = glm::normalize(glm::cross(quad.du, quad.dv));
         if (quad.back_face)
             normal = -normal;
-        int nonzero_normal_comp = normal.x + normal.y + normal.z; // Only one is nonzero
 
         // Determine texture atlas tile
         int side = normal.y > 0 ? 2 : (normal.y < 0 ? 0 : 1);
@@ -230,7 +229,7 @@ void Chunk::BuildVertices(std::vector<Chunk>& loaded_chunks)
         int quad_width = glm::length(quad.du);
         int quad_height = glm::length(quad.dv);
 
-        if (quad.block == BlockID::light)
+        if (quad.block == BlockID::light) // Trick to make light blocks unlit (lighting involves dot product)
             normal = {0, 0, 0};
 
         BlockVertex vert_1(base_pos,                     {0,          0,           tile_origin}, normal);

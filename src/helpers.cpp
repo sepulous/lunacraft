@@ -17,7 +17,7 @@ bool BlockIsOpaque(BlockID block)
 bool ShouldRenderFace(BlockID face, BlockID neighbor_face)
 {
     // TODO: Add minilights (after figuring out how to just have one minilight block)
-    return face != BlockID::air && !BlockIsOpaque(neighbor_face) && face != neighbor_face;
+    return !(face == BlockID::air || face == neighbor_face || BlockIsOpaque(neighbor_face));
 }
 
 uint64_t ChunkCoordsToID(glm::ivec3 chunk_coords)
