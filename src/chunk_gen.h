@@ -990,9 +990,9 @@ void GenerateHeightMap(int *heightMap, int chunkX, int chunkZ, uint64_t seed, fl
     double offset_x = (double)(splitmix64(seed) & 0xFFFFFFFF);
     double offset_z = (double)(splitmix64(seed) & 0xFFFFFFFF);
 
-    for (int x = 0; x < CHUNK_SIZE; x++)
+    for (int x = -1; x < CHUNK_SIZE + 1; x++)
     {
-        for (int z = 0; z < CHUNK_SIZE; z++)
+        for (int z = -1; z < CHUNK_SIZE + 1; z++)
         {
             frequency = frequency0;
             amplitude = amplitude0;
@@ -1005,42 +1005,36 @@ void GenerateHeightMap(int *heightMap, int chunkX, int chunkZ, uint64_t seed, fl
                 frequency *= 3.0f;
                 amplitude *= persistence;
             }
-            heightMap[z + CHUNK_SIZE * x] = (int)heightLimit;
+            heightMap[(z + 1) + (CHUNK_SIZE + 2) * (x + 1)] = (int)heightLimit;
         }
     }
 }
 
 void GenerateChunk(uint16_t *chunk, int chunk_x, int chunk_z, uint64_t seed)
 {
-    static int *height_maps;
-    static bool height_maps_initialized = false;
-    if (!height_maps_initialized)
-    {
-        height_maps = new int[CHUNK_SIZE * CHUNK_SIZE * 4];
-        height_maps_initialized = true;
-    }
+    thread_local int height_maps[(CHUNK_SIZE + 2) * (CHUNK_SIZE + 2) * 4];
 
     //
     // Generate terrain
     //
     const int ROCK_OFFSET   = 0;
-    const int GRAVEL_OFFSET = 1 * CHUNK_SIZE * CHUNK_SIZE;
-    const int DIRT_OFFSET   = 2 * CHUNK_SIZE * CHUNK_SIZE;
-    const int SAND_OFFSET   = 3 * CHUNK_SIZE * CHUNK_SIZE;
+    const int GRAVEL_OFFSET = 1 * (CHUNK_SIZE + 2) * (CHUNK_SIZE + 2);
+    const int DIRT_OFFSET   = 2 * (CHUNK_SIZE + 2) * (CHUNK_SIZE + 2);
+    const int SAND_OFFSET   = 3 * (CHUNK_SIZE + 2) * (CHUNK_SIZE + 2);
     GenerateHeightMap(&height_maps[ROCK_OFFSET], chunk_x, chunk_z, seed, 14, 0.2, 0.4, 4, 2);
     GenerateHeightMap(&height_maps[GRAVEL_OFFSET], chunk_x, chunk_z, seed, 4, 0.2, 0.6, 2, 2);
     GenerateHeightMap(&height_maps[DIRT_OFFSET], chunk_x, chunk_z, seed, 3, 0.2, 0.6, 3, 2);
     GenerateHeightMap(&height_maps[SAND_OFFSET], chunk_x, chunk_z, seed, 2, 0.2, 0.8, 2, 2);
 
     int chunk_index = 0;
-    for (int x = 0; x < CHUNK_SIZE; x++)
+    for (int x = 0; x < CHUNK_SIZE + 2; x++)
     {
-        for (int z = 0; z < CHUNK_SIZE; z++)
+        for (int z = 0; z < CHUNK_SIZE + 2; z++)
         {
-            int rock_height_limit   = height_maps[ROCK_OFFSET   + z + CHUNK_SIZE * x];
-            int gravel_height_limit = height_maps[GRAVEL_OFFSET + z + CHUNK_SIZE * x];
-            int dirt_height_limit   = height_maps[DIRT_OFFSET   + z + CHUNK_SIZE * x];
-            int sand_height_limit   = height_maps[SAND_OFFSET   + z + CHUNK_SIZE * x];
+            int rock_height_limit   = height_maps[ROCK_OFFSET   + z + (CHUNK_SIZE + 2) * x];
+            int gravel_height_limit = height_maps[GRAVEL_OFFSET + z + (CHUNK_SIZE + 2) * x];
+            int dirt_height_limit   = height_maps[DIRT_OFFSET   + z + (CHUNK_SIZE + 2) * x];
+            int sand_height_limit   = height_maps[SAND_OFFSET   + z + (CHUNK_SIZE + 2) * x];
             int y = 0;
 
             // Base rock

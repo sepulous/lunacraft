@@ -6,7 +6,7 @@
 int GetChunkIndex(int x, int y, int z)
 {
     // This formula is tied to the loop order when chunks are generated (see chunk_gen.h)
-    return y + (WORLD_HEIGHT_LIMIT * z) + (WORLD_HEIGHT_LIMIT * CHUNK_SIZE * x);
+    return y + (WORLD_HEIGHT_LIMIT * z) + (WORLD_HEIGHT_LIMIT * (CHUNK_SIZE + 2) * x);
 }
 
 bool BlockIsOpaque(BlockID block)
@@ -16,7 +16,6 @@ bool BlockIsOpaque(BlockID block)
 
 bool ShouldRenderFace(BlockID face, BlockID neighbor_face)
 {
-    // TODO: Add minilights (after figuring out how to just have one minilight block)
     return !(face == BlockID::air || face == neighbor_face || BlockIsOpaque(neighbor_face));
 }
 
@@ -57,22 +56,22 @@ glm::ivec3 VoxelToChunk(glm::ivec3 voxel_pos)
 }
 
 // Convert global voxel position to local (in chunk) voxel position
-glm::ivec3 GlobalToLocalVoxel(glm::ivec3 voxel_pos)
+glm::ivec3 GlobalToLocalVoxel(glm::ivec3 global_voxel_pos)
 {
-    glm::ivec3 chunk_coord = VoxelToChunk(voxel_pos);
+    glm::ivec3 chunk_coord = VoxelToChunk(global_voxel_pos);
     return glm::ivec3(
-        voxel_pos.x - chunk_coord.x * CHUNK_SIZE,
-        voxel_pos.y,
-        voxel_pos.z - chunk_coord.z * CHUNK_SIZE
+        (global_voxel_pos.x - chunk_coord.x * CHUNK_SIZE) + 1,
+        global_voxel_pos.y,
+        (global_voxel_pos.z - chunk_coord.z * CHUNK_SIZE) + 1
     );
 }
 
 // Convert local (in chunk) voxel position to global voxel position
-glm::ivec3 LocalToGlobalVoxel(glm::ivec3 voxel_pos, glm::ivec3 chunk_coord)
+glm::ivec3 LocalToGlobalVoxel(glm::ivec3 local_voxel_pos, glm::ivec3 chunk_coord)
 {
     return glm::ivec3(
-        voxel_pos.x + chunk_coord.x * CHUNK_SIZE,
-        voxel_pos.y,
-        voxel_pos.z + chunk_coord.z * CHUNK_SIZE
+        (local_voxel_pos.x - 1) + chunk_coord.x * CHUNK_SIZE,
+        local_voxel_pos.y,
+        (local_voxel_pos.z - 1) + chunk_coord.z * CHUNK_SIZE
     );
 }

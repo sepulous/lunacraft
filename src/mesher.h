@@ -32,7 +32,7 @@ struct BlockQuad
     a 1x1 quad, and extend its height until a different mask value is reached. We then extend this new quad's width as far as possible to get the final quad.
     Finally, all mask positions covered by the final quad are marked as non-renderable, and we continue iterating through this column.
 */
-std::vector<BlockQuad> GreedyMesh(uint16_t *blocks, std::vector<Chunk *> neighbor_chunks)
+std::vector<BlockQuad> GreedyMesh(uint16_t *blocks)
 {
     struct MaskEntry
     {
@@ -61,24 +61,9 @@ std::vector<BlockQuad> GreedyMesh(uint16_t *blocks, std::vector<Chunk *> neighbo
         {
             for (int block_y = 0; block_y < WORLD_HEIGHT_LIMIT; block_y++)
             {
-                BlockID current_block, next_block;
-                if (block_x == -1) // Check left neighbor chunk
-                {
-                    current_block = (BlockID)blocks[GetChunkIndex(0, block_y, block_z)];
-                    next_block = (BlockID)neighbor_chunks[3]->GetBlocks()[GetChunkIndex(CHUNK_SIZE - 1, block_y, block_z)];
-                }
-                else if (block_x == CHUNK_SIZE - 1) // Check right neighbor chunk
-                {
-                    current_block = (BlockID)blocks[GetChunkIndex(CHUNK_SIZE - 1, block_y, block_z)];
-                    next_block = (BlockID)neighbor_chunks[1]->GetBlocks()[GetChunkIndex(0, block_y, block_z)];
-                }
-                else
-                {
-                    current_block = (BlockID)blocks[GetChunkIndex(block_x, block_y, block_z)];
-                    next_block = (BlockID)blocks[GetChunkIndex(block_x + 1, block_y, block_z)];
-                }
+                BlockID current_block = (BlockID)blocks[GetChunkIndex(block_x + 1, block_y, block_z + 1)];
+                BlockID next_block = (BlockID)blocks[GetChunkIndex(block_x + 1 + 1, block_y, block_z + 1)];
 
-                int mask_index = block_y + block_z * WORLD_HEIGHT_LIMIT;
                 if (ShouldRenderFace(current_block, next_block) && !ShouldRenderFace(next_block, current_block))
                     mask.push_back({current_block, false});
                 else if (ShouldRenderFace(next_block, current_block) && !ShouldRenderFace(current_block, next_block))
@@ -162,22 +147,8 @@ std::vector<BlockQuad> GreedyMesh(uint16_t *blocks, std::vector<Chunk *> neighbo
         {
             for (int block_y = 0; block_y < WORLD_HEIGHT_LIMIT; block_y++)
             {
-                BlockID current_block, next_block;
-                if (block_z == -1) // Check back neighbor chunk
-                {
-                    current_block = (BlockID)blocks[GetChunkIndex(block_x, block_y, 0)];
-                    next_block = (BlockID)neighbor_chunks[2]->GetBlocks()[GetChunkIndex(block_x, block_y, CHUNK_SIZE - 1)];
-                }
-                else if (block_z == CHUNK_SIZE - 1) // Check front neighbor chunk
-                {
-                    current_block = (BlockID)blocks[GetChunkIndex(block_x, block_y, CHUNK_SIZE  -1)];
-                    next_block = (BlockID)neighbor_chunks[0]->GetBlocks()[GetChunkIndex(block_x, block_y, 0)];
-                }
-                else
-                {
-                    current_block = (BlockID)blocks[GetChunkIndex(block_x, block_y, block_z)];
-                    next_block = (BlockID)blocks[GetChunkIndex(block_x, block_y, block_z + 1)];
-                }
+                BlockID current_block = (BlockID)blocks[GetChunkIndex(block_x + 1, block_y, block_z + 1)];
+                BlockID next_block = (BlockID)blocks[GetChunkIndex(block_x + 1, block_y, block_z + 1 + 1)];
 
                 if (ShouldRenderFace(current_block, next_block) && !ShouldRenderFace(next_block, current_block))
                     mask.push_back({current_block, false});
@@ -265,8 +236,8 @@ std::vector<BlockQuad> GreedyMesh(uint16_t *blocks, std::vector<Chunk *> neighbo
             {
                 if (block_y < WORLD_HEIGHT_LIMIT - 1) // Skip rendering top of chunk
                 {
-                    BlockID current_block = (BlockID)blocks[GetChunkIndex(block_x, block_y, block_z)];  // These blocks are on opposite sides of the plane
-                    BlockID next_block = (BlockID)blocks[GetChunkIndex(block_x, block_y + 1, block_z)]; //
+                    BlockID current_block = (BlockID)blocks[GetChunkIndex(block_x + 1, block_y, block_z + 1)];  // These blocks are on opposite sides of the plane
+                    BlockID next_block = (BlockID)blocks[GetChunkIndex(block_x + 1, block_y + 1, block_z + 1)]; //
 
                     if (ShouldRenderFace(current_block, next_block) && !ShouldRenderFace(next_block, current_block))
                         mask.push_back({current_block, false});

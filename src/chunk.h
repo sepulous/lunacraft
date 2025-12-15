@@ -12,10 +12,18 @@
 
 #include "block.h"
 
+void BuildChunkVertices(uint16_t *blocks, glm::ivec3 chunk_coords, std::vector<BlockVertex>& opaque_vertices, std::vector<BlockVertex>& transparent_vertices);
+
+enum class ChunkState
+{
+    MISSING,
+    QUEUED,
+    UPLOADED
+};
+
 class Chunk
 {
     private:
-        bool _is_border_chunk = false;
         glm::ivec3 _coords;
         uint16_t *_blocks;
         std::vector<BlockVertex> _opaque_vertices;
@@ -26,21 +34,28 @@ class Chunk
         GLuint _transparent_vbo;
 
     public:
+        ChunkState state = ChunkState::MISSING;
+
+        Chunk();
         Chunk(glm::ivec3 coords);
 
         // Copy
-        Chunk(const Chunk&) = default;
-        Chunk& operator=(const Chunk&) = default;
+        Chunk(const Chunk&) = delete;
+        Chunk& operator=(const Chunk&) = delete;
 
         // Move
         Chunk(Chunk&& other) noexcept;
         Chunk& operator=(Chunk&& other) noexcept;
 
-        void SetIsBorderChunk(bool value);
-        bool IsBorderChunk();
+        void Free();
+
         glm::ivec3 GetCoords();
+        void SetCoords(glm::ivec3 coords);
         uint16_t *GetBlocks();
-        void BuildVertices(std::vector<Chunk>& loaded_chunks);
+        void SetBlocks(uint16_t *blocks);
+        void SetOpaqueVertices(std::vector<BlockVertex> &opaque_vertices);
+        void SetTransparentVertices(std::vector<BlockVertex> &transparent_vertices);
+
         void BufferVertices();
         void RenderOpaques();
         void RenderTransparents();

@@ -12,15 +12,19 @@
 #include "block.h"
 #include "mesher.h"
 
+Chunk::Chunk()
+{
+
+}
+
 Chunk::Chunk(glm::ivec3 coords)
 {
     _coords = coords;
-    _blocks = new uint16_t[CHUNK_SIZE * CHUNK_SIZE * WORLD_HEIGHT_LIMIT];
+    _blocks = new uint16_t[(CHUNK_SIZE + 2) * (CHUNK_SIZE + 2) * WORLD_HEIGHT_LIMIT];
 }
 
 Chunk::Chunk(Chunk&& other) noexcept
 {
-    _is_border_chunk = other._is_border_chunk;
     _opaque_vao = other._opaque_vao;
     _opaque_vbo = other._opaque_vbo;
     _transparent_vao = other._transparent_vao;
@@ -36,7 +40,6 @@ Chunk& Chunk::operator=(Chunk&& other) noexcept
 {
     if (this != &other)
     {
-        _is_border_chunk = other._is_border_chunk;
         _opaque_vao = other._opaque_vao;
         _opaque_vbo = other._opaque_vbo;
         _transparent_vao = other._transparent_vao;
@@ -50,14 +53,13 @@ Chunk& Chunk::operator=(Chunk&& other) noexcept
     return *this;
 }
 
-void Chunk::SetIsBorderChunk(bool value)
+void Chunk::Free()
 {
-    _is_border_chunk = value;
-}
-
-bool Chunk::IsBorderChunk()
-{
-    return _is_border_chunk;
+    glDeleteVertexArrays(1, &_opaque_vao);
+    glDeleteVertexArrays(1, &_transparent_vao);
+    glDeleteBuffers(1, &_opaque_vbo);
+    glDeleteBuffers(1, &_transparent_vbo);
+    free(_blocks);
 }
 
 glm::ivec3 Chunk::GetCoords()
@@ -115,7 +117,27 @@ void Chunk::BufferVertices()
     glEnableVertexAttribArray(2);
 }
 
-void Chunk::BuildVertices(std::vector<Chunk>& loaded_chunks)
+void Chunk::SetCoords(glm::ivec3 coords)
+{
+    _coords = coords;
+}
+
+void Chunk::SetBlocks(uint16_t *blocks)
+{
+    _blocks = blocks;
+}
+
+void Chunk::SetOpaqueVertices(std::vector<BlockVertex> &opaque_vertices)
+{
+    _opaque_vertices = std::move(opaque_vertices);
+}
+
+void Chunk::SetTransparentVertices(std::vector<BlockVertex> &transparent_vertices)
+{
+    _transparent_vertices = std::move(transparent_vertices);
+}
+
+void BuildChunkVertices(uint16_t *blocks, glm::ivec3 chunk_coords, std::vector<BlockVertex>& opaque_vertices, std::vector<BlockVertex>& transparent_vertices)
 {
     std::unordered_map<BlockID, glm::vec3> ATLAS_TILE_MAP = {
         {BlockID::aluminum,        glm::vec3(32, 32, 32)},
@@ -190,20 +212,7 @@ void Chunk::BuildVertices(std::vector<Chunk>& loaded_chunks)
         )});
     }
 
-    std::vector<Chunk *> neighbor_chunks(4, nullptr); // {front, right, back, left}
-    for (Chunk& chunk : loaded_chunks)
-    {
-        if (chunk._coords.x == _coords.x && chunk._coords.z == _coords.z + 1)
-            neighbor_chunks[0] = &chunk;
-        else if (chunk._coords.x == _coords.x + 1 && chunk._coords.z == _coords.z)
-            neighbor_chunks[1] = &chunk;
-        else if (chunk._coords.x == _coords.x && chunk._coords.z == _coords.z - 1)
-            neighbor_chunks[2] = &chunk;
-        else if (chunk._coords.x == _coords.x - 1 && chunk._coords.z == _coords.z)
-            neighbor_chunks[3] = &chunk;
-    }
-
-    std::vector<BlockQuad> quads = GreedyMesh(_blocks, neighbor_chunks);
+    std::vector<BlockQuad> quads = GreedyMesh(blocks);
 
     for (BlockQuad quad : quads)
     {
@@ -219,11 +228,11 @@ void Chunk::BuildVertices(std::vector<Chunk>& loaded_chunks)
         // Determine global base vertex position
         glm::vec3 base_pos;
         if (normal.x != 0)
-            base_pos = {quad.base.x + 0.5f + CHUNK_SIZE * _coords.x, quad.base.y - 0.5f, quad.base.z - 0.5f + CHUNK_SIZE * _coords.z};
+            base_pos = {quad.base.x + 0.5f + CHUNK_SIZE * chunk_coords.x, quad.base.y - 0.5f, quad.base.z - 0.5f + CHUNK_SIZE * chunk_coords.z};
         else if (normal.y != 0)
-            base_pos = {quad.base.x - 0.5f + CHUNK_SIZE * _coords.x, quad.base.y + 0.5f, quad.base.z - 0.5f + CHUNK_SIZE * _coords.z};
+            base_pos = {quad.base.x - 0.5f + CHUNK_SIZE * chunk_coords.x, quad.base.y + 0.5f, quad.base.z - 0.5f + CHUNK_SIZE * chunk_coords.z};
         else
-            base_pos = {quad.base.x - 0.5f + CHUNK_SIZE * _coords.x, quad.base.y - 0.5f, quad.base.z + 0.5f + CHUNK_SIZE * _coords.z};
+            base_pos = {quad.base.x - 0.5f + CHUNK_SIZE * chunk_coords.x, quad.base.y - 0.5f, quad.base.z + 0.5f + CHUNK_SIZE * chunk_coords.z};
 
         // Determine texture tiling repeats
         int quad_width = glm::length(quad.du);
@@ -243,42 +252,42 @@ void Chunk::BuildVertices(std::vector<Chunk>& loaded_chunks)
         {
             if (!quad.back_face)
             {
-                _opaque_vertices.push_back(vert_1);
-                _opaque_vertices.push_back(vert_2);
-                _opaque_vertices.push_back(vert_3);
-                _opaque_vertices.push_back(vert_4);
-                _opaque_vertices.push_back(vert_5);
-                _opaque_vertices.push_back(vert_6);
+                opaque_vertices.push_back(vert_1);
+                opaque_vertices.push_back(vert_2);
+                opaque_vertices.push_back(vert_3);
+                opaque_vertices.push_back(vert_4);
+                opaque_vertices.push_back(vert_5);
+                opaque_vertices.push_back(vert_6);
             }
             else
             {
-                _opaque_vertices.push_back(vert_6);
-                _opaque_vertices.push_back(vert_5);
-                _opaque_vertices.push_back(vert_4);
-                _opaque_vertices.push_back(vert_3);
-                _opaque_vertices.push_back(vert_2);
-                _opaque_vertices.push_back(vert_1);
+                opaque_vertices.push_back(vert_6);
+                opaque_vertices.push_back(vert_5);
+                opaque_vertices.push_back(vert_4);
+                opaque_vertices.push_back(vert_3);
+                opaque_vertices.push_back(vert_2);
+                opaque_vertices.push_back(vert_1);
             }
         }
         else
         {
             if (!quad.back_face)
             {
-                _transparent_vertices.push_back(vert_1);
-                _transparent_vertices.push_back(vert_2);
-                _transparent_vertices.push_back(vert_3);
-                _transparent_vertices.push_back(vert_4);
-                _transparent_vertices.push_back(vert_5);
-                _transparent_vertices.push_back(vert_6);
+                transparent_vertices.push_back(vert_1);
+                transparent_vertices.push_back(vert_2);
+                transparent_vertices.push_back(vert_3);
+                transparent_vertices.push_back(vert_4);
+                transparent_vertices.push_back(vert_5);
+                transparent_vertices.push_back(vert_6);
             }
             else
             {
-                _transparent_vertices.push_back(vert_6);
-                _transparent_vertices.push_back(vert_5);
-                _transparent_vertices.push_back(vert_4);
-                _transparent_vertices.push_back(vert_3);
-                _transparent_vertices.push_back(vert_2);
-                _transparent_vertices.push_back(vert_1);
+                transparent_vertices.push_back(vert_6);
+                transparent_vertices.push_back(vert_5);
+                transparent_vertices.push_back(vert_4);
+                transparent_vertices.push_back(vert_3);
+                transparent_vertices.push_back(vert_2);
+                transparent_vertices.push_back(vert_1);
             }
         }
     }
