@@ -61,7 +61,7 @@ struct ChunkTask
 struct ChunkResult
 {
     glm::ivec3 coords;
-    uint16_t *blocks;
+    BlockArray blocks;
     std::vector<BlockVertex> opaque_vertices;
     std::vector<BlockVertex> transparent_vertices;
 };
@@ -72,13 +72,11 @@ static BlockingQueue<ChunkResult> result_queue;
 
 void ChunkLoadWorker()
 {
-    constexpr size_t BLOCKS_IN_CHUNK = (CHUNK_SIZE + 2) * (CHUNK_SIZE + 2) * WORLD_HEIGHT_LIMIT;
-
     while (true)
     {
         ChunkTask task = task_queue.Pop();
 
-        uint16_t *blocks = new uint16_t[BLOCKS_IN_CHUNK];
+        BlockArray blocks;
         std::vector<BlockVertex> opaque_vertices;
         std::vector<BlockVertex> transparent_vertices;
 
@@ -88,20 +86,20 @@ void ChunkLoadWorker()
         if (std::filesystem::exists(chunk_file_path))
         {
             std::ifstream chunk_file(chunk_file_path, std::ios::binary);
-            chunk_file.read(reinterpret_cast<char *>(blocks), BLOCKS_IN_CHUNK * sizeof(uint16_t));
+            chunk_file.read(reinterpret_cast<char *>(blocks.data()), BLOCKS_IN_CHUNK * sizeof(BlockID));
             chunk_file.close();
         }
         else
         {
-            GenerateChunk(blocks, task.coords.x, task.coords.z, active_moon_settings.seed);
+            GenerateChunk(blocks.data(), task.coords.x, task.coords.z, active_moon_settings.seed);
 
             std::ofstream chunk_file(chunk_file_path, std::ios::binary);
-            chunk_file.write(reinterpret_cast<char *>(blocks), BLOCKS_IN_CHUNK * sizeof(uint16_t));
+            chunk_file.write(reinterpret_cast<char *>(blocks.data()), BLOCKS_IN_CHUNK * sizeof(BlockID));
             chunk_file.close();
         }
 
         // Build vertices
-        BuildChunkVertices(blocks, task.coords, opaque_vertices, transparent_vertices);
+        BuildChunkVertices(blocks.data(), task.coords, opaque_vertices, transparent_vertices);
 
         result_queue.Push({task.coords, blocks, std::move(opaque_vertices), std::move(transparent_vertices)});
     }
@@ -118,7 +116,6 @@ static void UpdateCamera(GLFWwindow *window, double x_pos, double y_pos)
 
 static void _LoadMoon(int moon, MoonSettings moon_settings)
 {
-    constexpr size_t BLOCKS_IN_CHUNK = (CHUNK_SIZE + 2) * (CHUNK_SIZE + 2) * WORLD_HEIGHT_LIMIT;
     int render_distance = OptionsManager::GetOptions().render_distance;
     int chunks_to_process = 2 * (2*render_distance + 1) * (2*render_distance + 1); // 2x for loading + meshing
     int chunks_processed = 0;
@@ -339,7 +336,7 @@ int main()
     glGenerateMipmap(GL_TEXTURE_2D);
 
     stbi_image_free(texture_atlas_data);
-    /////////////////////////////////////////
+    /////////////////////////////////////////e
 
     UIRescale(viewport, ui_virtual_to_window);
     UIMainMenu ui_main_menu(window);

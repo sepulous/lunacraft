@@ -32,7 +32,7 @@ struct BlockQuad
     a 1x1 quad, and extend its height until a different mask value is reached. We then extend this new quad's width as far as possible to get the final quad.
     Finally, all mask positions covered by the final quad are marked as non-renderable, and we continue iterating through this column.
 */
-std::vector<BlockQuad> GreedyMesh(uint16_t *blocks)
+std::vector<BlockQuad> GreedyMesh(BlockID *blocks)
 {
     struct MaskEntry
     {

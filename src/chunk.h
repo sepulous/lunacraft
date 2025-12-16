@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <vector>
+#include <array>
 
 #include <glad/glad.h>
 
@@ -11,8 +12,11 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "block.h"
+#include "constants.h"
 
-void BuildChunkVertices(uint16_t *blocks, glm::ivec3 chunk_coords, std::vector<BlockVertex>& opaque_vertices, std::vector<BlockVertex>& transparent_vertices);
+typedef std::array<BlockID, BLOCKS_IN_CHUNK> BlockArray;
+
+void BuildChunkVertices(BlockID *blocks, glm::ivec3 chunk_coords, std::vector<BlockVertex> &opaque_vertices, std::vector<BlockVertex> &transparent_vertices);
 
 enum class ChunkState
 {
@@ -25,7 +29,7 @@ class Chunk
 {
     private:
         glm::ivec3 _coords;
-        uint16_t *_blocks;
+        BlockArray _blocks;
         std::vector<BlockVertex> _opaque_vertices;
         GLuint _opaque_vao;
         GLuint _opaque_vbo;
@@ -51,8 +55,8 @@ class Chunk
 
         glm::ivec3 GetCoords();
         void SetCoords(glm::ivec3 coords);
-        uint16_t *GetBlocks();
-        void SetBlocks(uint16_t *blocks);
+        BlockArray &GetBlocks();
+        void SetBlocks(BlockArray &blocks);
         void SetOpaqueVertices(std::vector<BlockVertex> &opaque_vertices);
         void SetTransparentVertices(std::vector<BlockVertex> &transparent_vertices);
 

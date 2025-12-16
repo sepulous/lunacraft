@@ -20,7 +20,6 @@ Chunk::Chunk()
 Chunk::Chunk(glm::ivec3 coords)
 {
     _coords = coords;
-    _blocks = new uint16_t[(CHUNK_SIZE + 2) * (CHUNK_SIZE + 2) * WORLD_HEIGHT_LIMIT];
 }
 
 Chunk::Chunk(Chunk&& other) noexcept
@@ -32,8 +31,7 @@ Chunk::Chunk(Chunk&& other) noexcept
     _coords = other._coords;
     _opaque_vertices = std::move(other._opaque_vertices);
     _transparent_vertices = std::move(other._transparent_vertices);
-    _blocks = other._blocks;
-    other._blocks = nullptr;
+    _blocks = std::move(other._blocks);
 }
 
 Chunk& Chunk::operator=(Chunk&& other) noexcept
@@ -47,8 +45,7 @@ Chunk& Chunk::operator=(Chunk&& other) noexcept
         _coords = other._coords;
         _opaque_vertices = std::move(other._opaque_vertices);
         _transparent_vertices = std::move(other._transparent_vertices);
-        _blocks = other._blocks;
-        other._blocks = nullptr;
+        _blocks = std::move(other._blocks);
     }
     return *this;
 }
@@ -59,7 +56,6 @@ void Chunk::Free()
     glDeleteVertexArrays(1, &_transparent_vao);
     glDeleteBuffers(1, &_opaque_vbo);
     glDeleteBuffers(1, &_transparent_vbo);
-    free(_blocks);
 }
 
 glm::ivec3 Chunk::GetCoords()
@@ -67,7 +63,7 @@ glm::ivec3 Chunk::GetCoords()
     return _coords;
 }
 
-uint16_t *Chunk::GetBlocks()
+BlockArray &Chunk::GetBlocks()
 {
     return _blocks;
 }
@@ -122,9 +118,9 @@ void Chunk::SetCoords(glm::ivec3 coords)
     _coords = coords;
 }
 
-void Chunk::SetBlocks(uint16_t *blocks)
+void Chunk::SetBlocks(BlockArray &blocks)
 {
-    _blocks = blocks;
+    _blocks = std::move(blocks);
 }
 
 void Chunk::SetOpaqueVertices(std::vector<BlockVertex> &opaque_vertices)
@@ -137,7 +133,7 @@ void Chunk::SetTransparentVertices(std::vector<BlockVertex> &transparent_vertice
     _transparent_vertices = std::move(transparent_vertices);
 }
 
-void BuildChunkVertices(uint16_t *blocks, glm::ivec3 chunk_coords, std::vector<BlockVertex>& opaque_vertices, std::vector<BlockVertex>& transparent_vertices)
+void BuildChunkVertices(BlockID *blocks, glm::ivec3 chunk_coords, std::vector<BlockVertex>& opaque_vertices, std::vector<BlockVertex>& transparent_vertices)
 {
     std::unordered_map<BlockID, glm::vec3> ATLAS_TILE_MAP = {
         {BlockID::aluminum,        glm::vec3(32, 32, 32)},
