@@ -1,0 +1,176 @@
+
+#include <filesystem>
+#include <fstream>
+
+#include "chunk_manager.h"
+#include "chunk_gen.h"
+#include "helpers.h"
+#include "storage.h"
+
+static void _ChunkWorker(int, MoonSettings, BlockingQueue<ChunkTask>&, BlockingQueue<ChunkResult>&);
+
+ChunkManager::ChunkManager()
+{
+
+}
+
+void ChunkManager::Init(int moon_id, MoonSettings moon_settings)
+{
+    _moon_id = moon_id;
+
+    // Create chunks folder
+    std::filesystem::path moon_dir = Storage::MOON_DIR / (std::string("moon") + std::to_string(moon_id));
+    std::filesystem::path chunk_dir = moon_dir / "chunks";
+    if (!std::filesystem::exists(chunk_dir))
+        std::filesystem::create_directory(chunk_dir);
+
+    // Start workers
+    int num_workers = glm::max(1u, std::thread::hardware_concurrency() - 2);
+    for (int i = 0; i < num_workers; i++)
+    {
+        std::thread worker(_ChunkWorker, moon_id, moon_settings, std::ref(_task_queue), std::ref(_result_queue));
+        worker.detach();
+        _workers.push_back(std::move(worker));
+    }
+}
+
+void ChunkManager::QueueNewChunk(glm::ivec3 chunk_coords)
+{
+    uint64_t chunk_id = ChunkCoordsToID(chunk_coords);
+    Chunk& chunk = _chunks[chunk_id];
+    if (chunk.state == ChunkState::MISSING)
+    {
+        chunk.state = ChunkState::QUEUED;
+        _task_queue.Push({ chunk_coords });
+    }
+}
+
+void ChunkManager::RenderChunks(Plane frustum[6])
+{
+    std::vector<Chunk *> visible_chunks;
+
+    for (auto it = _chunks.begin(); it != _chunks.end(); it++)
+    {
+        if (it->second.state == ChunkState::UPLOADED)
+        {
+            glm::ivec3 chunk_coords = it->second.GetCoords();
+            float x0 = chunk_coords.x * CHUNK_SIZE;
+            float y0 = 0;
+            float z0 = chunk_coords.z * CHUNK_SIZE;
+            float x1 = x0 + CHUNK_SIZE;
+            float y1 = WORLD_HEIGHT_LIMIT;
+            float z1 = z0 + CHUNK_SIZE;
+
+            glm::vec3 min(x0, y0, z0);
+            glm::vec3 max(x1, y1, z1);
+
+            if (ChunkInFrustum(frustum, min, max))
+            {
+                it->second.RenderOpaques();
+                visible_chunks.push_back(&it->second);
+            }
+        }
+    }
+
+    // Render transparent blocks
+    for (Chunk *chunk : visible_chunks)
+    {
+        chunk->RenderTransparents();
+    }
+}
+
+void ChunkManager::BufferReadyChunks()
+{
+    ChunkResult result;
+    while (_result_queue.TryPop(result))
+    {
+        uint64_t chunk_id = ChunkCoordsToID(result.coords);
+        Chunk& chunk = _chunks[chunk_id];
+
+        chunk.SetCoords(result.coords);
+        chunk.SetBlocks(result.blocks);
+        chunk.SetOpaqueVertices(result.opaque_vertices);
+        chunk.SetTransparentVertices(result.transparent_vertices);
+        chunk.BufferVertices();
+
+        chunk.state = ChunkState::UPLOADED;
+        _loaded_chunk_count++;
+    }
+}
+
+void ChunkManager::RemoveDistantChunks(glm::ivec3 player_chunk, int render_distance)
+{
+    for (auto it = _chunks.begin(); it != _chunks.end(); )
+    {
+        glm::ivec3 coords = it->second.GetCoords();
+        bool not_being_processed = it->second.state == ChunkState::UPLOADED;
+        bool distant = coords.x < player_chunk.x - render_distance
+                    || coords.x > player_chunk.x + render_distance
+                    || coords.z < player_chunk.z - render_distance
+                    || coords.z > player_chunk.z + render_distance;
+
+        if (not_being_processed && distant)
+        {
+            it->second.Free();
+            it = _chunks.erase(it);
+            _loaded_chunk_count--;
+        }
+        else
+        {
+            it++;
+        }
+    }
+}
+
+void ChunkManager::Unload()
+{
+    _task_queue.Stop();
+    _result_queue.Stop();
+    _loaded_chunk_count = 0;
+    _chunks.clear();
+}
+
+std::unordered_map<uint64_t, Chunk> &ChunkManager::GetChunks()
+{
+    return _chunks;
+}
+
+int ChunkManager::GetLoadedChunkCount()
+{
+    return _loaded_chunk_count;
+}
+
+static void _ChunkWorker(int moon_id, MoonSettings moon_settings, BlockingQueue<ChunkTask> &task_queue, BlockingQueue<ChunkResult> &result_queue)
+{
+    while (!(task_queue.IsStopped() || result_queue.IsStopped()))
+    {
+        ChunkTask task = task_queue.Pop();
+
+        BlockArray blocks;
+        std::vector<BlockVertex> opaque_vertices;
+        std::vector<BlockVertex> transparent_vertices;
+
+        // Load blocks
+        uint64_t chunk_id = ChunkCoordsToID(task.coords);
+        std::filesystem::path chunk_file_path = Storage::MOON_DIR / (std::string("moon") + std::to_string(moon_id)) / "chunks" / (std::to_string(chunk_id) + ".chunk");
+        if (std::filesystem::exists(chunk_file_path))
+        {
+            std::ifstream chunk_file(chunk_file_path, std::ios::binary);
+            chunk_file.read(reinterpret_cast<char *>(blocks.data()), BLOCKS_IN_CHUNK * sizeof(BlockID));
+            chunk_file.close();
+        }
+        else
+        {
+            GenerateChunk(blocks.data(), task.coords.x, task.coords.z, moon_settings.seed);
+
+            std::ofstream chunk_file(chunk_file_path, std::ios::binary);
+            chunk_file.write(reinterpret_cast<char *>(blocks.data()), BLOCKS_IN_CHUNK * sizeof(BlockID));
+            chunk_file.close();
+        }
+
+        // Build vertices
+        BuildChunkVertices(blocks.data(), task.coords, opaque_vertices, transparent_vertices);
+
+        result_queue.Push({task.coords, blocks, std::move(opaque_vertices), std::move(transparent_vertices)});
+    }
+}

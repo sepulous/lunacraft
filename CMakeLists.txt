@@ -37,6 +37,8 @@ add_executable(Lunacraft
     src/skybox.cpp
     src/helpers.cpp
     src/chunk.cpp
+    src/moon.cpp
+    src/chunk_manager.cpp
 )
 
 # Include directories

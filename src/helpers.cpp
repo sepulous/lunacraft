@@ -75,3 +75,24 @@ glm::ivec3 LocalToGlobalVoxel(glm::ivec3 local_voxel_pos, glm::ivec3 chunk_coord
         (local_voxel_pos.z - 1) + chunk_coord.z * CHUNK_SIZE
     );
 }
+
+bool ChunkInFrustum(const Plane frustum[6], const glm::vec3& chunk_min, const glm::vec3& chunk_max)
+{
+    for (int i = 0; i < 6; i++)
+    {
+        const Plane& p = frustum[i];
+
+        // Compute the most positive point relative to plane normal
+        glm::vec3 positive = {
+            (p.normal.x >= 0 ? chunk_max.x : chunk_min.x),
+            (p.normal.y >= 0 ? chunk_max.y : chunk_min.y),
+            (p.normal.z >= 0 ? chunk_max.z : chunk_min.z),
+        };
+
+        // If that point is behind the plane, the chunk is outside
+        if (glm::dot(p.normal, positive) + p.d < 0)
+            return false;
+    }
+
+    return true;
+}

@@ -27,12 +27,11 @@
 #include "options.h"
 #include "player.h"
 #include "chunk.h"
-#include "chunk_gen.h"
 #include "block.h"
 #include "skybox.h"
 #include "constants.h"
 #include "helpers.h"
-#include "blocking_queue.h"
+#include "moon.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_STATIC
@@ -44,67 +43,12 @@ static glm::dvec2 viewport = {1280, 720};
 static glm::mat4 ui_virtual_to_window = glm::mat4(1.0f);
 static glm::dvec2 last_mouse_pos = {viewport.x / 2.0, viewport.y / 2.0};
 
+static Moon *moon = nullptr;
 static Player player;
 
 static MouseState mouse_state;
 static GameState game_state = GameState::MAIN_MENU;
 static float loading_moon_progress = 0; 
-
-static int active_moon = -1;
-static MoonSettings active_moon_settings;
-
-struct ChunkTask
-{
-    glm::ivec3 coords;
-};
-
-struct ChunkResult
-{
-    glm::ivec3 coords;
-    BlockArray blocks;
-    std::vector<BlockVertex> opaque_vertices;
-    std::vector<BlockVertex> transparent_vertices;
-};
-
-static std::unordered_map<uint64_t, Chunk> chunks;
-static BlockingQueue<ChunkTask> task_queue;
-static BlockingQueue<ChunkResult> result_queue;
-
-void ChunkLoadWorker()
-{
-    while (true)
-    {
-        ChunkTask task = task_queue.Pop();
-
-        BlockArray blocks;
-        std::vector<BlockVertex> opaque_vertices;
-        std::vector<BlockVertex> transparent_vertices;
-
-        // Load blocks
-        uint64_t chunk_id = ChunkCoordsToID(task.coords);
-        std::filesystem::path chunk_file_path = Storage::MOON_DIR / (std::string("moon") + std::to_string(active_moon)) / "chunks" / (std::to_string(chunk_id) + ".chunk");
-        if (std::filesystem::exists(chunk_file_path))
-        {
-            std::ifstream chunk_file(chunk_file_path, std::ios::binary);
-            chunk_file.read(reinterpret_cast<char *>(blocks.data()), BLOCKS_IN_CHUNK * sizeof(BlockID));
-            chunk_file.close();
-        }
-        else
-        {
-            GenerateChunk(blocks.data(), task.coords.x, task.coords.z, active_moon_settings.seed);
-
-            std::ofstream chunk_file(chunk_file_path, std::ios::binary);
-            chunk_file.write(reinterpret_cast<char *>(blocks.data()), BLOCKS_IN_CHUNK * sizeof(BlockID));
-            chunk_file.close();
-        }
-
-        // Build vertices
-        BuildChunkVertices(blocks.data(), task.coords, opaque_vertices, transparent_vertices);
-
-        result_queue.Push({task.coords, blocks, std::move(opaque_vertices), std::move(transparent_vertices)});
-    }
-}
-
 
 static void UpdateCamera(GLFWwindow *window, double x_pos, double y_pos)
 {
@@ -114,23 +58,12 @@ static void UpdateCamera(GLFWwindow *window, double x_pos, double y_pos)
     player.UpdateCamera(x_pos, y_pos, x_offset, y_offset);
 }
 
-static void _LoadMoon(int moon, MoonSettings moon_settings)
+void LoadMoon(int moon_id, MoonSettings moon_settings)
 {
-    int render_distance = OptionsManager::GetOptions().render_distance;
-    int chunks_to_process = 2 * (2*render_distance + 1) * (2*render_distance + 1); // 2x for loading + meshing
-    int chunks_processed = 0;
+    moon = new Moon(moon_id, moon_settings);
 
-    bool existing_moon;
-    std::filesystem::path moon_dir = Storage::MOON_DIR / (std::string("moon") + std::to_string(moon));
-    existing_moon = std::filesystem::exists(moon_dir);
-    if (!existing_moon)
-        std::filesystem::create_directory(moon_dir);
-
-    std::filesystem::path chunk_dir = moon_dir / "chunks";
-    if (!existing_moon) // Chunk folder doesn't exist if moon folder doesn't
-        std::filesystem::create_directory(chunk_dir);
-
-    // Player data
+    // Create/fetch player data
+    std::filesystem::path moon_dir = Storage::MOON_DIR / (std::string("moon") + std::to_string(moon_id));
     std::filesystem::path player_data_path = moon_dir / "player.dat";
     if (std::filesystem::exists(player_data_path))
     {
@@ -159,52 +92,15 @@ static void _LoadMoon(int moon, MoonSettings moon_settings)
         player_data_file.write(reinterpret_cast<char *>(&player_data), sizeof(PlayerData));
         player_data_file.close();
     }
-
-    // Moon data
-    std::filesystem::path moon_data_path = moon_dir / "moon.dat";
-    if (std::filesystem::exists(moon_data_path))
-    {
-        std::ifstream moon_data_file(moon_data_path, std::ios::binary);
-        moon_data_file.read(reinterpret_cast<char *>(&moon_settings), sizeof(MoonSettings));
-        moon_data_file.close();
-    }
-    else
-    {
-        std::ofstream moon_data_file(moon_data_path, std::ios::binary);
-        moon_data_file.write(reinterpret_cast<char *>(&moon_settings), sizeof(MoonSettings));
-        moon_data_file.close();
-    }
-    active_moon_settings = moon_settings;
-
+    
+    // Load initial chunks around player
+    ChunkManager &chunk_manager = moon->GetChunkManager();
+    int render_distance = OptionsManager::GetOptions().render_distance;
     glm::ivec3 player_chunk_coords = VoxelToChunk({player.position.x, player.position.y, player.position.z});
     for (int dx = -render_distance; dx <= render_distance; dx++)
-    {
         for (int dz = -render_distance; dz <= render_distance; dz++)
-        {
-            glm::ivec3 chunk_coords = {player_chunk_coords.x + dx, 0, player_chunk_coords.z + dz};
-            uint64_t chunk_id = ChunkCoordsToID(chunk_coords);
-
-            Chunk& chunk = chunks[chunk_id];
-
-            chunk.state = ChunkState::QUEUED;
-            task_queue.Push({ chunk_coords });
-        }
-    }
+            chunk_manager.QueueNewChunk({player_chunk_coords.x + dx, 0, player_chunk_coords.z + dz});
 }
-
-void LoadMoon(int moon, MoonSettings moon_settings)
-{
-    loading_moon_progress = 0.01f;
-    active_moon = moon;
-    std::thread worker(_LoadMoon, moon, moon_settings);
-    worker.detach();
-}
-
-struct Plane
-{
-    glm::vec3 normal;
-    float d;
-};
 
 void GetFrustumPlanes(const glm::mat4& view_proj, Plane *frustum)
 {
@@ -225,27 +121,6 @@ void GetFrustumPlanes(const glm::mat4& view_proj, Plane *frustum)
     }
 };
 
-bool ChunkInFrustum(const Plane frustum[6], const glm::vec3& chunk_min, const glm::vec3& chunk_max)
-{
-    for (int i = 0; i < 6; i++)
-    {
-        const Plane& p = frustum[i];
-
-        // Compute the most positive point relative to plane normal
-        glm::vec3 positive = {
-            (p.normal.x >= 0 ? chunk_max.x : chunk_min.x),
-            (p.normal.y >= 0 ? chunk_max.y : chunk_min.y),
-            (p.normal.z >= 0 ? chunk_max.z : chunk_min.z),
-        };
-
-        // If that point is behind the plane, the chunk is outside
-        if (glm::dot(p.normal, positive) + p.d < 0)
-            return false;
-    }
-
-    return true;
-}
-
 bool TestAABBWorld(const AABB& box)
 {
     float min_x = glm::round(box.center.x - box.extents.x);
@@ -255,6 +130,9 @@ bool TestAABBWorld(const AABB& box)
     float min_z = glm::round(box.center.z - box.extents.z);
     float max_z = glm::round(box.center.z + box.extents.z);
 
+    // TODO: This should be part of PhysicsManager
+
+    auto &chunks = moon->GetChunkManager().GetChunks();
     for (int x = min_x; x <= max_x; x++)
     {
         for (int y = min_y; y <= max_y; y++)
@@ -349,24 +227,10 @@ int main()
     Soundlib::SoundSource source(music);
     source.Play();
 
-    Skybox skybox;
+    Skybox skybox; // TODO: I think the Moon should own the skybox (which is determined by world time, after all)
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    bool wireframe = false;
-    float last_wireframe_toggle = 0;
-
-    int num_threads = glm::max(1u, std::thread::hardware_concurrency() - 2u);
-    std::vector<std::thread> chunk_workers(num_threads);
-    for (int i = 0; i < num_threads; i++)
-    {
-        std::thread chunk_worker(ChunkLoadWorker);
-        chunk_worker.detach();
-        chunk_workers.push_back(std::move(chunk_worker));
-    }
-
-    int chunks_processed = 0;
 
     float delta_time;
     float last_frame_time = 0;
@@ -406,14 +270,6 @@ int main()
         {
             mouse_state.left_clicked = false;
             mouse_state.left_held = false;
-        }
-
-        if (glfwGetKey(window, GLFW_KEY_Y) == GLFW_PRESS && current_time - last_wireframe_toggle > 0.2f)
-        {
-            // wireframe = !wireframe;
-            // last_wireframe_toggle = current_time;
-
-            last_wireframe_toggle = current_time;
         }
 
         // Cursor position is unbounded (and thus meaningless) when disabled. We don't care about the cursor position in that case anyway.
@@ -478,25 +334,14 @@ int main()
         {
             glDepthFunc(GL_LEQUAL);
 
-            // Handle new chunks that are ready
-            ChunkResult result;
-            while (result_queue.TryPop(result))
+            // Update moon loading progress
+            if (moon != nullptr)
             {
-                uint64_t chunk_id = ChunkCoordsToID(result.coords);
-                Chunk& chunk = chunks[chunk_id]; // I know this is the same chunk I pushed above, because it's tied to chunk_id
-
-                chunk.SetCoords(result.coords);
-                chunk.SetBlocks(result.blocks);
-                chunk.SetOpaqueVertices(result.opaque_vertices);
-                chunk.SetTransparentVertices(result.transparent_vertices);
-                chunk.BufferVertices();
-
-                chunk.state = ChunkState::UPLOADED;
-
-                chunks_processed++;
+                moon->GetChunkManager().BufferReadyChunks();
                 int render_distance = OptionsManager::GetOptions().render_distance;
-                int chunks_to_process = (2*render_distance + 1) * (2*render_distance + 1);
-                loading_moon_progress = (float)chunks_processed / (float)chunks_to_process;
+                int chunks_to_load = (2*render_distance + 1) * (2*render_distance + 1);
+                int loaded_chunks = moon->GetChunkManager().GetLoadedChunkCount();
+                loading_moon_progress = (float)loaded_chunks / (float)chunks_to_load;
             }
 
             if (loading_moon_progress == 0)
@@ -512,9 +357,6 @@ int main()
                 ui_load_moon_menu.SetProgressLevel(loading_moon_progress);
                 if (loading_moon_progress >= 1.0f) // Only runs once when loading in
                 {
-                    // for (auto it = chunks.begin(); it != chunks.end(); it++)
-                    //     it->second.BufferVertices();
-
                     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
                     glfwSetCursorPos(window, last_mouse_pos.x, last_mouse_pos.y);
                     if (glfwRawMouseMotionSupported())
@@ -539,21 +381,22 @@ int main()
                 ui_pause_menu.Update(mouse_state);
                 if (ui_pause_menu.QuitClicked())
                 {
-                    //loaded_chunks.clear();
-                    chunks.clear();
-                    ui_pause_menu.SetActive(false);
-                    ui_main_menu.RefreshMoonButtonText();
-
                     PlayerData player_data;
                     player_data.health = player.health;
                     player_data.suit_status = player.suit_status;
                     player_data.position = player.position;
                     player_data.camera_rotation = {player.camera.pitch, player.camera.yaw};
-                    std::ofstream player_data_file(Storage::MOON_DIR / (std::string("moon") + std::to_string(active_moon)) / "player.dat", std::ios::binary);
+                    std::ofstream player_data_file(Storage::MOON_DIR / (std::string("moon") + std::to_string(moon->GetID())) / "player.dat", std::ios::binary);
                     player_data_file.write(reinterpret_cast<char *>(&player_data), sizeof(PlayerData));
                     player_data_file.close();
 
+                    moon->Unload();
+                    moon = nullptr;
+
+                    ui_pause_menu.SetActive(false);
+                    ui_main_menu.RefreshMoonButtonText();
                     game_state = GameState::MAIN_MENU;
+                    continue;
                 }
                 else if (ui_pause_menu.ResumeClicked())
                 {
@@ -631,70 +474,19 @@ int main()
             // Non-physics updates
             player.Update();
 
-            glm::ivec3 new_player_chunk = VoxelToChunk(GetNearestVoxel(player.position));
-
+            ChunkManager &chunk_manager = moon->GetChunkManager();
             int render_distance = OptionsManager::GetOptions().render_distance;
             
             // Load new chunks around player
+            glm::ivec3 new_player_chunk = VoxelToChunk(GetNearestVoxel(player.position));
             if (new_player_chunk != old_player_chunk)
-            {
                 for (int dx = -render_distance; dx <= render_distance; dx++)
-                {
                     for (int dz = -render_distance; dz <= render_distance; dz++)
-                    {
-                        glm::ivec3 chunk_coords = {new_player_chunk.x + dx, 0, new_player_chunk.z + dz};
-                        uint64_t chunk_id = ChunkCoordsToID(chunk_coords);
+                        chunk_manager.QueueNewChunk({new_player_chunk.x + dx, 0, new_player_chunk.z + dz});
 
-                        // If all new chunks immediately get put in `chunks`, I don't have to check through
-                        // task_queue or result_queue, and I can avoid any synchronization with them.
-
-                        Chunk& chunk = chunks[chunk_id]; // NOTE: This default-constructs a new Chunk if there isn't one
-
-                        if (chunk.state == ChunkState::MISSING) // i.e. I just created this chunk in the line above
-                        {
-                            chunk.state = ChunkState::QUEUED;
-                            task_queue.Push({ chunk_coords });
-                        }
-                    }
-                }
-            }
-
-            // Remove distant chunks
-            for (auto it = chunks.begin(); it != chunks.end(); )
-            {
-                glm::ivec3 coords = it->second.GetCoords();
-                bool not_being_processed = it->second.state == ChunkState::UPLOADED;
-                bool distant = coords.x < new_player_chunk.x - render_distance
-                            || coords.x > new_player_chunk.x + render_distance
-                            || coords.z < new_player_chunk.z - render_distance
-                            || coords.z > new_player_chunk.z + render_distance;
-
-                if (not_being_processed && distant)
-                {
-                    it->second.Free();
-                    it = chunks.erase(it);
-                }
-                else
-                {
-                    it++;
-                }
-            }
-
-            // Handle new chunks that are ready
-            ChunkResult result;
-            while (result_queue.TryPop(result))
-            {
-                uint64_t chunk_id = ChunkCoordsToID(result.coords);
-                Chunk& chunk = chunks[chunk_id]; // I know this is the same chunk I pushed above, because it's tied to chunk_id
-
-                chunk.SetCoords(result.coords);
-                chunk.SetBlocks(result.blocks);
-                chunk.SetOpaqueVertices(result.opaque_vertices);
-                chunk.SetTransparentVertices(result.transparent_vertices);
-                chunk.BufferVertices();
-
-                chunk.state = ChunkState::UPLOADED;
-            }
+            // Remove distant chunks and upload new ones that are ready
+            chunk_manager.RemoveDistantChunks(new_player_chunk, render_distance);
+            chunk_manager.BufferReadyChunks();
 
             //
             // Rendering
@@ -718,44 +510,7 @@ int main()
 
             Plane frustum[6];
             GetFrustumPlanes(view_projection, frustum);
-            
-            if (wireframe)
-                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
-            std::vector<Chunk *> visible_chunks;
-
-            // Render opaque blocks
-            for (auto it = chunks.begin(); it != chunks.end(); it++)
-            {
-                if (it->second.state == ChunkState::UPLOADED)
-                {
-                    glm::ivec3 chunk_coords = it->second.GetCoords();
-                    float x0 = chunk_coords.x * CHUNK_SIZE;
-                    float y0 = 0;
-                    float z0 = chunk_coords.z * CHUNK_SIZE;
-                    float x1 = x0 + CHUNK_SIZE;
-                    float y1 = WORLD_HEIGHT_LIMIT;
-                    float z1 = z0 + CHUNK_SIZE;
-
-                    glm::vec3 min(x0, y0, z0);
-                    glm::vec3 max(x1, y1, z1);
-
-                    if (ChunkInFrustum(frustum, min, max))
-                    {
-                        it->second.RenderOpaques();
-                        visible_chunks.push_back(&it->second);
-                    }
-                }
-            }
-
-            // Render transparent blocks
-            for (Chunk *chunk : visible_chunks)
-            {
-                chunk->RenderTransparents();
-            }
-
-            if (wireframe)
-                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            chunk_manager.RenderChunks(frustum);
 
             // Render skybox
             view = glm::mat4(glm::mat3(view));
@@ -774,8 +529,6 @@ int main()
         glfwPollEvents();
     }
 
-    task_queue.Stop();
-    result_queue.Stop();
     OptionsManager::SaveOptions();
     Soundlib::Exit();
     glfwTerminate();
