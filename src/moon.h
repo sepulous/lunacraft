@@ -3,8 +3,9 @@
 
 #include <cstdint>
 
-#include "chunk_manager.h"
 #include "moon_settings.h"
+#include "chunk_manager.h"
+#include "entity_manager.h"
 
 class Moon
 {
@@ -12,11 +13,12 @@ class Moon
         int _id = 0;
         MoonSettings _settings;
         ChunkManager _chunk_manager;
-        //PhysicsManager _physics_manager;
+        EntityManager _entity_manager;
 
     public:
         Moon(int id, MoonSettings moon_settings);
         ChunkManager &GetChunkManager();
+        EntityManager &GetEntityManager();
         int GetID();
         void Unload();
 };

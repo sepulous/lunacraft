@@ -34,11 +34,17 @@ Moon::Moon(int moon_id, MoonSettings moon_settings)
     _id = moon_id;
     _settings = moon_settings;
     _chunk_manager.Init(moon_id, moon_settings);
+    _entity_manager.LinkChunkManager(&_chunk_manager);
 }
 
 ChunkManager &Moon::GetChunkManager()
 {
     return _chunk_manager;
+}
+
+EntityManager &Moon::GetEntityManager()
+{
+    return _entity_manager;
 }
 
 void Moon::Unload()

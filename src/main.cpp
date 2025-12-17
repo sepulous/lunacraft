@@ -72,31 +72,32 @@ void LoadMoon(int moon_id, MoonSettings moon_settings)
         player_data_file.read(reinterpret_cast<char *>(&player_data), sizeof(PlayerData));
         player_data_file.close();
 
-        player.position = player_data.position;
-        player.prev_position = player.position;
-        player.next_position = player.position;
-        player.health = player_data.health;
-        player.suit_status = player_data.suit_status;
-        player.camera.pitch = player_data.camera_rotation.x;
-        player.camera.yaw = player_data.camera_rotation.y;
+        player.SetPosition(player_data.position);
+        player.SetPrevPosition(player_data.position);
+        player.SetNextPosition(player_data.position);
+        player.SetHealth(player_data.health);
+        player.SetSuitStatus(player_data.suit_status);
+        player.SetCameraRotation({player_data.camera_rotation.x, player_data.camera_rotation.y});
     }
     else
     {
         PlayerData player_data;
-        player_data.health = player.health;
-        player_data.suit_status = player.suit_status;
-        player_data.position = player.position;
-        player_data.camera_rotation = {player.camera.pitch, player.camera.yaw};
+        player_data.health = player.GetHealth();
+        player_data.suit_status = player.GetSuitStatus();
+        player_data.position = player.GetPosition();
+        player_data.camera_rotation = player.GetCameraRotation();
 
         std::ofstream player_data_file(player_data_path, std::ios::binary);
         player_data_file.write(reinterpret_cast<char *>(&player_data), sizeof(PlayerData));
         player_data_file.close();
     }
+
+    moon->GetEntityManager().AddEntity(&player);
     
     // Load initial chunks around player
     ChunkManager &chunk_manager = moon->GetChunkManager();
     int render_distance = OptionsManager::GetOptions().render_distance;
-    glm::ivec3 player_chunk_coords = VoxelToChunk({player.position.x, player.position.y, player.position.z});
+    glm::ivec3 player_chunk_coords = VoxelToChunk({player.GetPosition().x, player.GetPosition().y, player.GetPosition().z});
     for (int dx = -render_distance; dx <= render_distance; dx++)
         for (int dz = -render_distance; dz <= render_distance; dz++)
             chunk_manager.QueueNewChunk({player_chunk_coords.x + dx, 0, player_chunk_coords.z + dz});
@@ -120,41 +121,6 @@ void GetFrustumPlanes(const glm::mat4& view_proj, Plane *frustum)
         frustum[i].d      /= len;
     }
 };
-
-bool TestAABBWorld(const AABB& box)
-{
-    float min_x = glm::round(box.center.x - box.extents.x);
-    float max_x = glm::round(box.center.x + box.extents.x);
-    float min_y = glm::round(box.center.y - box.extents.y);
-    float max_y = glm::round(box.center.y + box.extents.y);
-    float min_z = glm::round(box.center.z - box.extents.z);
-    float max_z = glm::round(box.center.z + box.extents.z);
-
-    // TODO: This should be part of PhysicsManager
-
-    auto &chunks = moon->GetChunkManager().GetChunks();
-    for (int x = min_x; x <= max_x; x++)
-    {
-        for (int y = min_y; y <= max_y; y++)
-        {
-            for (int z = min_z; z <= max_z; z++)
-            {
-                glm::ivec3 box_chunk_coords = VoxelToChunk({x, y, z});
-                uint64_t chunk_id = ChunkCoordsToID(box_chunk_coords);
-
-                auto it = chunks.find(chunk_id);
-                if (it != chunks.end())
-                {
-                    glm::ivec3 local_block_pos = GlobalToLocalVoxel({x, y, z});
-                    if ((BlockID)it->second.GetBlocks()[GetChunkIndex(local_block_pos.x, local_block_pos.y, local_block_pos.z)] != BlockID::air)
-                        return true;
-                }
-            }
-        }
-    }
-
-    return false;
-}
 
 int main()
 {
@@ -309,17 +275,20 @@ int main()
 
             if (!ui_pause_menu.IsActive())
             {
-                player.input_direction = glm::vec3(0);
+                Camera player_camera = player.GetCamera();
+                glm::vec3 player_input_direction = glm::vec3(0);
                 if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-                    player.input_direction += glm::vec3(player.camera.forward.x, 0, player.camera.forward.z);
+                    player_input_direction += glm::vec3(player_camera.forward.x, 0, player_camera.forward.z);
                 if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-                    player.input_direction -= glm::vec3(player.camera.forward.x, 0, player.camera.forward.z);
+                    player_input_direction -= glm::vec3(player_camera.forward.x, 0, player_camera.forward.z);
                 if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-                    player.input_direction -= player.camera.right;
+                    player_input_direction -= player_camera.right;
                 if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-                    player.input_direction += player.camera.right;
-                if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && player.is_grounded)
-                    player.is_jumping = true;
+                    player_input_direction += player_camera.right;
+                if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && player.IsGrounded())
+                    player.SetJumping(true);
+
+                player.SetInputDirection(player_input_direction);
             }
         }
 
@@ -344,6 +313,7 @@ int main()
                 loading_moon_progress = (float)loaded_chunks / (float)chunks_to_load;
             }
 
+            // Render
             if (loading_moon_progress == 0)
             {
                 ui_main_menu.Update(delta_time, mouse_state);
@@ -376,16 +346,20 @@ int main()
             // Updates
             //
 
+            ChunkManager &chunk_manager = moon->GetChunkManager();
+            EntityManager &entity_manager = moon->GetEntityManager();
+            int render_distance = OptionsManager::GetOptions().render_distance;
+
             if (ui_pause_menu.IsActive())
             {
                 ui_pause_menu.Update(mouse_state);
                 if (ui_pause_menu.QuitClicked())
                 {
                     PlayerData player_data;
-                    player_data.health = player.health;
-                    player_data.suit_status = player.suit_status;
-                    player_data.position = player.position;
-                    player_data.camera_rotation = {player.camera.pitch, player.camera.yaw};
+                    player_data.health = player.GetHealth();
+                    player_data.suit_status = player.GetSuitStatus();
+                    player_data.position = player.GetPosition();
+                    player_data.camera_rotation = player.GetCameraRotation();
                     std::ofstream player_data_file(Storage::MOON_DIR / (std::string("moon") + std::to_string(moon->GetID())) / "player.dat", std::ios::binary);
                     player_data_file.write(reinterpret_cast<char *>(&player_data), sizeof(PlayerData));
                     player_data_file.close();
@@ -408,77 +382,26 @@ int main()
                 }
             }
 
-            glm::ivec3 old_player_chunk = VoxelToChunk(GetNearestVoxel(player.position));
+            glm::ivec3 old_player_chunk = VoxelToChunk(GetNearestVoxel(player.GetPosition()));
 
             accumulator += delta_time;
 
-            // Physics updates
+            // Fixed updates
             if (accumulator >= fixed_delta_time)
-                player.FixedUpdate();
+                entity_manager.FixedUpdate();
 
-            // Resolve collisions
-            glm::vec3 next_position = player.position;
-            while (accumulator >= fixed_delta_time)
-            {
-                player.prev_position = player.position;
-
-                // Gravity
-                player.velocity.y -= 4.0f * fixed_delta_time;
-
-                // X
-                next_position.x += player.velocity.x * fixed_delta_time;
-                player.aabb.center.x = next_position.x;
-                if (TestAABBWorld(player.aabb))
-                {
-                    next_position.x = player.position.x; // Don't actually move
-                    player.aabb.center.x = player.position.x;
-                    player.velocity.x = 0; // So that if we loop again, the entity can't repeat the collision
-                }
-
-                // Z
-                next_position.z += player.velocity.z * fixed_delta_time;
-                player.aabb.center.z = next_position.z;
-                if (TestAABBWorld(player.aabb))
-                {
-                    next_position.z = player.position.z; // Don't actually move
-                    player.aabb.center.z = player.position.z;
-                    player.velocity.z = 0; // If we loop again, the player can't repeat the collision
-                }
-
-                // Y
-                next_position.y += player.velocity.y * fixed_delta_time;
-                player.aabb.center.y = next_position.y;
-                if (TestAABBWorld(player.aabb))
-                {
-                    if (player.velocity.y <= 0)
-                        player.is_grounded = true;
-                    next_position.y = player.position.y; // Don't actually move
-                    player.aabb.center.y = player.position.y;
-                    player.velocity.y = 0; // If we loop again, the player can't repeat the collision
-                }
-                else
-                {
-                    player.is_grounded = false;
-                }
-
-                player.next_position = next_position;
-
-                accumulator -= fixed_delta_time;
-            }
-
-            // Interpolate position
-            float alpha = accumulator / fixed_delta_time;
-            player.position = glm::mix(player.prev_position, player.next_position, alpha);
-            player.aabb.center = player.position;
+            // Physics
+            int physics_steps = 0;
+            if (accumulator >= fixed_delta_time)
+                physics_steps = (int)((accumulator - fixed_delta_time) / fixed_delta_time) + 1;
+            accumulator -= physics_steps * fixed_delta_time;
+            entity_manager.RunPhysics(physics_steps, fixed_delta_time, accumulator / fixed_delta_time);
 
             // Non-physics updates
-            player.Update();
-
-            ChunkManager &chunk_manager = moon->GetChunkManager();
-            int render_distance = OptionsManager::GetOptions().render_distance;
+            entity_manager.Update();
             
             // Load new chunks around player
-            glm::ivec3 new_player_chunk = VoxelToChunk(GetNearestVoxel(player.position));
+            glm::ivec3 new_player_chunk = VoxelToChunk(GetNearestVoxel(player.GetPosition()));
             if (new_player_chunk != old_player_chunk)
                 for (int dx = -render_distance; dx <= render_distance; dx++)
                     for (int dz = -render_distance; dz <= render_distance; dz++)
@@ -492,7 +415,8 @@ int main()
             // Rendering
             //
 
-            glm::mat4 view = glm::lookAt(player.camera.position, player.camera.position + player.camera.forward, player.camera.up);
+            Camera player_camera = player.GetCamera();
+            glm::mat4 view = glm::lookAt(player_camera.position, player_camera.position + player_camera.forward, player_camera.up);
             glm::mat4 projection = glm::perspective(glm::radians(45.0), viewport.x / viewport.y, 0.1, 500.0);
             glm::mat4 view_projection = projection * view;
 

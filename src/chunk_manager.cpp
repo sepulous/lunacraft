@@ -11,7 +11,7 @@ static void _ChunkWorker(int, MoonSettings, BlockingQueue<ChunkTask>&, BlockingQ
 
 ChunkManager::ChunkManager()
 {
-
+    
 }
 
 void ChunkManager::Init(int moon_id, MoonSettings moon_settings)

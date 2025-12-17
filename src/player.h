@@ -10,7 +10,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "camera.h"
-#include "aabb.h"
+#include "entity.h"
 
 struct PlayerData
 {
@@ -20,66 +20,69 @@ struct PlayerData
     glm::vec2 camera_rotation; // {pitch, yaw}
 };
 
-class Player
+class Player : public Entity
 {
-    public:
-        Camera camera;
-        AABB aabb;
-        int health = 100;
-        int suit_status = 100;
-        glm::vec3 prev_position;
-        glm::vec3 next_position;
-        glm::vec3 position;
-        glm::vec3 velocity;
-        glm::vec3 input_direction;
-        float walk_speed = 8.0f;
-        bool is_jumping = false;
-        bool is_grounded = false;
+    private:
+        Camera _camera;
+        int _health = 100;
+        int _suit_status = 100;
 
+    public:
         Player()
         {
-            position = glm::vec3(0.0f, 90.0f + 0.5f + 0.9f, 0.0f);
-            prev_position = position;
-            next_position = position;
-            velocity = glm::vec3(0);
-            aabb.center = position;
-            aabb.extents = glm::vec3(0.4f, 0.9f, 0.4f);
-            camera.position = position + glm::vec3(0, 0.9f, 0);
+            _position = glm::vec3(0.0f, 90.0f + 0.5f + 0.9f, 0.0f);
+            _prev_position = _position;
+            _next_position = _position;
+            _velocity = glm::vec3(0);
+            _aabb.center = _position;
+            _aabb.extents = glm::vec3(0.4f, 0.9f, 0.4f);
+            _camera.position = _position + glm::vec3(0, 0.9f, 0);
         }
 
-        void Update()
+        void Update() override
         {
-            if (glm::length(input_direction) > 0)
-                input_direction = glm::normalize(input_direction);
+            if (glm::length(_input_direction) > 0)
+                _input_direction = glm::normalize(_input_direction);
 
-            camera.position = position + glm::vec3(0, 0.9f, 0);
+            _camera.position = _position + glm::vec3(0, 0.9f, 0);
         }
 
-        void FixedUpdate()
+        void FixedUpdate() override
         {
-            velocity.x = walk_speed * input_direction.x;
-            velocity.z = walk_speed * input_direction.z;
+            _velocity.x = _move_speed * _input_direction.x;
+            _velocity.z = _move_speed * _input_direction.z;
 
-            if (is_jumping && is_grounded)
+            if (_is_jumping && _is_grounded)
             {
-                velocity.y = 6.0f;
-                is_jumping = false;
+                _velocity.y = 6.0f;
+                _is_jumping = false;
             }
         }
 
         void UpdateCamera(double x_pos, double y_pos, double x_offset, double y_offset)
         {
-            camera.yaw += x_offset * camera.sensitivity;
-            camera.pitch += y_offset * camera.sensitivity;
-            camera.pitch = glm::clamp(camera.pitch, -89.8f, 89.8f);
+            _camera.yaw += x_offset * _camera.sensitivity;
+            _camera.pitch += y_offset * _camera.sensitivity;
+            _camera.pitch = glm::clamp(_camera.pitch, -89.8f, 89.8f);
 
             glm::vec3 direction;
-            direction.x = cos(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
-            direction.y = sin(glm::radians(camera.pitch));
-            direction.z = sin(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
-            camera.forward = glm::normalize(direction);
-            camera.right = glm::normalize(glm::cross(camera.forward, camera.up));
+            direction.x = cos(glm::radians(_camera.yaw)) * cos(glm::radians(_camera.pitch));
+            direction.y = sin(glm::radians(_camera.pitch));
+            direction.z = sin(glm::radians(_camera.yaw)) * cos(glm::radians(_camera.pitch));
+            _camera.forward = glm::normalize(direction);
+            _camera.right = glm::normalize(glm::cross(_camera.forward, _camera.up));
         }
+
+        Camera GetCamera() { return _camera; }
+
+        void SetHealth(int health) { _health = health; }
+        int GetHealth() { return _health; }
+
+        void SetSuitStatus(int suit_status) { _suit_status = suit_status; }
+        int GetSuitStatus() { return _suit_status; }
+
+        void SetCameraRotation(glm::vec2 rotation) { _camera.pitch = rotation.x; _camera.yaw = rotation.y; }
+        glm::vec2 GetCameraRotation() { return {_camera.pitch, _camera.yaw}; }
 };
 
 #endif
