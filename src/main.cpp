@@ -348,8 +348,8 @@ int main()
 
             ChunkManager &chunk_manager = moon->GetChunkManager();
             EntityManager &entity_manager = moon->GetEntityManager();
-            int render_distance = OptionsManager::GetOptions().render_distance;
 
+            int old_render_distance = OptionsManager::GetOptions().render_distance;
             if (ui_pause_menu.IsActive())
             {
                 ui_pause_menu.Update(mouse_state);
@@ -381,6 +381,7 @@ int main()
                     glfwSetCursorPosCallback(window, UpdateCamera);
                 }
             }
+            int current_render_distance = OptionsManager::GetOptions().render_distance;
 
             glm::ivec3 old_player_chunk = VoxelToChunk(GetNearestVoxel(player.GetPosition()));
 
@@ -402,13 +403,13 @@ int main()
             
             // Load new chunks around player
             glm::ivec3 new_player_chunk = VoxelToChunk(GetNearestVoxel(player.GetPosition()));
-            if (new_player_chunk != old_player_chunk)
-                for (int dx = -render_distance; dx <= render_distance; dx++)
-                    for (int dz = -render_distance; dz <= render_distance; dz++)
+            if (new_player_chunk != old_player_chunk || old_render_distance != current_render_distance)
+                for (int dx = -current_render_distance; dx <= current_render_distance; dx++)
+                    for (int dz = -current_render_distance; dz <= current_render_distance; dz++)
                         chunk_manager.QueueNewChunk({new_player_chunk.x + dx, 0, new_player_chunk.z + dz});
 
             // Remove distant chunks and upload new ones that are ready
-            chunk_manager.RemoveDistantChunks(new_player_chunk, render_distance);
+            chunk_manager.RemoveDistantChunks(new_player_chunk, current_render_distance);
             chunk_manager.BufferReadyChunks();
 
             //
