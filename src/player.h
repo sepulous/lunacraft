@@ -83,6 +83,8 @@ class Player : public Entity
 
         void SetCameraRotation(glm::vec2 rotation) { _camera.pitch = rotation.x; _camera.yaw = rotation.y; }
         glm::vec2 GetCameraRotation() { return {_camera.pitch, _camera.yaw}; }
+
+        void SetCameraSensitivity(float sensitivity) { _camera.SetSensitivity(sensitivity); }
 };
 
 #endif

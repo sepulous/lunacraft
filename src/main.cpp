@@ -384,6 +384,8 @@ int main()
             }
             int current_render_distance = OptionsManager::GetOptions().render_distance;
 
+            player.SetCameraSensitivity(0.05f * OptionsManager::GetOptions().sensitivity);
+
             glm::ivec3 old_player_chunk = VoxelToChunk(GetNearestVoxel(player.GetPosition()));
 
             accumulator += delta_time;

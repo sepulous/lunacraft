@@ -25,6 +25,9 @@ struct Camera
         up = glm::cross(camera_direction, right);
         position = glm::vec3(0.0f, 70.0f, 0.0f);
     }
+
+    void SetSensitivity(float sensitivity) { this->sensitivity = sensitivity; }
+    float GetSensitivity() { return sensitivity; }
 };
 
 #endif
