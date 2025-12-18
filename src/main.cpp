@@ -186,6 +186,7 @@ int main()
     UIMainMenu ui_main_menu(window);
     UILoadMoonMenu ui_load_moon_menu;
     UIPauseMenu ui_pause_menu;
+    UIDebugMenu ui_debug_menu;
 
     Soundlib::Init();
     Soundlib::SetListenerVolume(0.6f);
@@ -202,19 +203,16 @@ int main()
     float last_frame_time = 0;
     const float fixed_delta_time = 0.02f;
     float accumulator = 0;
-    float last_fps_update = 0;
+    int fps = 0;
     float last_pause_toggle_time = 0;
+    float last_debug_toggle_time = 0;
+    float last_debug_update_time = 0;
     while (!glfwWindowShouldClose(window))
     {
         float current_time = glfwGetTime();
         delta_time = current_time - last_frame_time;
         last_frame_time = current_time;
-
-        if (current_time - last_fps_update > 0.5f)
-        {
-            printf("FPS: %i\n", (int)(1 / delta_time));
-            last_fps_update = current_time;
-        }
+        fps = (int)(1 / delta_time);
 
         //
         // Input
@@ -290,6 +288,14 @@ int main()
 
                 player.SetInputDirection(player_input_direction);
             }
+
+            if (glfwGetKey(window, GLFW_KEY_F3) == GLFW_PRESS && current_time - last_debug_toggle_time > 0.2f)
+            {
+                Options options = OptionsManager::GetOptions();
+                options.show_debug_info = !options.show_debug_info;
+                OptionsManager::SetOptions(options);
+                last_debug_toggle_time = current_time;
+            }
         }
 
         //
@@ -350,6 +356,16 @@ int main()
             ChunkManager &chunk_manager = moon->GetChunkManager();
             EntityManager &entity_manager = moon->GetEntityManager();
 
+            if (ui_debug_menu.IsActive() && current_time - last_debug_update_time > 0.2f)
+            {
+                DebugInfo debug_info;
+                debug_info.fps = fps;
+                debug_info.player_pos = player.GetCamera().position;
+                debug_info.seed = moon->GetSettings().seed;
+                ui_debug_menu.Update(debug_info);
+                last_debug_update_time = current_time;
+            }
+
             int old_render_distance = OptionsManager::GetOptions().render_distance;
             if (ui_pause_menu.IsActive())
             {
@@ -385,6 +401,7 @@ int main()
             int current_render_distance = OptionsManager::GetOptions().render_distance;
 
             player.SetCameraSensitivity(0.05f * OptionsManager::GetOptions().sensitivity);
+            ui_debug_menu.SetActive(OptionsManager::GetOptions().show_debug_info);
 
             glm::ivec3 old_player_chunk = VoxelToChunk(GetNearestVoxel(player.GetPosition()));
 
@@ -463,6 +480,9 @@ int main()
             moon->RenderSkybox(view_projection);
 
             glDepthFunc(GL_LEQUAL);
+
+            if (ui_debug_menu.IsActive())
+                ui_debug_menu.Render();
 
             if (ui_pause_menu.IsActive())
                 ui_pause_menu.Render();

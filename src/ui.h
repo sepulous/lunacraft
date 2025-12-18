@@ -352,4 +352,26 @@ class UIPauseMenu
         void Render();
 };
 
+struct DebugInfo
+{
+    int fps;
+    glm::vec3 player_pos;
+    glm::vec3 block_pos;
+    uint64_t seed;
+};
+
+class UIDebugMenu
+{
+    private:
+        bool _active = false;
+        UIText _debug_text;
+
+    public:
+        UIDebugMenu();
+        void SetActive(bool value);
+        bool IsActive();
+        void Update(DebugInfo debug_info);
+        void Render();
+};
+
 #endif

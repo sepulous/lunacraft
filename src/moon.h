@@ -29,6 +29,7 @@ class Moon
         void RenderSkybox(glm::mat4 view_proj);
         glm::vec4 GetFogColor();
         int GetID();
+        MoonSettings GetSettings();
         void Unload();
 };
 

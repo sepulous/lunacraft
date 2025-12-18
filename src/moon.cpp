@@ -98,3 +98,8 @@ int Moon::GetID()
 {
     return _id;
 }
+
+MoonSettings Moon::GetSettings()
+{
+    return _settings;
+}

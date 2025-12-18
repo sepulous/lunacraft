@@ -870,6 +870,18 @@ UIOptionsMenu::UIOptionsMenu()
 void UIOptionsMenu::SetActive(bool status)
 {
     _active = status;
+    if (_active)
+    {
+        // Update UI based on actual options
+        Options options = OptionsManager::GetOptions();
+        _sfx_volume_slider.SetValue(options.sfx_volume);
+        _music_volume_slider.SetValue(options.music_volume);
+        _render_distance_slider.SetValue(options.render_distance);
+        _sensitivity_slider.SetValue(options.sensitivity);
+        _show_gui_toggle.SetToggled(options.show_gui);
+        _show_fog_toggle.SetToggled(options.show_fog);
+        _show_debug_toggle.SetToggled(options.show_debug_info);
+    }
 }
 
 bool UIOptionsMenu::IsActive()
@@ -1114,6 +1126,45 @@ void UIPauseMenu::Render()
     _quit_button.Render();
     if (_options_menu.IsActive())
         _options_menu.Render();
+}
+
+//
+// Debug Menu
+//
+
+UIDebugMenu::UIDebugMenu()
+{
+    
+}
+
+void UIDebugMenu::SetActive(bool value)
+{
+    _active = value;
+}
+
+bool UIDebugMenu::IsActive()
+{
+    return _active;
+}
+
+void UIDebugMenu::Update(DebugInfo debug_info)
+{
+    std::stringstream debug_text;
+    debug_text << "Lunacraft (indev)\n";
+    debug_text << "FPS: " << debug_info.fps << "\n";
+    debug_text << "Position: (" << std::fixed << std::setprecision(3) << debug_info.player_pos.x << ", " << debug_info.player_pos.y << ", " << debug_info.player_pos.z << ")\n";
+    debug_text << "Seed: " << debug_info.seed;
+
+    float text_height = UIText::GetTextSizeInPixels(debug_text.str(), 0.5f).y;
+    _debug_text.SetPosition({40, 1000});
+    _debug_text.SetText(debug_text.str());
+    _debug_text.SetFontSize(0.5f);
+    _debug_text.SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+}
+
+void UIDebugMenu::Render()
+{
+    _debug_text.Render();
 }
 
 //
