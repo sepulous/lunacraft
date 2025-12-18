@@ -879,6 +879,8 @@ bool UIOptionsMenu::IsActive()
 
 void UIOptionsMenu::Update(MouseState mouse_state)
 {
+    bool show_fog = _show_fog_toggle.IsToggled();
+
     _back_button.Update(mouse_state);
     _sfx_volume_slider.Update(mouse_state);
     _music_volume_slider.Update(mouse_state);
@@ -887,6 +889,13 @@ void UIOptionsMenu::Update(MouseState mouse_state)
     _show_gui_toggle.Update(mouse_state);
     _show_fog_toggle.Update(mouse_state);
     _show_debug_toggle.Update(mouse_state);
+
+    if (_show_fog_toggle.IsToggled() != show_fog)
+    {
+        Options options = OptionsManager::GetOptions();
+        options.show_fog = _show_fog_toggle.IsToggled();
+        OptionsManager::SetOptions(options);
+    }
 }
 
 void UIOptionsMenu::Render()

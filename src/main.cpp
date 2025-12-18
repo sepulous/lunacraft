@@ -296,11 +296,10 @@ int main()
         // Update/Render
         //
 
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
         if (game_state == GameState::MAIN_MENU)
         {
+            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             glDepthFunc(GL_LEQUAL);
 
             // Update moon loading progress
@@ -345,6 +344,8 @@ int main()
             //
             // Updates
             //
+
+            moon->UpdateWorldTime(delta_time);
 
             ChunkManager &chunk_manager = moon->GetChunkManager();
             EntityManager &entity_manager = moon->GetEntityManager();
@@ -416,6 +417,17 @@ int main()
             // Rendering
             //
 
+            if (OptionsManager::GetOptions().show_fog)
+            {
+                glm::vec4 fog_color = moon->GetFogColor();
+                glClearColor(fog_color.r, fog_color.g, fog_color.b, fog_color.a);
+            }
+            else
+            {
+                glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+            }
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
             Camera player_camera = player.GetCamera();
             glm::mat4 view = glm::lookAt(player_camera.position, player_camera.position + player_camera.forward, player_camera.up);
             glm::mat4 projection = glm::perspective(glm::radians(45.0), viewport.x / viewport.y, 0.1, 500.0);
@@ -427,6 +439,12 @@ int main()
             Shader block_shader = ShaderManager::BLOCK_SHADER;
             block_shader.Use();
             block_shader.SetMat4("view_projection", view_projection);
+            block_shader.SetVec3("camera_pos_ws", player_camera.position);
+            glm::vec4 fog_color = moon->GetFogColor();
+            if (!OptionsManager::GetOptions().show_fog)
+                fog_color.a = 0;
+            block_shader.SetVec4("fog_color", fog_color);
+            block_shader.SetFloat("fog_distance", current_render_distance * (CHUNK_SIZE / 1.5f));
 
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, texture_atlas);
@@ -440,9 +458,7 @@ int main()
             // Render skybox
             view = glm::mat4(glm::mat3(view));
             view_projection = projection * view;
-            float skybox_angle = 0.02f * current_time;
-            skybox.Update(view_projection, skybox_angle);
-            skybox.Render();
+            moon->RenderSkybox(view_projection);
 
             glDepthFunc(GL_LEQUAL);
 
