@@ -29,7 +29,7 @@ void EntityManager::Update()
         entity->Update();
 }
 
-void EntityManager::RunPhysics(int steps, float fixed_delta_time, float interp)
+void EntityManager::RunPhysics(int steps, float interp)
 {
     auto TestAABBWorld = [this](const AABB& box) {
         float min_x = glm::round(box.center.x - box.extents.x);
@@ -71,10 +71,10 @@ void EntityManager::RunPhysics(int steps, float fixed_delta_time, float interp)
             entity->SetPrevPosition(entity->GetPosition());
 
             // Gravity
-            entity->SetVelocity(entity->GetVelocity() - glm::vec3(0, 4.0f * fixed_delta_time, 0));
+            entity->SetVelocity(entity->GetVelocity() - glm::vec3(0, 4.0f * FIXED_DELTA_TIME, 0));
 
             // X
-            next_position.x += entity->GetVelocity().x * fixed_delta_time;
+            next_position.x += entity->GetVelocity().x * FIXED_DELTA_TIME;
             entity->GetAABB().center.x = next_position.x;
             if (TestAABBWorld(entity->GetAABB()))
             {
@@ -84,7 +84,7 @@ void EntityManager::RunPhysics(int steps, float fixed_delta_time, float interp)
             }
 
             // Z
-            next_position.z += entity->GetVelocity().z * fixed_delta_time;
+            next_position.z += entity->GetVelocity().z * FIXED_DELTA_TIME;
             entity->GetAABB().center.z = next_position.z;
             if (TestAABBWorld(entity->GetAABB()))
             {
@@ -94,7 +94,7 @@ void EntityManager::RunPhysics(int steps, float fixed_delta_time, float interp)
             }
 
             // Y
-            next_position.y += entity->GetVelocity().y * fixed_delta_time;
+            next_position.y += entity->GetVelocity().y * FIXED_DELTA_TIME;
             entity->GetAABB().center.y = next_position.y;
             if (TestAABBWorld(entity->GetAABB()))
             {

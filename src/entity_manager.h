@@ -18,7 +18,7 @@ class EntityManager
         void AddEntity(Entity *entity);
         void FixedUpdate();
         void Update();
-        void RunPhysics(int steps, float fixed_delta_time, float interp);
+        void RunPhysics(int steps, float interp);
 };
 
 #endif

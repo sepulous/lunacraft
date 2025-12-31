@@ -48,7 +48,7 @@ static Player player;
 
 static MouseState mouse_state;
 static GameState game_state = GameState::MAIN_MENU;
-static float loading_moon_progress = 0; 
+static float loading_moon_progress = 0;
 
 static void UpdateCamera(GLFWwindow *window, double x_pos, double y_pos)
 {
@@ -201,7 +201,6 @@ int main()
 
     float delta_time;
     float last_frame_time = 0;
-    const float fixed_delta_time = 0.02f;
     float accumulator = 0;
     int fps = 0;
     float last_pause_toggle_time = 0;
@@ -408,15 +407,15 @@ int main()
             accumulator += delta_time;
 
             // Fixed updates
-            if (accumulator >= fixed_delta_time)
+            if (accumulator >= FIXED_DELTA_TIME)
                 entity_manager.FixedUpdate();
 
             // Physics
             int physics_steps = 0;
-            if (accumulator >= fixed_delta_time)
-                physics_steps = (int)((accumulator - fixed_delta_time) / fixed_delta_time) + 1;
-            accumulator -= physics_steps * fixed_delta_time;
-            entity_manager.RunPhysics(physics_steps, fixed_delta_time, accumulator / fixed_delta_time);
+            if (accumulator >= FIXED_DELTA_TIME)
+                physics_steps = (int)((accumulator - FIXED_DELTA_TIME) / FIXED_DELTA_TIME) + 1;
+            accumulator -= physics_steps * FIXED_DELTA_TIME;
+            entity_manager.RunPhysics(physics_steps, accumulator / FIXED_DELTA_TIME);
 
             // Non-physics updates
             entity_manager.Update();
