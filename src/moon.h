@@ -26,7 +26,7 @@ class Moon
         ChunkManager &GetChunkManager();
         EntityManager &GetEntityManager();
         void UpdateWorldTime(double delta_time);
-        void RenderSkybox(glm::mat4 view_proj);
+        void RenderSkybox(const glm::mat4& view_proj);
         glm::vec4 GetFogColor();
         int GetID();
         MoonSettings GetSettings();

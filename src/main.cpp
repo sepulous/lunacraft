@@ -194,7 +194,7 @@ int main()
     Soundlib::SoundSource source(music);
     source.Play();
 
-    Skybox skybox; // TODO: I think the Moon should own the skybox (which is determined by world time, after all)
+    Skybox skybox;
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -202,7 +202,6 @@ int main()
     float delta_time;
     float last_frame_time = 0;
     float accumulator = 0;
-    int fps = 0;
     float last_pause_toggle_time = 0;
     float last_debug_toggle_time = 0;
     float last_debug_update_time = 0;
@@ -211,7 +210,6 @@ int main()
         float current_time = glfwGetTime();
         delta_time = current_time - last_frame_time;
         last_frame_time = current_time;
-        fps = (int)(1 / delta_time);
 
         //
         // Input
@@ -358,7 +356,7 @@ int main()
             if (ui_debug_menu.IsActive() && current_time - last_debug_update_time > 0.2f)
             {
                 DebugInfo debug_info;
-                debug_info.fps = fps;
+                debug_info.fps = (int)(1 / delta_time);
                 debug_info.player_pos = player.GetCamera().position;
                 debug_info.seed = moon->GetSettings().seed;
                 ui_debug_menu.Update(debug_info);

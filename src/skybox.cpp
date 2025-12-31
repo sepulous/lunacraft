@@ -107,7 +107,7 @@ Skybox::Skybox()
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 }
 
-void Skybox::Update(glm::mat4 view_projection, float skybox_angle)
+void Skybox::Update(const glm::mat4& view_projection, float skybox_angle)
 {
     Shader skybox_shader = ShaderManager::SKYBOX_SHADER;
     skybox_shader.Use();

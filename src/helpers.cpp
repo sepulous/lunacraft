@@ -3,23 +3,23 @@
 #include "constants.h"
 #include "block.h"
 
-int GetChunkIndex(int x, int y, int z)
+int GetChunkIndex(int x, int y, int z) noexcept
 {
     // This formula is tied to the loop order when chunks are generated (see chunk_gen.h)
     return y + (WORLD_HEIGHT_LIMIT * z) + (WORLD_HEIGHT_LIMIT * (CHUNK_SIZE + 2) * x);
 }
 
-bool BlockIsOpaque(BlockID block)
+bool BlockIsOpaque(BlockID block) noexcept
 {
     return !(block == BlockID::air || block == BlockID::water || block == BlockID::sulphur_crystal || block == BlockID::boron_crystal || block == BlockID::blue_crystal || block == BlockID::glass);
 }
 
-bool ShouldRenderFace(BlockID face, BlockID neighbor_face)
+bool ShouldRenderFace(BlockID face, BlockID neighbor_face) noexcept
 {
     return !(face == BlockID::air || face == neighbor_face || BlockIsOpaque(neighbor_face));
 }
 
-uint64_t ChunkCoordsToID(glm::ivec3 chunk_coords)
+uint64_t ChunkCoordsToID(const glm::ivec3& chunk_coords) noexcept
 {
     uint64_t combined = (uint64_t)((uint32_t)chunk_coords.x);
     combined <<= (sizeof(uint64_t) * 8 / 2);
@@ -27,7 +27,7 @@ uint64_t ChunkCoordsToID(glm::ivec3 chunk_coords)
     return combined;
 }
 
-glm::ivec3 ChunkIDToCoords(uint64_t id)
+glm::ivec3 ChunkIDToCoords(uint64_t id) noexcept
 {
     int chunk_z = (int)((uint32_t)id);
     id >>= (sizeof(uint64_t) * 8 / 2);
@@ -36,7 +36,7 @@ glm::ivec3 ChunkIDToCoords(uint64_t id)
 }
 
 // Convert arbitrary global position to nearest voxel position
-glm::ivec3 GetNearestVoxel(glm::vec3 global_pos)
+glm::ivec3 GetNearestVoxel(const glm::vec3& global_pos) noexcept
 {
     return glm::ivec3(
         glm::round(global_pos.x),
@@ -46,7 +46,7 @@ glm::ivec3 GetNearestVoxel(glm::vec3 global_pos)
 }
 
 // Get chunk coordinate the voxel position belongs to
-glm::ivec3 VoxelToChunk(glm::ivec3 voxel_pos)
+glm::ivec3 VoxelToChunk(const glm::ivec3& voxel_pos) noexcept
 {
     return glm::ivec3(
         glm::floor((float)voxel_pos.x / (float)CHUNK_SIZE),
@@ -56,7 +56,7 @@ glm::ivec3 VoxelToChunk(glm::ivec3 voxel_pos)
 }
 
 // Convert global voxel position to local (in chunk) voxel position
-glm::ivec3 GlobalToLocalVoxel(glm::ivec3 global_voxel_pos)
+glm::ivec3 GlobalToLocalVoxel(const glm::ivec3& global_voxel_pos) noexcept
 {
     glm::ivec3 chunk_coord = VoxelToChunk(global_voxel_pos);
     return glm::ivec3(
@@ -67,7 +67,7 @@ glm::ivec3 GlobalToLocalVoxel(glm::ivec3 global_voxel_pos)
 }
 
 // Convert local (in chunk) voxel position to global voxel position
-glm::ivec3 LocalToGlobalVoxel(glm::ivec3 local_voxel_pos, glm::ivec3 chunk_coord)
+glm::ivec3 LocalToGlobalVoxel(const glm::ivec3& local_voxel_pos, const glm::ivec3& chunk_coord) noexcept
 {
     return glm::ivec3(
         (local_voxel_pos.x - 1) + chunk_coord.x * CHUNK_SIZE,

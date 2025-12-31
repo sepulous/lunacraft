@@ -370,7 +370,7 @@ class UIDebugMenu
         UIDebugMenu();
         void SetActive(bool value);
         bool IsActive();
-        void Update(DebugInfo debug_info);
+        void Update(const DebugInfo& debug_info);
         void Render();
 };
 

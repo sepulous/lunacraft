@@ -20,28 +20,28 @@ class Entity
         virtual void Update() = 0;
         virtual void FixedUpdate() = 0;
 
-        AABB &GetAABB();
+        AABB &GetAABB() noexcept;
 
-        void SetPosition(glm::vec3 position);
-        glm::vec3 GetPosition();
+        void SetPosition(const glm::vec3& position) noexcept;
+        glm::vec3 GetPosition() noexcept;
 
-        void SetPrevPosition(glm::vec3 prev_position);
-        glm::vec3 GetPrevPosition();
+        void SetPrevPosition(const glm::vec3& prev_position) noexcept;
+        glm::vec3 GetPrevPosition() noexcept;
 
-        void SetNextPosition(glm::vec3 next_position);
-        glm::vec3 GetNextPosition();
+        void SetNextPosition(const glm::vec3& next_position) noexcept;
+        glm::vec3 GetNextPosition() noexcept;
 
-        void SetVelocity(glm::vec3 velocity);
-        glm::vec3 GetVelocity();
+        void SetVelocity(const glm::vec3& velocity) noexcept;
+        glm::vec3 GetVelocity() noexcept;
 
-        void SetInputDirection(glm::vec3 input_direction);
-        glm::vec3 GetInputDirection();
+        void SetInputDirection(const glm::vec3& input_direction) noexcept;
+        glm::vec3 GetInputDirection() noexcept;
 
-        void SetJumping(bool value);
-        bool IsJumping();
+        void SetJumping(bool value) noexcept;
+        bool IsJumping() noexcept;
 
-        void SetGrounded(bool value);
-        bool IsGrounded();
+        void SetGrounded(bool value) noexcept;
+        bool IsGrounded() noexcept;
 };
 
 #endif

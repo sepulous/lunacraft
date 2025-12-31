@@ -18,10 +18,10 @@ class Shader
         GLuint GetID();
         void SetInt(const char *name, int value);
         void SetFloat(const char *name, float value);
-        void SetVec3(const char *name, glm::vec3 vec);
-        void SetVec4(const char *name, glm::vec4 vec);
-        void SetMat3(const char *name, glm::mat3 mat);
-        void SetMat4(const char *name, glm::mat4 mat);
+        void SetVec3(const char *name, const glm::vec3& vec);
+        void SetVec4(const char *name, const glm::vec4& vec);
+        void SetMat3(const char *name, const glm::mat3& mat);
+        void SetMat4(const char *name, const glm::mat4& mat);
 };
 
 class ShaderManager

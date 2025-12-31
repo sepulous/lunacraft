@@ -1147,7 +1147,7 @@ bool UIDebugMenu::IsActive()
     return _active;
 }
 
-void UIDebugMenu::Update(DebugInfo debug_info)
+void UIDebugMenu::Update(const DebugInfo& debug_info)
 {
     std::stringstream debug_text;
     debug_text << "Lunacraft (indev)\n";

@@ -68,7 +68,7 @@ void Moon::UpdateWorldTime(double delta_time)
     _world_time += delta_time;
 }
 
-void Moon::RenderSkybox(glm::mat4 view_proj)
+void Moon::RenderSkybox(const glm::mat4& view_proj)
 {
     constexpr int PERIOD = LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE;
     float skybox_angle = glm::radians(90.0f + (360.0f / PERIOD) * _world_time);
