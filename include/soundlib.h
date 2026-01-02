@@ -16,7 +16,7 @@ namespace Soundlib
         Vector3 up;      // Direction listener's head points
     };
 
-    enum DistanceModel : int
+    enum AttenuationModel : int
     {
         INVERSE_DISTANCE,
         INVERSE_DISTANCE_CLAMPED, // OpenAL default
@@ -34,6 +34,14 @@ namespace Soundlib
         STOPPED
     };
 
+    enum SoundFormat : int
+    {
+        MONO8,
+        STEREO8,
+        MONO16,
+        STEREO16
+    };
+
     class Sound
     {
         friend class SoundSource;
@@ -45,7 +53,13 @@ namespace Soundlib
             ~Sound();
             Sound();
             Sound(const char*);
+            Sound(const char*, SoundFormat, float); // Only for RAW audio
+
+            Sound(const Sound&) = delete;
+            Sound& operator=(const Sound&) = delete;
+
             void LoadSound(const char*);
+            void LoadSoundRaw(const char*, SoundFormat, float);
     };
 
     class SoundSource
@@ -56,11 +70,11 @@ namespace Soundlib
         public:
             ~SoundSource();
             SoundSource();
-            SoundSource(Sound);
+            SoundSource(const Sound&);
 
             SourceState GetState();
 
-            void SetSound(Sound);
+            void SetSound(const Sound&);
             void Play();
             void Pause();
             void Stop();
@@ -76,6 +90,9 @@ namespace Soundlib
 
             float GetMaxDistance();
             void SetMaxDistance(float);
+
+            float GetReferenceDistance();
+            void SetReferenceDistance(float);
 
             float GetRolloffFactor();
             void SetRolloffFactor(float);
@@ -110,11 +127,11 @@ namespace Soundlib
 
     bool Init();
     bool Init(std::string);
-    void Exit(); // This doesn't strictly need to be called at the end of the program, but some OpenAL implementations will complain if you don't
+    void Exit();
     std::vector<std::string> GetDeviceList();
 
-    DistanceModel GetDistanceModel();
-    void SetDistanceModel(DistanceModel);
+    AttenuationModel GetAttenuationModel();
+    void SetAttenuationModel(AttenuationModel);
 
     float GetDopplerFactor();
     void SetDopplerFactor(float);
