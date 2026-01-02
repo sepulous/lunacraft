@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.13)
 project(Lunacraft)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
 
@@ -41,6 +41,7 @@ add_executable(Lunacraft
     src/entity.cpp
     src/chunk_manager.cpp
     src/entity_manager.cpp
+    src/sound_system.cpp
 )
 
 # Include directories

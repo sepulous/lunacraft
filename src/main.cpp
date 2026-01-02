@@ -21,7 +21,7 @@
 
 #include "ui.h"
 #include "shader.h"
-#include "soundlib.h"
+#include "sound_system.h"
 #include "storage.h"
 #include "input.h"
 #include "options.h"
@@ -161,7 +161,8 @@ int main()
     Storage::Init();
     OptionsManager::Init();
     ShaderManager::CompileAllShaders();
-    Soundlib::Init();
+    SoundSystem::Init();
+    SoundSystem::PlayAt(SoundSystem::Sound::SONG_1, {16, 70, 16});
 
     /////////////////////////////////////////
     int width, height, nrChannels;
@@ -188,12 +189,6 @@ int main()
     UIPauseMenu ui_pause_menu;
     UIDebugMenu ui_debug_menu;
 
-    Soundlib::Init();
-    Soundlib::SetListenerVolume(0.6f);
-    Soundlib::Sound music((Storage::ASSET_DIR / "sounds" / "theme1.mp3").c_str());
-    Soundlib::SoundSource source(music);
-    source.Play();
-
     Skybox skybox;
 
     glEnable(GL_BLEND);
@@ -205,11 +200,20 @@ int main()
     float last_pause_toggle_time = 0;
     float last_debug_toggle_time = 0;
     float last_debug_update_time = 0;
+    float last_sound_update_time = 0;
     while (!glfwWindowShouldClose(window))
     {
         float current_time = glfwGetTime();
         delta_time = current_time - last_frame_time;
         last_frame_time = current_time;
+
+        if (current_time - last_sound_update_time >= 0.2f)
+        {
+            SoundSystem::Update(OptionsManager::GetOptions());
+            SoundSystem::SetPlayerPosition(player.GetPosition());
+            SoundSystem::SetPlayerOrientation(player.GetCamera().forward, player.GetCamera().up);
+            last_sound_update_time = current_time;
+        }
 
         //
         // Input
@@ -490,7 +494,7 @@ int main()
     }
 
     OptionsManager::SaveOptions();
-    Soundlib::Exit();
+    SoundSystem::Exit();
     glfwTerminate();
 
     return 0;
