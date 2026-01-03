@@ -50,7 +50,7 @@ void SoundSystem::Update(Options options)
     });
 
     // Update volumes
-    for (std::tuple<Sound, Soundlib::SoundSource *> sound : _active_sounds)
+    for (std::tuple<Sound, Soundlib::SoundSource *>& sound : _active_sounds)
     {
         Sound sound_id = std::get<0>(sound);
         if (sound_id == Sound::SONG_1 || sound_id == Sound::SONG_2 || sound_id == Sound::SONG_3 || sound_id == Sound::SONG_4 || sound_id == Sound::SONG_5)
