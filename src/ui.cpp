@@ -1822,7 +1822,6 @@ void UIToggleButton::Render()
 
 UISlider::UISlider()
 {
-    _slider_bg_left.LoadImage(Storage::IMAGE_DIR / "ui" / "ui_slider_bg_left.png");
     _slider_bg_middle.LoadImage(Storage::IMAGE_DIR / "ui" / "ui_slider_bg_middle.png");
     _slider_bg_right.LoadImage(Storage::IMAGE_DIR / "ui" / "ui_slider_bg_right.png");
 
@@ -1873,7 +1872,6 @@ void UISlider::SetPosition(glm::vec2 position)
 {
     _position = position;
 
-    _slider_bg_left.SetPosition(position);
     _slider_bg_middle.SetPosition({position.x + 10, position.y});
     _slider_bg_right.SetPosition({position.x + 10 + _size.x, position.y});
 
@@ -1887,8 +1885,6 @@ void UISlider::SetPosition(glm::vec2 position)
 void UISlider::SetSize(glm::vec2 size)
 {
     _size = size;
-
-    _slider_bg_left.SetSize(size, true);
 
     _slider_bg_middle.SetSize(size, false);
     _slider_bg_middle.SetPosition({_position.x + 10, _position.y});
@@ -1939,7 +1935,6 @@ void UISlider::Update(MouseState mouse_state)
             _value = glm::round(_value);
         float f = (_value - _value_min) / (_value_max - _value_min);
         float handle_pos_x = _position.x + f*_size.x - 20;
-        //_slider_level.SetSize({handle_pos_x - _position.x + 20, _size.y});
         _slider_level_middle.SetSize({handle_pos_x - _position.x + 20, _size.y}, false);
         _slider_handle.SetPosition({handle_pos_x, _position.y - 16});
         _slider_handle_held.SetPosition({handle_pos_x, _position.y - 16});
@@ -1959,7 +1954,6 @@ void UISlider::Update(MouseState mouse_state)
 
 void UISlider::Render()
 {
-    _slider_bg_left.Render();
     _slider_bg_middle.Render();
     _slider_bg_right.Render();
     _slider_level_left.Render();

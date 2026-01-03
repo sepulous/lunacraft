@@ -146,9 +146,8 @@ class UISlider
         float _value_max = 1.0f;
         glm::vec2 _position;
         glm::vec2 _size;
-        UIImage _slider_bg_left;      // This is a bit of a hack so sliders can be resized arbitrarily
-        UIImage _slider_bg_middle;    // without distorting the rounded corners
-        UIImage _slider_bg_right;     // 
+        UIImage _slider_bg_middle;    // This is a bit of a hack so sliders can be resized arbitrarily
+        UIImage _slider_bg_right;     // without distorting the rounded corners
         UIImage _slider_level_left;   //
         UIImage _slider_level_middle; //
         UIImage _slider_handle;
