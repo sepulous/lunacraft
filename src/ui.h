@@ -276,6 +276,8 @@ class UIOptionsMenu
         UIToggleButton _show_fog_toggle;
         UIText _show_debug;
         UIToggleButton _show_debug_toggle;
+        UIText _fullscreen;
+        UIToggleButton _fullscreen_toggle;
         UIButton _back_button;
 
     public:

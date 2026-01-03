@@ -50,77 +50,10 @@ static MouseState mouse_state;
 static GameState game_state = GameState::MAIN_MENU;
 static float loading_moon_progress = 0;
 
-static void UpdateCamera(GLFWwindow *window, double x_pos, double y_pos)
-{
-    float x_offset = x_pos - last_mouse_pos.x;
-    float y_offset = last_mouse_pos.y - y_pos; // Reversed since y ranges from bottom to top
-    last_mouse_pos = {x_pos, y_pos};
-    player.UpdateCamera(x_pos, y_pos, x_offset, y_offset);
-}
-
-void LoadMoon(int moon_id, MoonSettings moon_settings)
-{
-    moon = new Moon(moon_id, moon_settings);
-
-    // Create/fetch player data
-    std::filesystem::path moon_dir = Storage::MOON_DIR / (std::string("moon") + std::to_string(moon_id));
-    std::filesystem::path player_data_path = moon_dir / "player.dat";
-    if (std::filesystem::exists(player_data_path))
-    {
-        PlayerData player_data;
-        std::ifstream player_data_file(player_data_path, std::ios::binary);
-        player_data_file.read(reinterpret_cast<char *>(&player_data), sizeof(PlayerData));
-        player_data_file.close();
-
-        player.SetPosition(player_data.position);
-        player.SetPrevPosition(player_data.position);
-        player.SetNextPosition(player_data.position);
-        player.SetHealth(player_data.health);
-        player.SetSuitStatus(player_data.suit_status);
-        player.SetCameraRotation({player_data.camera_rotation.x, player_data.camera_rotation.y});
-    }
-    else
-    {
-        PlayerData player_data;
-        player_data.health = player.GetHealth();
-        player_data.suit_status = player.GetSuitStatus();
-        player_data.position = player.GetPosition();
-        player_data.camera_rotation = player.GetCameraRotation();
-
-        std::ofstream player_data_file(player_data_path, std::ios::binary);
-        player_data_file.write(reinterpret_cast<char *>(&player_data), sizeof(PlayerData));
-        player_data_file.close();
-    }
-
-    moon->GetEntityManager().AddEntity(&player);
-    
-    // Load initial chunks around player
-    ChunkManager &chunk_manager = moon->GetChunkManager();
-    int render_distance = OptionsManager::GetOptions().render_distance;
-    glm::ivec3 player_chunk_coords = VoxelToChunk({player.GetPosition().x, player.GetPosition().y, player.GetPosition().z});
-    for (int dx = -render_distance; dx <= render_distance; dx++)
-        for (int dz = -render_distance; dz <= render_distance; dz++)
-            chunk_manager.QueueNewChunk({player_chunk_coords.x + dx, 0, player_chunk_coords.z + dz});
-}
-
-void GetFrustumPlanes(const glm::mat4& view_proj, Plane *frustum)
-{
-    int a, b;
-    for (int i = 0; i < 6; i++)
-    {
-        a = i / 2;
-        b = 1 - 2*(i & 1);
-
-        frustum[i].normal.x = view_proj[0][3] + view_proj[0][a] * b;
-        frustum[i].normal.y = view_proj[1][3] + view_proj[1][a] * b;
-        frustum[i].normal.z = view_proj[2][3] + view_proj[2][a] * b;
-        frustum[i].d        = view_proj[3][3] + view_proj[3][a] * b;
-
-        float len = glm::length(frustum[i].normal);
-        frustum[i].normal /= len;
-        frustum[i].d      /= len;
-    }
-};
+void UpdateCamera(GLFWwindow *window, double x_pos, double y_pos);
+void LoadMoon(int moon_id, MoonSettings moon_settings);
+void GetFrustumPlanes(const glm::mat4& view_proj, Plane *frustum);
+void SetFullscreen(GLFWwindow *window, bool fullscreen);
 
 int main()
 {
@@ -139,7 +72,6 @@ int main()
         glfwTerminate();
         return -1;
     }
-
     glfwMakeContextCurrent(window);
     glfwSwapInterval(0);
 
@@ -163,6 +95,21 @@ int main()
     ShaderManager::CompileAllShaders();
     SoundSystem::Init();
     SoundSystem::PlayAt(SoundSystem::Sound::SONG_1, {16, 70, 16});
+
+    if (OptionsManager::GetOptions().fullscreen)
+    {
+        GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+        const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+        glfwSetWindowMonitor(
+            window,
+            monitor,
+            0,
+            0,
+            mode->width,
+            mode->height,
+            mode->refreshRate
+        );
+    }
 
     /////////////////////////////////////////
     int width, height, nrChannels;
@@ -201,6 +148,7 @@ int main()
     float last_debug_toggle_time = 0;
     float last_debug_update_time = 0;
     float last_sound_update_time = 0;
+    bool fullscreen = OptionsManager::GetOptions().fullscreen;
     while (!glfwWindowShouldClose(window))
     {
         float current_time = glfwGetTime();
@@ -213,6 +161,13 @@ int main()
             SoundSystem::SetPlayerPosition(player.GetPosition());
             SoundSystem::SetPlayerOrientation(player.GetCamera().forward, player.GetCamera().up);
             last_sound_update_time = current_time;
+        }
+
+        // Fullscreen toggle
+        if (OptionsManager::GetOptions().fullscreen != fullscreen)
+        {
+            fullscreen = OptionsManager::GetOptions().fullscreen;
+            SetFullscreen(window, fullscreen);
         }
 
         //
@@ -498,4 +453,105 @@ int main()
     glfwTerminate();
 
     return 0;
+}
+
+void GetFrustumPlanes(const glm::mat4& view_proj, Plane *frustum)
+{
+    int a, b;
+    for (int i = 0; i < 6; i++)
+    {
+        a = i / 2;
+        b = 1 - 2*(i & 1);
+
+        frustum[i].normal.x = view_proj[0][3] + view_proj[0][a] * b;
+        frustum[i].normal.y = view_proj[1][3] + view_proj[1][a] * b;
+        frustum[i].normal.z = view_proj[2][3] + view_proj[2][a] * b;
+        frustum[i].d        = view_proj[3][3] + view_proj[3][a] * b;
+
+        float len = glm::length(frustum[i].normal);
+        frustum[i].normal /= len;
+        frustum[i].d      /= len;
+    }
+};
+
+void LoadMoon(int moon_id, MoonSettings moon_settings)
+{
+    moon = new Moon(moon_id, moon_settings);
+
+    // Create/fetch player data
+    std::filesystem::path moon_dir = Storage::MOON_DIR / (std::string("moon") + std::to_string(moon_id));
+    std::filesystem::path player_data_path = moon_dir / "player.dat";
+    if (std::filesystem::exists(player_data_path))
+    {
+        PlayerData player_data;
+        std::ifstream player_data_file(player_data_path, std::ios::binary);
+        player_data_file.read(reinterpret_cast<char *>(&player_data), sizeof(PlayerData));
+        player_data_file.close();
+
+        player.SetPosition(player_data.position);
+        player.SetPrevPosition(player_data.position);
+        player.SetNextPosition(player_data.position);
+        player.SetHealth(player_data.health);
+        player.SetSuitStatus(player_data.suit_status);
+        player.SetCameraRotation({player_data.camera_rotation.x, player_data.camera_rotation.y});
+    }
+    else
+    {
+        PlayerData player_data;
+        player_data.health = player.GetHealth();
+        player_data.suit_status = player.GetSuitStatus();
+        player_data.position = player.GetPosition();
+        player_data.camera_rotation = player.GetCameraRotation();
+
+        std::ofstream player_data_file(player_data_path, std::ios::binary);
+        player_data_file.write(reinterpret_cast<char *>(&player_data), sizeof(PlayerData));
+        player_data_file.close();
+    }
+
+    moon->GetEntityManager().AddEntity(&player);
+    
+    // Load initial chunks around player
+    ChunkManager &chunk_manager = moon->GetChunkManager();
+    int render_distance = OptionsManager::GetOptions().render_distance;
+    glm::ivec3 player_chunk_coords = VoxelToChunk({player.GetPosition().x, player.GetPosition().y, player.GetPosition().z});
+    for (int dx = -render_distance; dx <= render_distance; dx++)
+        for (int dz = -render_distance; dz <= render_distance; dz++)
+            chunk_manager.QueueNewChunk({player_chunk_coords.x + dx, 0, player_chunk_coords.z + dz});
+}
+
+void UpdateCamera(GLFWwindow *window, double x_pos, double y_pos)
+{
+    float x_offset = x_pos - last_mouse_pos.x;
+    float y_offset = last_mouse_pos.y - y_pos; // Reversed since y ranges from bottom to top
+    last_mouse_pos = {x_pos, y_pos};
+    player.UpdateCamera(x_pos, y_pos, x_offset, y_offset);
+}
+
+void SetFullscreen(GLFWwindow *window, bool fullscreen)
+{
+    GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+    const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+    if (fullscreen)
+    {
+        glfwSetWindowMonitor(
+            window,
+            monitor,
+            0, 0,
+            mode->width,
+            mode->height,
+            mode->refreshRate
+        );
+    }
+    else
+    {
+        glfwSetWindowMonitor(
+            window,
+            nullptr,
+            ((float)mode->width / 2.0f) - (1280.0f / 2.0f),
+            ((float)mode->height / 2.0f) - (720.0f / 2.0f),
+            1280,
+            720,
+            0 // Refresh rate is ignored in windowed mode
+        );
+    }
 }

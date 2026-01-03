@@ -847,6 +847,18 @@ UIOptionsMenu::UIOptionsMenu()
     _show_debug_toggle.SetSize({40, 40});
     _show_debug_toggle.SetToggled(current_options.show_debug_info);
 
+    // Fullscreen
+    float fullscreen_text_width = UIText::GetTextSizeInPixels("Fullscreen:", option_font_size).x;
+    _fullscreen.SetPosition({bg_pos_x + option_text_align_x2 - fullscreen_text_width, 440});
+    _fullscreen.SetText("Fullscreen:");
+    _fullscreen.SetFontSize(option_font_size);
+    _fullscreen.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
+
+    // Fullscreen toggle
+    _fullscreen_toggle.SetPosition({bg_pos_x + option_text_align_x2 + 20, 440 - 10});
+    _fullscreen_toggle.SetSize({40, 40});
+    _fullscreen_toggle.SetToggled(current_options.fullscreen);
+
     // Back button
     glm::vec2 back_button_position = {bg_pos_x + 50, bg_pos_y + 40};
     glm::vec2 back_button_size = {160, 80};
@@ -906,6 +918,7 @@ void UIOptionsMenu::Update(MouseState mouse_state)
     _show_gui_toggle.Update(mouse_state);
     _show_fog_toggle.Update(mouse_state);
     _show_debug_toggle.Update(mouse_state);
+    _fullscreen_toggle.Update(mouse_state);
 
     // if (mouse_state.left_held)
     {
@@ -917,6 +930,7 @@ void UIOptionsMenu::Update(MouseState mouse_state)
         options.show_gui = _show_gui_toggle.IsToggled();
         options.show_fog = _show_fog_toggle.IsToggled();
         options.show_debug_info = _show_debug_toggle.IsToggled();
+        options.fullscreen = _fullscreen_toggle.IsToggled();
         OptionsManager::SetOptions(options);
     }
 }
@@ -939,6 +953,8 @@ void UIOptionsMenu::Render()
     _show_fog_toggle.Render();
     _show_debug.Render();
     _show_debug_toggle.Render();
+    _fullscreen.Render();
+    _fullscreen_toggle.Render();
     _back_button.Render();
 }
 
