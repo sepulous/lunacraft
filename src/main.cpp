@@ -50,10 +50,10 @@ static MouseState mouse_state;
 static GameState game_state = GameState::MAIN_MENU;
 static float loading_moon_progress = 0;
 
-void UpdateCamera(GLFWwindow *window, double x_pos, double y_pos);
-void LoadMoon(int moon_id, MoonSettings moon_settings);
-void GetFrustumPlanes(const glm::mat4& view_proj, Plane *frustum);
 void SetFullscreen(GLFWwindow *window, bool fullscreen);
+void UpdateCamera(GLFWwindow *window, double x_pos, double y_pos);
+void GetFrustumPlanes(const glm::mat4& view_proj, Plane *frustum);
+void LoadMoon(int moon_id, MoonSettings moon_settings);
 
 int main()
 {
@@ -148,6 +148,7 @@ int main()
     float last_debug_toggle_time = 0;
     float last_debug_update_time = 0;
     float last_sound_update_time = 0;
+    float next_music_time = glfwGetTime() + RandomRange(8 * 60, 12 * 60 + 1); // Every 8-12 minutes
     bool fullscreen = OptionsManager::GetOptions().fullscreen;
     while (!glfwWindowShouldClose(window))
     {
@@ -155,6 +156,7 @@ int main()
         delta_time = current_time - last_frame_time;
         last_frame_time = current_time;
 
+        // Update sound system
         if (current_time - last_sound_update_time >= 0.2f)
         {
             SoundSystem::Update(OptionsManager::GetOptions());
@@ -168,6 +170,22 @@ int main()
         {
             fullscreen = OptionsManager::GetOptions().fullscreen;
             SetFullscreen(window, fullscreen);
+        }
+
+        // Play random song
+        if (current_time >= next_music_time)
+        {
+            int song = RandomRange(0, 4);
+            if (song == 0)
+                SoundSystem::Play(SoundSystem::Sound::SONG_2);
+            else if (song == 1)
+                SoundSystem::Play(SoundSystem::Sound::SONG_3);
+            else if (song == 2)
+                SoundSystem::Play(SoundSystem::Sound::SONG_4);
+            else
+                SoundSystem::Play(SoundSystem::Sound::SONG_5);
+
+            next_music_time = current_time + RandomRange(8 * 60, 12 * 60 + 1); // Every 8-12 minutes
         }
 
         //
