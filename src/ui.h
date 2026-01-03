@@ -44,6 +44,7 @@ class UIImage
         GLuint _texture;
         glm::vec2 _position;
         glm::vec2 _size;
+        float _aspect_ratio;
         
     public:
         UIImage(GLint filtering = GL_LINEAR);
@@ -51,7 +52,7 @@ class UIImage
         void LoadImage(std::filesystem::path image_path, GLint filtering = GL_LINEAR);
         void SetPosition(glm::vec2 position);
         glm::vec2 GetPosition();
-        void SetSize(glm::vec2 size);
+        void SetSize(glm::vec2 size, bool preserve_aspect_ratio = false);
         glm::vec2 GetSize();
         void Render();
 };
@@ -88,9 +89,7 @@ class UIText
 class UIButton
 {
     private:
-        GLuint _vao;
-        GLuint _vbo;
-        GLuint _texture;
+        UIImage _image;
         bool _hovered = false;
         bool _clicked = false;
         bool _held = false;
@@ -147,8 +146,11 @@ class UISlider
         float _value_max = 1.0f;
         glm::vec2 _position;
         glm::vec2 _size;
-        UIButton _slider_bg;
-        UIButton _slider_level;
+        UIImage _slider_bg_left;      // This is a bit of a hack so sliders can be resized arbitrarily
+        UIImage _slider_bg_middle;    // without distorting the rounded corners
+        UIImage _slider_bg_right;     // 
+        UIImage _slider_level_left;   //
+        UIImage _slider_level_middle; //
         UIImage _slider_handle;
         UIImage _slider_handle_held;
         UIText _slider_value_text;
@@ -165,7 +167,6 @@ class UISlider
         void Render();
 };
 
-// This is just a simplified UISlider
 class UIProgressBar
 {
     private:

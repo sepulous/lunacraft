@@ -97,6 +97,7 @@ UIMainMenu::UIMainMenu(GLFWwindow *window)
         glm::vec2 button_size = {820, 105};
         moon_button.SetSize(button_size);
         moon_button.SetPosition(button_position);
+        moon_button.SetImage(Storage::IMAGE_DIR / "ui" / "ui_button_1.png");
 
         std::string button_text;
         std::string moon_folder = Storage::MOON_DIR / (std::string("moon") + std::to_string(i));
@@ -151,6 +152,7 @@ UIMainMenu::UIMainMenu(GLFWwindow *window)
         glm::vec2 button_size = {210, 80};
         reset_button.SetSize(button_size);
         reset_button.SetPosition(button_position);
+        reset_button.SetImage(Storage::IMAGE_DIR / "ui" / "ui_button_2.png");
 
         glm::vec2 text_size = UIText::GetTextSizeInPixels("Reset", 0.425f);
         reset_button.GetText().SetPosition({
@@ -172,6 +174,7 @@ UIMainMenu::UIMainMenu(GLFWwindow *window)
     float options_font_size = 0.6f;
     _options_button.SetSize(options_button_size);
     _options_button.SetPosition(options_button_position);
+    _options_button.SetImage(Storage::IMAGE_DIR / "ui" / "ui_button_3.png");
     glm::vec2 options_text_size = UIText::GetTextSizeInPixels("Options", options_font_size);
     _options_button.GetText().SetPosition({
         options_button_position.x + (options_button_size.x / 2.0f) - (options_text_size.x / 2.0f),
@@ -186,6 +189,7 @@ UIMainMenu::UIMainMenu(GLFWwindow *window)
     float quit_font_size = 0.6f;
     _quit_button.SetSize(quit_button_size);
     _quit_button.SetPosition(quit_button_position);
+    _quit_button.SetImage(Storage::IMAGE_DIR / "ui" / "ui_button_4.png");
     glm::vec2 quit_text_size = UIText::GetTextSizeInPixels("Quit", quit_font_size);
     _quit_button.GetText().SetPosition({
         quit_button_position.x + (quit_button_size.x / 2.0f) - (quit_text_size.x / 2.0f),
@@ -409,8 +413,8 @@ UIMoonSettingsMenu::UIMoonSettingsMenu()
 
     // Tree cover slider
     _tree_cover_slider.SetDiscrete(true);
-    _tree_cover_slider.SetPosition({bg_pos_x + setting_text_align_x + 20, 700 + 6});
     _tree_cover_slider.SetSize({460, 20});
+    _tree_cover_slider.SetPosition({bg_pos_x + setting_text_align_x + 20, 700});
     _tree_cover_slider.SetBounds({0.0f, 4.0f});
     _tree_cover_slider.SetValue(2.0f);
 
@@ -423,7 +427,7 @@ UIMoonSettingsMenu::UIMoonSettingsMenu()
 
     // Terrain roughness slider
     _roughness_slider.SetDiscrete(true);
-    _roughness_slider.SetPosition({bg_pos_x + setting_text_align_x + 20, 640 + 6});
+    _roughness_slider.SetPosition({bg_pos_x + setting_text_align_x + 20, 640});
     _roughness_slider.SetSize({460, 20});
     _roughness_slider.SetBounds({0.0f, 4.0f});
     _roughness_slider.SetValue(2.0f);
@@ -437,7 +441,7 @@ UIMoonSettingsMenu::UIMoonSettingsMenu()
 
     // Wildlife level slider
     _wildlife_slider.SetDiscrete(true);
-    _wildlife_slider.SetPosition({bg_pos_x + setting_text_align_x + 20, 580 + 6});
+    _wildlife_slider.SetPosition({bg_pos_x + setting_text_align_x + 20, 580});
     _wildlife_slider.SetSize({460, 20});
     _wildlife_slider.SetBounds({0.0f, 4.0f});
     _wildlife_slider.SetValue(2.0f);
@@ -481,6 +485,7 @@ UIMoonSettingsMenu::UIMoonSettingsMenu()
     float back_font_size = 0.4f;
     _back_button.SetPosition(back_button_position);
     _back_button.SetSize(back_button_size);
+    _back_button.SetImage(Storage::IMAGE_DIR / "ui" / "ui_button_4.png");
     _back_button.SetText("Back", back_font_size, {0.0f, 0.0f, 0.0f, 1.0f});
     glm::vec2 back_text_size = UIText::GetTextSizeInPixels("Back", back_font_size);
     _back_button.GetText().SetPosition({
@@ -495,6 +500,7 @@ UIMoonSettingsMenu::UIMoonSettingsMenu()
     float launch_font_size = 0.4f;
     _launch_button.SetPosition(launch_button_position);
     _launch_button.SetSize(launch_button_size);
+    _launch_button.SetImage(Storage::IMAGE_DIR / "ui" / "ui_button_3.png");
     _launch_button.SetText("Launch!", launch_font_size, {0.0f, 0.0f, 0.0f, 1.0f});
     glm::vec2 launch_text_size = UIText::GetTextSizeInPixels("Launch!", launch_font_size);
     _launch_button.GetText().SetPosition({
@@ -760,7 +766,7 @@ UIOptionsMenu::UIOptionsMenu()
     _sfx_volume.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
 
     // SFX volume slider
-    _sfx_volume_slider.SetPosition({bg_pos_x + option_text_align_x1 + 25, 685});
+    _sfx_volume_slider.SetPosition({bg_pos_x + option_text_align_x1 + 25, 680});
     _sfx_volume_slider.SetSize({240, 20});
     _sfx_volume_slider.SetBounds({0.0f, 1.0f});
     _sfx_volume_slider.SetValue(current_options.sfx_volume);
@@ -773,7 +779,7 @@ UIOptionsMenu::UIOptionsMenu()
     _music_volume.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
 
     // Music volume slider
-    _music_volume_slider.SetPosition({bg_pos_x + option_text_align_x1 + 25, 605});
+    _music_volume_slider.SetPosition({bg_pos_x + option_text_align_x1 + 25, 600});
     _music_volume_slider.SetSize({240, 20});
     _music_volume_slider.SetBounds({0.0f, 1.0f});
     _music_volume_slider.SetValue(current_options.music_volume);
@@ -786,7 +792,7 @@ UIOptionsMenu::UIOptionsMenu()
     _sensitivity.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
 
     // Sensitivity slider
-    _sensitivity_slider.SetPosition({bg_pos_x + option_text_align_x1 + 25, 525});
+    _sensitivity_slider.SetPosition({bg_pos_x + option_text_align_x1 + 25, 520});
     _sensitivity_slider.SetSize({240, 20});
     _sensitivity_slider.SetBounds({0.0f, 2.0f});
     _sensitivity_slider.SetValue(current_options.sensitivity);
@@ -800,7 +806,7 @@ UIOptionsMenu::UIOptionsMenu()
 
     // Render distance slider
     _render_distance_slider.SetDiscrete(true);
-    _render_distance_slider.SetPosition({bg_pos_x + option_text_align_x1 + 25, 445});
+    _render_distance_slider.SetPosition({bg_pos_x + option_text_align_x1 + 25, 440});
     _render_distance_slider.SetSize({240, 20});
     _render_distance_slider.SetBounds({1.0f, 16.0f});
     _render_distance_slider.SetValue(current_options.render_distance);
@@ -847,6 +853,7 @@ UIOptionsMenu::UIOptionsMenu()
     float back_font_size = 0.4f;
     _back_button.SetPosition(back_button_position);
     _back_button.SetSize(back_button_size);
+    _back_button.SetImage(Storage::IMAGE_DIR / "ui" / "ui_button_4.png");
     _back_button.SetText("Back", back_font_size, {0.0f, 0.0f, 0.0f, 1.0f});
     glm::vec2 back_text_size = UIText::GetTextSizeInPixels("Back", back_font_size);
     _back_button.GetText().SetPosition({
@@ -1046,6 +1053,7 @@ UIPauseMenu::UIPauseMenu()
     glm::vec2 resume_button_position = {(VIRTUAL_UI_WIDTH / 2.0f) - (button_size.x / 2.0f), 700};
     _resume_button.SetSize(button_size);
     _resume_button.SetPosition(resume_button_position);
+    _resume_button.SetImage(Storage::IMAGE_DIR / "ui" / "ui_button_3.png");
     _resume_button.SetText("Resume", text_scale, {0.0f, 0.0f, 0.0f, 1.0f});
     glm::vec2 resume_text_size = UIText::GetTextSizeInPixels("Resume", text_scale);
     _resume_button.GetText().SetPosition({
@@ -1057,6 +1065,7 @@ UIPauseMenu::UIPauseMenu()
     glm::vec2 options_button_position = {(VIRTUAL_UI_WIDTH / 2.0f) - (button_size.x / 2.0f), 500};
     _options_button.SetSize(button_size);
     _options_button.SetPosition(options_button_position);
+    _options_button.SetImage(Storage::IMAGE_DIR / "ui" / "ui_button_3.png");
     _options_button.SetText("Options", text_scale, {0.0f, 0.0f, 0.0f, 1.0f});
     glm::vec2 options_text_size = UIText::GetTextSizeInPixels("Options", text_scale);
     _options_button.GetText().SetPosition({
@@ -1068,6 +1077,7 @@ UIPauseMenu::UIPauseMenu()
     glm::vec2 quit_button_position = {(VIRTUAL_UI_WIDTH / 2.0f) - (button_size.x / 2.0f), 300};
     _quit_button.SetSize(button_size);
     _quit_button.SetPosition(quit_button_position);
+    _quit_button.SetImage(Storage::IMAGE_DIR / "ui" / "ui_button_3.png");
     _quit_button.SetText("Save & Quit", text_scale, {0.0f, 0.0f, 0.0f, 1.0f});
     glm::vec2 quit_text_size = UIText::GetTextSizeInPixels("Save & Quit", text_scale);
     _quit_button.GetText().SetPosition({
@@ -1242,6 +1252,7 @@ UIImage::UIImage(std::filesystem::path image_path, glm::vec2 position, glm::vec2
 
     _position = position;
     _size = size;
+    _aspect_ratio = (float)image_width / (float)image_height;
 }
 
 void UIImage::LoadImage(std::filesystem::path image_path, GLint filtering)
@@ -1257,6 +1268,8 @@ void UIImage::LoadImage(std::filesystem::path image_path, GLint filtering)
     glTexImage2D(GL_TEXTURE_2D, 0, format, image_width, image_height, 0, format, GL_UNSIGNED_BYTE, image_data);
 
     stbi_image_free(image_data);
+
+    _aspect_ratio = (float)image_width / (float)image_height;
 }
 
 void UIImage::SetPosition(glm::vec2 position)
@@ -1281,8 +1294,11 @@ glm::vec2 UIImage::GetPosition()
     return _position;
 }
 
-void UIImage::SetSize(glm::vec2 size)
+void UIImage::SetSize(glm::vec2 size, bool preserve_aspect_ratio)
 {
+    if (preserve_aspect_ratio)
+        size.x = size.y * _aspect_ratio;
+
     float vertices[] = {
     //  Position----------------------------------  UV--------
         _position.x,          _position.y,          0.0f, 0.0f, // Bottom left
@@ -1643,141 +1659,24 @@ UIButton::UIButton()
     _position = glm::vec2(0);
     _size = glm::vec2(1);
     _ClickAction = [](){};
-
-    glGenVertexArrays(1, &_vao);
-    glBindVertexArray(_vao);
-
-    glGenBuffers(1, &_vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, _vbo);
-
-    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    glGenTextures(1, &_texture);
-    glBindTexture(GL_TEXTURE_2D, _texture);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-    int image_width, image_height, num_channels;
-    stbi_set_flip_vertically_on_load(true);
-    std::filesystem::path button_path = Storage::IMAGE_DIR / "ui" / "ui_button.png";
-    unsigned char *image_data = stbi_load(button_path.c_str(), &image_width, &image_height, &num_channels, 0);
-    _button_image_size = {image_width, image_height};
-
-    int format = (num_channels == 3) ? GL_RGB : GL_RGBA; // I expect either 3 or 4 channels
-    glTexImage2D(GL_TEXTURE_2D, 0, format, image_width, image_height, 0, format, GL_UNSIGNED_BYTE, image_data);
-
-    stbi_image_free(image_data);
 }
 
 void UIButton::SetImage(std::filesystem::path image_path)
 {
-    int image_width, image_height, num_channels;
-    stbi_set_flip_vertically_on_load(true);
-    unsigned char *image_data = stbi_load(image_path.c_str(), &image_width, &image_height, &num_channels, 0);
-    _button_image_size = {image_width, image_height};
-
-    int format = (num_channels == 3) ? GL_RGB : GL_RGBA; // I expect either 3 or 4 channels
-    glBindTexture(GL_TEXTURE_2D, _texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, format, image_width, image_height, 0, format, GL_UNSIGNED_BYTE, image_data);
-
-    stbi_image_free(image_data);
+    _image.LoadImage(image_path);
 }
 
 void UIButton::SetPosition(glm::vec2 position)
 {
     _position = position;
     _text.SetPosition(position);
-
-    float desired_width = _size.x;
-    float desired_height = _size.y;
-
-    float scale = desired_height / _button_image_size.y;
-    float edge_width = 40.0f * scale;
-    float middle_width = desired_width - 2*edge_width;
-
-    float uv_1 = 40.0f / _button_image_size.x; // Right of the left edge
-    float uv_2 = 733.0f / _button_image_size.x; // Left of the right edge
-
-    float vertices[] = {
-    //  Left quad
-    //  Position--------------------------------------------  UV--------
-        position.x,              position.y,                  0.0f, 0.0f, // Bottom left
-        position.x + edge_width, position.y,                  uv_1, 0.0f, // Bottom right
-        position.x + edge_width, position.y + desired_height, uv_1, 1.0f, // Top right
-        position.x + edge_width, position.y + desired_height, uv_1, 1.0f, // Top right
-        position.x,              position.y + desired_height, 0.0f, 1.0f, // Top left
-        position.x,              position.y,                  0.0f, 0.0f, // Bottom left
-
-    //  Middle quad
-    //  Position-----------------------------------------------------------  UV--------
-        position.x + edge_width,                position.y,                  uv_1, 0.0f, // Bottom left
-        position.x + edge_width + middle_width, position.y,                  uv_2, 0.0f, // Bottom right
-        position.x + edge_width + middle_width, position.y + desired_height, uv_2, 1.0f, // Top right
-        position.x + edge_width + middle_width, position.y + desired_height, uv_2, 1.0f, // Top right
-        position.x + edge_width,                position.y + desired_height, uv_1, 1.0f, // Top left
-        position.x + edge_width,                position.y,                  uv_1, 0.0f, // Bottom left
-
-    //  Right quad
-    //  Position-----------------------------------------------------------  UV--------
-        position.x + edge_width + middle_width, position.y,                  uv_2, 0.0f, // Bottom left
-        position.x + desired_width,             position.y,                  1.0f, 0.0f, // Bottom right
-        position.x + desired_width,             position.y + desired_height, 1.0f, 1.0f, // Top right
-        position.x + desired_width,             position.y + desired_height, 1.0f, 1.0f, // Top right
-        position.x + edge_width + middle_width, position.y + desired_height, uv_2, 1.0f, // Top left
-        position.x + edge_width + middle_width, position.y,                  uv_2, 0.0f, // Bottom left
-    };
-    glBindBuffer(GL_ARRAY_BUFFER, _vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_DYNAMIC_DRAW);
+    _image.SetPosition(position);
 }
 
 void UIButton::SetSize(glm::vec2 size)
 {
     _size = size;
-
-    float desired_width = size.x;
-    float desired_height = size.y;
-
-    float scale = desired_height / _button_image_size.y;
-    float edge_width = 40.0f * scale;
-    float middle_width = desired_width - 2*edge_width;
-
-    float uv_1 = 40.0f / _button_image_size.x; // Right of the left edge
-    float uv_2 = 733.0f / _button_image_size.x; // Left of the right edge
-
-    float vertices[] = {
-    //  Left quad
-    //  Position----------------------------------------------  UV--------
-        _position.x,              _position.y,                  0.0f, 0.0f, // Bottom left
-        _position.x + edge_width, _position.y,                  uv_1, 0.0f, // Bottom right
-        _position.x + edge_width, _position.y + desired_height, uv_1, 1.0f, // Top right
-        _position.x + edge_width, _position.y + desired_height, uv_1, 1.0f, // Top right
-        _position.x,              _position.y + desired_height, 0.0f, 1.0f, // Top left
-        _position.x,              _position.y,                  0.0f, 0.0f, // Bottom left
-
-    //  Middle quad
-    //  Position-------------------------------------------------------------  UV--------
-        _position.x + edge_width,                _position.y,                  uv_1, 0.0f, // Bottom left
-        _position.x + edge_width + middle_width, _position.y,                  uv_2, 0.0f, // Bottom right
-        _position.x + edge_width + middle_width, _position.y + desired_height, uv_2, 1.0f, // Top right
-        _position.x + edge_width + middle_width, _position.y + desired_height, uv_2, 1.0f, // Top right
-        _position.x + edge_width,                _position.y + desired_height, uv_1, 1.0f, // Top left
-        _position.x + edge_width,                _position.y,                  uv_1, 0.0f, // Bottom left
-
-    //  Right quad
-    //  Position-------------------------------------------------------------  UV--------
-        _position.x + edge_width + middle_width, _position.y,                  uv_2, 0.0f, // Bottom left
-        _position.x + desired_width,             _position.y,                  1.0f, 0.0f, // Bottom right
-        _position.x + desired_width,             _position.y + desired_height, 1.0f, 1.0f, // Top right
-        _position.x + desired_width,             _position.y + desired_height, 1.0f, 1.0f, // Top right
-        _position.x + edge_width + middle_width, _position.y + desired_height, uv_2, 1.0f, // Top left
-        _position.x + edge_width + middle_width, _position.y,                  uv_2, 0.0f, // Bottom left
-    };
-    glBindBuffer(GL_ARRAY_BUFFER, _vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_DYNAMIC_DRAW);
+    _image.SetSize(size);
 }
 
 void UIButton::SetText(std::string text, float font_size, glm::vec4 color)
@@ -1828,10 +1727,7 @@ void UIButton::Render()
     else
         image_shader.SetFloat("darkness", 0.0f);
 
-    glBindVertexArray(_vao);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, _texture);
-    glDrawArrays(GL_TRIANGLES, 0, 18); // 3 quads, 6 verts/quad
+    _image.Render();
 
     ShaderManager::UI_TEXT_SHADER.Use();
     _text.Render();
@@ -1910,9 +1806,14 @@ void UIToggleButton::Render()
 
 UISlider::UISlider()
 {
-    _slider_bg.SetImage(Storage::IMAGE_DIR / "ui" / "ui_slider_bg.png");
-    _slider_level.SetImage(Storage::IMAGE_DIR / "ui" / "ui_slider_level.png");
-    _slider_handle.LoadImage(Storage::IMAGE_DIR / "ui" / "ui_slider_handle.png");
+    _slider_bg_left.LoadImage(Storage::IMAGE_DIR / "ui" / "ui_slider_bg_left.png");
+    _slider_bg_middle.LoadImage(Storage::IMAGE_DIR / "ui" / "ui_slider_bg_middle.png");
+    _slider_bg_right.LoadImage(Storage::IMAGE_DIR / "ui" / "ui_slider_bg_right.png");
+
+    _slider_level_left.LoadImage(Storage::IMAGE_DIR / "ui" / "ui_slider_level_left.png");
+    _slider_level_middle.LoadImage(Storage::IMAGE_DIR / "ui" / "ui_slider_level_middle.png");
+
+    _slider_handle.LoadImage(Storage::IMAGE_DIR / "ui" / "ui_slider_handle.png", GL_NEAREST);
     _slider_handle_held.LoadImage(Storage::IMAGE_DIR / "ui" / "ui_slider_handle_held.png");
     _slider_value_text.SetFontSize(0.5f);
     _slider_value_text.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
@@ -1925,9 +1826,9 @@ void UISlider::SetValue(float level)
         _value = glm::round(_value);
     float f = (_value - _value_min) / (_value_max - _value_min);
     float handle_pos_x = _position.x + f*_size.x - 20;
-    _slider_level.SetSize({handle_pos_x - _position.x + 20, _size.y});
-    _slider_handle.SetPosition({handle_pos_x, _position.y - 20});
-    _slider_handle_held.SetPosition({handle_pos_x, _position.y - 20});
+    _slider_level_middle.SetSize({handle_pos_x - _position.x + 20, _size.y}, false);
+    _slider_handle.SetPosition({handle_pos_x, _position.y - 16});
+    _slider_handle_held.SetPosition({handle_pos_x, _position.y - 16});
     _slider_value_text.SetPosition({handle_pos_x + 30, _position.y + 30});
     if (_discrete)
     {
@@ -1955,17 +1856,35 @@ void UISlider::SetBounds(glm::vec2 bounds)
 void UISlider::SetPosition(glm::vec2 position)
 {
     _position = position;
-    _slider_bg.SetPosition(position);
-    _slider_level.SetPosition(position);
-    _slider_handle.SetPosition({position.x - 20, position.y - 20});
-    _slider_handle_held.SetPosition({position.x - 20, position.y - 20});
+
+    _slider_bg_left.SetPosition(position);
+    _slider_bg_middle.SetPosition({position.x + 10, position.y});
+    _slider_bg_right.SetPosition({position.x + 10 + _size.x, position.y});
+
+    _slider_level_left.SetPosition(position);
+    _slider_level_middle.SetPosition({position.x + 10, position.y});
+
+    _slider_handle.SetPosition({position.x - 20, position.y - 16});
+    _slider_handle_held.SetPosition({position.x - 20, position.y - 16});
 }
 
 void UISlider::SetSize(glm::vec2 size)
 {
     _size = size;
-    _slider_bg.SetSize(size);
-    _slider_level.SetSize(size);
+
+    _slider_bg_left.SetSize(size, true);
+
+    _slider_bg_middle.SetSize(size, false);
+    _slider_bg_middle.SetPosition({_position.x + 10, _position.y});
+
+    _slider_bg_right.SetSize(size, true);
+    _slider_bg_right.SetPosition({_position.x + 10 + size.x, _position.y});
+
+    _slider_level_left.SetSize(size, true);
+
+    _slider_level_middle.SetSize(size, false);
+    _slider_level_middle.SetPosition({_position.x + 10, _position.y});
+
     float handle_size = size.y * 2.5f;
     _slider_handle.SetSize({handle_size, handle_size});
     _slider_handle_held.SetSize({handle_size, handle_size});
@@ -2004,9 +1923,10 @@ void UISlider::Update(MouseState mouse_state)
             _value = glm::round(_value);
         float f = (_value - _value_min) / (_value_max - _value_min);
         float handle_pos_x = _position.x + f*_size.x - 20;
-        _slider_level.SetSize({handle_pos_x - _position.x + 20, _size.y});
-        _slider_handle.SetPosition({handle_pos_x, _position.y - 20});
-        _slider_handle_held.SetPosition({handle_pos_x, _position.y - 20});
+        //_slider_level.SetSize({handle_pos_x - _position.x + 20, _size.y});
+        _slider_level_middle.SetSize({handle_pos_x - _position.x + 20, _size.y}, false);
+        _slider_handle.SetPosition({handle_pos_x, _position.y - 16});
+        _slider_handle_held.SetPosition({handle_pos_x, _position.y - 16});
         _slider_value_text.SetPosition({handle_pos_x + 30, _position.y + 30});
         if (_discrete)
         {
@@ -2023,8 +1943,11 @@ void UISlider::Update(MouseState mouse_state)
 
 void UISlider::Render()
 {
-    _slider_bg.Render();
-    _slider_level.Render();
+    _slider_bg_left.Render();
+    _slider_bg_middle.Render();
+    _slider_bg_right.Render();
+    _slider_level_left.Render();
+    _slider_level_middle.Render();
     if (_held)
     {
         _slider_handle_held.Render();
