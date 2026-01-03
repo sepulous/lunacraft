@@ -11,6 +11,8 @@
 
 #include "camera.h"
 #include "entity.h"
+#include "sound_system.h"
+#include "constants.h"
 
 struct PlayerData
 {
@@ -26,6 +28,8 @@ class Player : public Entity
         Camera _camera;
         int _health = 100;
         int _suit_status = 100;
+        bool _was_grounded = false;
+        float _fall_time = 0;
 
     public:
         Player()
@@ -57,6 +61,18 @@ class Player : public Entity
                 _velocity.y = 6.0f;
                 _is_jumping = false;
             }
+
+            if (!_was_grounded && _is_grounded)
+            {
+                if (_fall_time >= 1.0f)
+                    SoundSystem::Play(SoundSystem::Sound::LAND);
+                _fall_time = 0;
+            }
+            else if (!_was_grounded)
+            {
+                _fall_time += FIXED_DELTA_TIME;
+            }
+            _was_grounded = _is_grounded;
         }
 
         void UpdateCamera(double x_pos, double y_pos, double x_offset, double y_offset)
