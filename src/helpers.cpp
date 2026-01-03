@@ -1,4 +1,6 @@
 
+#include <cstdlib>
+
 #include "helpers.h"
 #include "constants.h"
 #include "block.h"
@@ -95,4 +97,19 @@ bool ChunkInFrustum(const Plane frustum[6], const glm::vec3& chunk_min, const gl
     }
 
     return true;
+}
+
+uint64_t SplitMix64(uint64_t& x)
+{
+    x += 0x9E3779B97F4A7C15ULL;
+    uint64_t z = x;
+    z = (z ^ (z >> 30ULL)) * 0xBF58476D1CE4E5B9ULL;
+    z = (z ^ (z >> 27ULL)) * 0x94D049BB133111EBULL;
+    return z ^ (z >> 31ULL);
+}
+
+int RandomRange(int min_inclusive, int max_exclusive)
+{
+    int range = max_exclusive - min_inclusive - 1;
+    return (int)((float)std::rand() * range / RAND_MAX) + min_inclusive;
 }

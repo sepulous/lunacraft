@@ -967,29 +967,14 @@ uint32_t GetStructureSeed(uint64_t world_seed, int chunk_x, int chunk_z)
     return (int)(hash & 0x7FFFFFFF);
 }
 
-uint64_t splitmix64(uint64_t& x)
-{
-    x += 0x9E3779B97F4A7C15ULL;
-    uint64_t z = x;
-    z = (z ^ (z >> 30ULL)) * 0xBF58476D1CE4E5B9ULL;
-    z = (z ^ (z >> 27ULL)) * 0x94D049BB133111EBULL;
-    return z ^ (z >> 31ULL);
-}
-
-int RandomRange(int minInclusive, int maxExclusive)
-{
-    int range = maxExclusive - minInclusive - 1;
-    return (int)((float)std::rand() * range / RAND_MAX) + minInclusive;
-}
-
 void GenerateHeightMap(int *heightMap, int chunkX, int chunkZ, uint64_t seed, float amplitude, float frequency, float persistence, int octaves, int terrainRoughness)
 {
     float frequency0 = frequency;
     float amplitude0 = amplitude;
     float divFactor = 32.0f - 4.0f * terrainRoughness;
     float heightLimit;
-    double offset_x = (double)(splitmix64(seed) & 0xFFFFFFFF);
-    double offset_z = (double)(splitmix64(seed) & 0xFFFFFFFF);
+    double offset_x = (double)(SplitMix64(seed) & 0xFFFFFFFF);
+    double offset_z = (double)(SplitMix64(seed) & 0xFFFFFFFF);
 
     for (int x = -1; x < CHUNK_SIZE + 1; x++)
     {
