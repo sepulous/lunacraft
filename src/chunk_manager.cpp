@@ -1,5 +1,6 @@
 
 #include <filesystem>
+#include <string>
 #include <fstream>
 
 #include "chunk_manager.h"

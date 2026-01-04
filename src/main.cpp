@@ -115,7 +115,7 @@ int main()
     int width, height, nrChannels;
     stbi_set_flip_vertically_on_load(true);
     std::filesystem::path atlas_path = Storage::IMAGE_DIR / "texture_atlas.png";
-    unsigned char *texture_atlas_data = stbi_load(atlas_path.c_str(), &width, &height, &nrChannels, 0);
+    unsigned char *texture_atlas_data = stbi_load(reinterpret_cast<const char *>(atlas_path.u8string().c_str()), &width, &height, &nrChannels, 0);
 
     GLuint texture_atlas;
     glGenTextures(1, &texture_atlas);

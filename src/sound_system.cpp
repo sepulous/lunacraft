@@ -1,6 +1,5 @@
 
 #include <iostream>
-
 #include <vector>
 
 #include "sound_system.h"
@@ -15,26 +14,26 @@ void SoundSystem::Init()
 {
     Soundlib::Init();
 
-    _sound_map[Sound::SONG_1].LoadSound((Storage::ASSET_DIR / "sounds" / "theme1.mp3").c_str());
-    _sound_map[Sound::SONG_2].LoadSound((Storage::ASSET_DIR / "sounds" / "theme2.mp3").c_str());
-    _sound_map[Sound::SONG_3].LoadSound((Storage::ASSET_DIR / "sounds" / "theme3.mp3").c_str());
-    _sound_map[Sound::SONG_4].LoadSound((Storage::ASSET_DIR / "sounds" / "theme4.mp3").c_str());
-    _sound_map[Sound::SONG_5].LoadSound((Storage::ASSET_DIR / "sounds" / "theme5.mp3").c_str());
-    _sound_map[Sound::BLOCK_BREAK].LoadSound((Storage::ASSET_DIR / "sounds" / "blockbreak.wav").c_str());
-    _sound_map[Sound::BLOCK_PLACE].LoadSound((Storage::ASSET_DIR / "sounds" / "blockplace.wav").c_str());
-    _sound_map[Sound::CRAFT].LoadSound((Storage::ASSET_DIR / "sounds" / "craft.wav").c_str());
-    _sound_map[Sound::DING].LoadSound((Storage::ASSET_DIR / "sounds" / "ding.wav").c_str());
-    _sound_map[Sound::DRILL].LoadSound((Storage::ASSET_DIR / "sounds" / "drill.wav").c_str());
-    _sound_map[Sound::DRILL2].LoadSound((Storage::ASSET_DIR / "sounds" / "drill2.wav").c_str());
-    _sound_map[Sound::DRILL3].LoadSound((Storage::ASSET_DIR / "sounds" / "drill3.wav").c_str());
-    _sound_map[Sound::FRIENDLY_SUMMON].LoadSound((Storage::ASSET_DIR / "sounds" / "friendlysummon.wav").c_str());
-    _sound_map[Sound::HURT].LoadSound((Storage::ASSET_DIR / "sounds" / "hurt.wav").c_str());
-    _sound_map[Sound::JETPACK].LoadSound((Storage::ASSET_DIR / "sounds" / "jetpack.wav").c_str());
-    _sound_map[Sound::JUMP].LoadSound((Storage::ASSET_DIR / "sounds" / "jump.wav").c_str());
-    _sound_map[Sound::LAND].LoadSound((Storage::ASSET_DIR / "sounds" / "land.wav").c_str());
-    _sound_map[Sound::LASER].LoadSound((Storage::ASSET_DIR / "sounds" / "lasergun.wav").c_str());
-    _sound_map[Sound::MEDKIT].LoadSound((Storage::ASSET_DIR / "sounds" / "medkit.wav").c_str());
-    _sound_map[Sound::PICKUP].LoadSound((Storage::ASSET_DIR / "sounds" / "pickup.wav").c_str());
+    _sound_map[Sound::SONG_1].LoadSound((Storage::ASSET_DIR / "sounds" / "theme1.mp3").string());
+    _sound_map[Sound::SONG_2].LoadSound((Storage::ASSET_DIR / "sounds" / "theme2.mp3").string());
+    _sound_map[Sound::SONG_3].LoadSound((Storage::ASSET_DIR / "sounds" / "theme3.mp3").string());
+    _sound_map[Sound::SONG_4].LoadSound((Storage::ASSET_DIR / "sounds" / "theme4.mp3").string());
+    _sound_map[Sound::SONG_5].LoadSound((Storage::ASSET_DIR / "sounds" / "theme5.mp3").string());
+    _sound_map[Sound::BLOCK_BREAK].LoadSound((Storage::ASSET_DIR / "sounds" / "blockbreak.wav").string());
+    _sound_map[Sound::BLOCK_PLACE].LoadSound((Storage::ASSET_DIR / "sounds" / "blockplace.wav").string());
+    _sound_map[Sound::CRAFT].LoadSound((Storage::ASSET_DIR / "sounds" / "craft.wav").string());
+    _sound_map[Sound::DING].LoadSound((Storage::ASSET_DIR / "sounds" / "ding.wav").string());
+    _sound_map[Sound::DRILL].LoadSound((Storage::ASSET_DIR / "sounds" / "drill.wav").string());
+    _sound_map[Sound::DRILL2].LoadSound((Storage::ASSET_DIR / "sounds" / "drill2.wav").string());
+    _sound_map[Sound::DRILL3].LoadSound((Storage::ASSET_DIR / "sounds" / "drill3.wav").string());
+    _sound_map[Sound::FRIENDLY_SUMMON].LoadSound((Storage::ASSET_DIR / "sounds" / "friendlysummon.wav").string());
+    _sound_map[Sound::HURT].LoadSound((Storage::ASSET_DIR / "sounds" / "hurt.wav").string());
+    _sound_map[Sound::JETPACK].LoadSound((Storage::ASSET_DIR / "sounds" / "jetpack.wav").string());
+    _sound_map[Sound::JUMP].LoadSound((Storage::ASSET_DIR / "sounds" / "jump.wav").string());
+    _sound_map[Sound::LAND].LoadSound((Storage::ASSET_DIR / "sounds" / "land.wav").string());
+    _sound_map[Sound::LASER].LoadSound((Storage::ASSET_DIR / "sounds" / "lasergun.wav").string());
+    _sound_map[Sound::MEDKIT].LoadSound((Storage::ASSET_DIR / "sounds" / "medkit.wav").string());
+    _sound_map[Sound::PICKUP].LoadSound((Storage::ASSET_DIR / "sounds" / "pickup.wav").string());
 }
 
 void SoundSystem::Exit()

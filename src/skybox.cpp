@@ -87,7 +87,7 @@ Skybox::Skybox()
     for (unsigned int i = 0; i < faces.size(); i++)
     {
         int width, height, nrChannels;
-        unsigned char *data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
+        unsigned char *data = stbi_load(reinterpret_cast<const char *>(faces[i].u8string().c_str()), &width, &height, &nrChannels, 0);
         if (data)
         {
             glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,

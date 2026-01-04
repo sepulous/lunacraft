@@ -100,7 +100,7 @@ UIMainMenu::UIMainMenu(GLFWwindow *window)
         moon_button.SetImage(Storage::IMAGE_DIR / "ui" / "ui_button_1.png");
 
         std::string button_text;
-        std::string moon_folder = Storage::MOON_DIR / (std::string("moon") + std::to_string(i));
+        std::filesystem::path moon_folder = Storage::MOON_DIR / (std::string("moon") + std::to_string(i));
         if (std::filesystem::exists(moon_folder))
         {
             int chunk_count = std::count_if(
@@ -210,7 +210,7 @@ void UIMainMenu::RefreshMoonButtonText()
         glm::vec2 button_size = {820, 105};
 
         std::string button_text;
-        std::string moon_folder = Storage::MOON_DIR / (std::string("moon") + std::to_string(i));
+        std::filesystem::path moon_folder = Storage::MOON_DIR / (std::string("moon") + std::to_string(i));
         if (std::filesystem::exists(moon_folder))
         {
             int chunk_count = std::count_if(
@@ -1233,7 +1233,7 @@ UIImage::UIImage(std::filesystem::path image_path, glm::vec2 position, glm::vec2
     // Create texture from image data
     int image_width, image_height, num_channels;
     stbi_set_flip_vertically_on_load(true);
-    unsigned char *image_data = stbi_load(image_path.c_str(), &image_width, &image_height, &num_channels, 0);
+    unsigned char *image_data = stbi_load(reinterpret_cast<const char *>(image_path.u8string().c_str()), &image_width, &image_height, &num_channels, 0);
 
     glGenTextures(1, &_texture);
     glBindTexture(GL_TEXTURE_2D, _texture);
@@ -1275,7 +1275,7 @@ void UIImage::LoadImage(std::filesystem::path image_path, GLint filtering)
 {
     int image_width, image_height, num_channels;
     stbi_set_flip_vertically_on_load(true);
-    unsigned char *image_data = stbi_load(image_path.c_str(), &image_width, &image_height, &num_channels, 0);
+    unsigned char *image_data = stbi_load(reinterpret_cast<const char *>(image_path.u8string().c_str()), &image_width, &image_height, &num_channels, 0);
 
     glBindTexture(GL_TEXTURE_2D, _texture); // Already exists since constructor was called
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filtering);
