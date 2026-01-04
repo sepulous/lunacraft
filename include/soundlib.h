@@ -16,7 +16,7 @@ namespace Soundlib
         Vector3 up;      // Direction listener's head points
     };
 
-    enum AttenuationModel : int
+    enum class AttenuationModel : int
     {
         INVERSE_DISTANCE,
         INVERSE_DISTANCE_CLAMPED, // OpenAL default
@@ -26,7 +26,7 @@ namespace Soundlib
         EXPONENT_DISTANCE_CLAMPED
     };
 
-    enum SourceState : int
+    enum class SourceState : int
     {
         INITIAL,
         PLAYING,
@@ -34,7 +34,7 @@ namespace Soundlib
         STOPPED
     };
 
-    enum SoundFormat : int
+    enum class SoundFormat : int
     {
         MONO8,
         STEREO8,
@@ -52,14 +52,17 @@ namespace Soundlib
         public:
             ~Sound();
             Sound();
-            Sound(const char*);
-            Sound(const char*, SoundFormat, float); // Only for RAW audio
+            Sound(const std::string&);
+            Sound(const std::string&, SoundFormat, float); // Only for RAW audio
 
             Sound(const Sound&) = delete;
             Sound& operator=(const Sound&) = delete;
 
-            void LoadSound(const char*);
-            void LoadSoundRaw(const char*, SoundFormat, float);
+            Sound(Sound&&) = delete;
+            Sound& operator=(Sound&&) = delete;
+
+            void LoadSound(const std::string&);
+            void LoadSoundRaw(const std::string&, SoundFormat, float);
     };
 
     class SoundSource
@@ -126,7 +129,7 @@ namespace Soundlib
     };
 
     bool Init();
-    bool Init(std::string);
+    bool Init(const std::string&);
     void Exit();
     std::vector<std::string> GetDeviceList();
 
