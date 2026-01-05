@@ -9,6 +9,8 @@ using Sound = SoundSystem::Sound;
 
 std::vector<std::tuple<Sound, Soundlib::SoundSource *>> SoundSystem::_active_sounds;
 std::unordered_map<Sound, Soundlib::Sound> SoundSystem::_sound_map;
+float SoundSystem::_sfx_volume;
+float SoundSystem::_music_volume;
 
 void SoundSystem::Init()
 {
@@ -49,13 +51,15 @@ void SoundSystem::Update(Options options)
     });
 
     // Update volumes
+    _sfx_volume = options.sfx_volume;
+    _music_volume = options.music_volume;
     for (std::tuple<Sound, Soundlib::SoundSource *>& sound : _active_sounds)
     {
         Sound sound_id = std::get<0>(sound);
         if (sound_id == Sound::SONG_1 || sound_id == Sound::SONG_2 || sound_id == Sound::SONG_3 || sound_id == Sound::SONG_4 || sound_id == Sound::SONG_5)
-            std::get<1>(sound)->SetGain(options.music_volume);
+            std::get<1>(sound)->SetGain(_music_volume);
         else
-            std::get<1>(sound)->SetGain(options.sfx_volume);
+            std::get<1>(sound)->SetGain(_sfx_volume);
     }
 }
 
@@ -64,6 +68,11 @@ void SoundSystem::Play(Sound sound)
 {
     Soundlib::SoundSource *source = new Soundlib::SoundSource(_sound_map[sound]);
     source->SetRolloffFactor(0);
+    source->SetGain(OptionsManager::GetOptions().sfx_volume);
+    if (sound == Sound::SONG_1 || sound == Sound::SONG_2 || sound == Sound::SONG_3 || sound == Sound::SONG_4 || sound == Sound::SONG_5)
+        source->SetGain(_music_volume);
+    else
+        source->SetGain(_sfx_volume);
     source->Play();
     _active_sounds.emplace_back(sound, source);
 }
@@ -73,6 +82,10 @@ void SoundSystem::PlayAt(Sound sound, glm::vec3 position)
 {
     Soundlib::SoundSource *source = new Soundlib::SoundSource(_sound_map[sound]);
     source->SetPosition({position.x, position.y, position.z});
+    if (sound == Sound::SONG_1 || sound == Sound::SONG_2 || sound == Sound::SONG_3 || sound == Sound::SONG_4 || sound == Sound::SONG_5)
+        source->SetGain(_music_volume);
+    else
+        source->SetGain(_sfx_volume);
     source->Play();
     _active_sounds.emplace_back(sound, source);
 }

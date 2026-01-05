@@ -50,6 +50,8 @@ class SoundSystem
     private:
         static std::vector<std::tuple<Sound, Soundlib::SoundSource *>> _active_sounds;
         static std::unordered_map<Sound, Soundlib::Sound> _sound_map;
+        static float _sfx_volume;
+        static float _music_volume;
 };
 
 #endif
