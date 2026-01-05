@@ -987,6 +987,7 @@ UIResetMoonMenu::UIResetMoonMenu()
     float cancel_font_size = 0.4f;
     _cancel_button.SetPosition(cancel_button_position);
     _cancel_button.SetSize(cancel_button_size);
+    _cancel_button.SetImage(Storage::IMAGE_DIR / "ui" / "ui_button_3.png");
     _cancel_button.SetText("Cancel", cancel_font_size, {0.0f, 0.0f, 0.0f, 1.0f});
     glm::vec2 cancel_text_size = UIText::GetTextSizeInPixels("Cancel", cancel_font_size);
     _cancel_button.GetText().SetPosition({
@@ -1001,6 +1002,7 @@ UIResetMoonMenu::UIResetMoonMenu()
     float reset_font_size = 0.4f;
     _reset_button.SetPosition(reset_button_position);
     _reset_button.SetSize(reset_button_size);
+    _reset_button.SetImage(Storage::IMAGE_DIR / "ui" / "ui_button_3.png");
     _reset_button.SetText("Reset", reset_font_size, {0.9f, 0.0f, 0.0f, 1.0f});
     glm::vec2 reset_text_size = UIText::GetTextSizeInPixels("Reset", reset_font_size);
     _reset_button.GetText().SetPosition({
