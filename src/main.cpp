@@ -20,7 +20,6 @@
 #include "player.h"
 #include "chunk.h"
 #include "block.h"
-#include "skybox.h"
 #include "constants.h"
 #include "helpers.h"
 #include "moon.h"
@@ -126,8 +125,6 @@ int main()
     UIMainMenu ui_main_menu(window);
     UIPauseMenu ui_pause_menu;
     UIDebugMenu ui_debug_menu;
-
-    Skybox skybox;
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
