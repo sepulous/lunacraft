@@ -14,6 +14,7 @@ class Moon
 {
     private:
         int _id = 0;
+        int _initial_chunk_count = 0;
         double _world_time;
         glm::vec4 _fog_color;
         Skybox _skybox;
@@ -29,6 +30,7 @@ class Moon
         void RenderSkybox(const glm::mat4& view_proj);
         glm::vec4 GetFogColor();
         int GetID();
+        float GetLoadProgress();
         MoonSettings GetSettings();
         void Unload();
 };

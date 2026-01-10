@@ -228,7 +228,9 @@ class UIMoonSettingsMenu
 {
     private:
         bool _active = false;
-        int _moon = 0;
+        bool _launch_clicked = false;
+        int _moon_id = 0;
+        MoonSettings _moon_settings;
         UIImage _background;
         UIText _title;
         UIText _tree_cover;
@@ -247,9 +249,13 @@ class UIMoonSettingsMenu
 
     public:
         UIMoonSettingsMenu();
-        void SetMoon(int moon);
+        void SetMoonID(int moon_id);
+        int GetMoonID();
+        MoonSettings GetMoonSettings();
         void SetActive(bool status);
         bool IsActive();
+        void SetLaunchButtonClicked(bool status);
+        bool IsLaunchButtonClicked();
         void Reset();
         void Update(float delta_time, MouseState mouse_state);
         void Render();
@@ -323,11 +329,16 @@ class UIMainMenu
         UIMoonSettingsMenu _moon_settings_menu;
         UIOptionsMenu _options_menu;
         UIResetMoonMenu _reset_moon_menu;
+        UILoadMoonMenu _load_moon_menu;
 
     public:
         UIMainMenu(GLFWwindow *window);
         void RefreshMoonButtonText();
         void ResetMoonSettings();
+        void SetLoadProgressLevel(float progress);
+        bool IsLaunchButtonClicked();
+        void SetLaunchButtonClicked(bool status);
+        std::pair<int, MoonSettings> GetMoonData();
         void Update(float delta_time, MouseState mouse_state);
         void Render(float delta_time);
 };

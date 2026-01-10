@@ -2,15 +2,7 @@
 #include <string>
 #include <fstream>
 #include <vector>
-#include <queue>
-#include <deque>
-#include <map>
 #include <thread>
-#include <mutex>
-#include <optional>
-#include <memory>
-#include <atomic>
-#include <unordered_map>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -48,7 +40,7 @@ static Player player;
 
 static MouseState mouse_state;
 static GameState game_state = GameState::MAIN_MENU;
-static float loading_moon_progress = 0;
+//static float loading_moon_progress = 0;
 
 void SetFullscreen(GLFWwindow *window, bool fullscreen);
 void UpdateCamera(GLFWwindow *window, double x_pos, double y_pos);
@@ -128,11 +120,10 @@ int main()
     glGenerateMipmap(GL_TEXTURE_2D);
 
     stbi_image_free(texture_atlas_data);
-    /////////////////////////////////////////e
+    /////////////////////////////////////////
 
     UIRescale(viewport, ui_virtual_to_window);
     UIMainMenu ui_main_menu(window);
-    UILoadMoonMenu ui_load_moon_menu;
     UIPauseMenu ui_pause_menu;
     UIDebugMenu ui_debug_menu;
 
@@ -283,28 +274,33 @@ int main()
             glDepthFunc(GL_LEQUAL);
 
             // Update moon loading progress
+            float moon_load_progress = 0;
             if (moon != nullptr)
             {
                 moon->GetChunkManager().BufferReadyChunks();
-                int render_distance = OptionsManager::GetOptions().render_distance;
-                int chunks_to_load = (2*render_distance + 1) * (2*render_distance + 1);
-                int loaded_chunks = moon->GetChunkManager().GetLoadedChunkCount();
-                loading_moon_progress = (float)loaded_chunks / (float)chunks_to_load;
+                moon_load_progress = moon->GetLoadProgress();
             }
 
             // Render
-            if (loading_moon_progress == 0)
+            if (moon_load_progress == 0)
             {
                 ui_main_menu.Update(delta_time, mouse_state);
                 ui_main_menu.Render(delta_time);
+
+                if (ui_main_menu.IsLaunchButtonClicked())
+                {
+                    auto moon_data = ui_main_menu.GetMoonData();
+                    LoadMoon(moon_data.first, moon_data.second);
+                    ui_main_menu.SetLaunchButtonClicked(false);
+                }
             }
             else
             {
+                ui_main_menu.Update(delta_time, mouse_state);
+                ui_main_menu.SetLoadProgressLevel(moon_load_progress);
                 ui_main_menu.Render(delta_time);
-                ui_load_moon_menu.Render();
 
-                ui_load_moon_menu.SetProgressLevel(loading_moon_progress);
-                if (loading_moon_progress >= 1.0f) // Only runs once when loading in
+                if (moon_load_progress >= 1.0f) // Only runs once when loading in
                 {
                     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
                     glfwSetCursorPos(window, last_mouse_pos.x, last_mouse_pos.y);
@@ -314,7 +310,8 @@ int main()
                     UpdateCamera(window, last_mouse_pos.x, last_mouse_pos.y);
 
                     ui_main_menu.ResetMoonSettings();
-                    loading_moon_progress = 0;
+                    moon_load_progress = 0;
+                    ui_main_menu.SetLoadProgressLevel(0);
                     game_state = GameState::IN_GAME;
                 }
             }

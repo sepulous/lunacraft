@@ -46,6 +46,8 @@ Moon::Moon(int moon_id, MoonSettings moon_settings)
     else
         _fog_color = glm::vec4(0.239, 0.067, 0.314, 1);
 
+    int render_distance = OptionsManager::GetOptions().render_distance;
+    _initial_chunk_count = (2*render_distance + 1) * (2*render_distance + 1);
     _id = moon_id;
     _settings = moon_settings;
     _world_time = moon_settings.world_time;
@@ -97,6 +99,12 @@ void Moon::Unload()
 int Moon::GetID()
 {
     return _id;
+}
+
+float Moon::GetLoadProgress()
+{
+    int loaded_chunks = _chunk_manager.GetLoadedChunkCount();
+    return (float)loaded_chunks / (float)_initial_chunk_count;
 }
 
 MoonSettings Moon::GetSettings()

@@ -28,8 +28,6 @@
 #define STBTT_STATIC
 #include <stb_truetype/stb_truetype.h>
 
-extern void LoadMoon(int, MoonSettings);
-
 int LAST_INPUT_KEY = ' ';
 bool LAST_INPUT_KEY_HANDLED = true;
 
@@ -113,7 +111,7 @@ UIMainMenu::UIMainMenu(GLFWwindow *window)
             {
                 button_text = std::string("Moon ") + "ABCD"[i] + " - Unexplored";
                 moon_button.SetClickAction([this, i]() {
-                    _moon_settings_menu.SetMoon(i);
+                    _moon_settings_menu.SetMoonID(i);
                     _moon_settings_menu.SetActive(true);
                 });
             }
@@ -123,14 +121,17 @@ UIMainMenu::UIMainMenu(GLFWwindow *window)
                 std::ostringstream text;
                 text << "Moon " << "ABCD"[i] << " - " << std::fixed << std::setprecision(1) << distance_traveled << " Sq km";
                 button_text = text.str();
-                moon_button.SetClickAction([i]() { LoadMoon(i, MoonSettings()); });
+                moon_button.SetClickAction([i, this]() {
+                    _moon_settings_menu.SetMoonID(i);
+                    _moon_settings_menu.SetLaunchButtonClicked(true);
+                });
             }
         }
         else
         {
             button_text = std::string("Moon ") + "ABCD"[i] + " - Unexplored";
             moon_button.SetClickAction([this, i]() {
-                _moon_settings_menu.SetMoon(i);
+                _moon_settings_menu.SetMoonID(i);
                 _moon_settings_menu.SetActive(true);
             });
         }
@@ -223,7 +224,7 @@ void UIMainMenu::RefreshMoonButtonText()
             {
                 button_text = std::string("Moon ") + "ABCD"[i] + " - Unexplored";
                 moon_button.SetClickAction([this, i]() {
-                    _moon_settings_menu.SetMoon(i);
+                    _moon_settings_menu.SetMoonID(i);
                     _moon_settings_menu.SetActive(true);
                 });
             }
@@ -233,14 +234,17 @@ void UIMainMenu::RefreshMoonButtonText()
                 std::ostringstream text;
                 text << "Moon " << "ABCD"[i] << " - " << std::fixed << std::setprecision(1) << distance_traveled << " Sq km";
                 button_text = text.str();
-                moon_button.SetClickAction([i]() { LoadMoon(i, MoonSettings()); });
+                moon_button.SetClickAction([i, this]() {
+                    _moon_settings_menu.SetMoonID(i);
+                    _moon_settings_menu.SetLaunchButtonClicked(true);
+                });
             }
         }
         else
         {
             button_text = std::string("Moon ") + "ABCD"[i] + " - Unexplored";
             moon_button.SetClickAction([this, i]() {
-                _moon_settings_menu.SetMoon(i);
+                _moon_settings_menu.SetMoonID(i);
                 _moon_settings_menu.SetActive(true);
             });
         }
@@ -260,11 +264,34 @@ void UIMainMenu::ResetMoonSettings()
     _moon_settings_menu.Reset();
 }
 
+void UIMainMenu::SetLoadProgressLevel(float progress)
+{
+    _load_moon_menu.SetActive(progress > 0);
+    _load_moon_menu.SetProgressLevel(progress);
+}
+
+bool UIMainMenu::IsLaunchButtonClicked()
+{
+    return _moon_settings_menu.IsLaunchButtonClicked();
+}
+
+void UIMainMenu::SetLaunchButtonClicked(bool status)
+{
+    return _moon_settings_menu.SetLaunchButtonClicked(status);
+}
+
+std::pair<int, MoonSettings> UIMainMenu::GetMoonData()
+{
+    return std::pair<int, MoonSettings>{_moon_settings_menu.GetMoonID(), _moon_settings_menu.GetMoonSettings()};
+}
+
 void UIMainMenu::Update(float delta_time, MouseState mouse_state)
 {
     if (_moon_settings_menu.IsActive())
     {
         _moon_settings_menu.Update(delta_time, mouse_state);
+        if (_moon_settings_menu.IsLaunchButtonClicked())
+            _load_moon_menu.SetActive(true);
     }
     else if (_options_menu.IsActive())
     {
@@ -276,7 +303,7 @@ void UIMainMenu::Update(float delta_time, MouseState mouse_state)
         if (_reset_moon_menu.ResetClicked())
             RefreshMoonButtonText();
     }
-    else // Player can't interact with buttons behind active menus
+    else if (!_load_moon_menu.IsActive()) // Player can't interact with buttons behind active menus
     {
         for (UIButton& moon_button : _moon_buttons)
             moon_button.Update(mouse_state);
@@ -376,6 +403,8 @@ void UIMainMenu::Render(float delta_time)
         _options_menu.Render();
     else if (_reset_moon_menu.IsActive())
         _reset_moon_menu.Render();
+    else if (_load_moon_menu.IsActive())
+        _load_moon_menu.Render();
 }
 
 //
@@ -508,15 +537,12 @@ UIMoonSettingsMenu::UIMoonSettingsMenu()
         launch_button_position.y + (launch_button_size.y / 2.0f) - (launch_text_size.y / 2.0f)
     });
     _launch_button.SetClickAction([this]() {
-        MoonSettings moon_settings;
-        moon_settings.tree_cover = (uint8_t)_tree_cover_slider.GetValue();
-        moon_settings.terrain_roughness = (uint8_t)_roughness_slider.GetValue();
-        moon_settings.wildlife_level = (uint8_t)_wildlife_slider.GetValue();
-        moon_settings.is_creative = _creative_button.IsToggled();
+        _moon_settings.tree_cover = (uint8_t)_tree_cover_slider.GetValue();
+        _moon_settings.terrain_roughness = (uint8_t)_roughness_slider.GetValue();
+        _moon_settings.wildlife_level = (uint8_t)_wildlife_slider.GetValue();
+        _moon_settings.is_creative = _creative_button.IsToggled();
 
         std::string seed_text = _seed_textbox.GetText();
-
-        // Trim whitespace in seed
         std::stringstream trimmed_seed;
         for (char c : seed_text)
             if (c != ' ')
@@ -539,16 +565,26 @@ UIMoonSettingsMenu::UIMoonSettingsMenu()
             }
         }
         
-        moon_settings.seed = seed;
+        _moon_settings.seed = seed;
 
         SetActive(false);
-        LoadMoon(_moon, moon_settings);
+        SetLaunchButtonClicked(true);
     });
 }
 
-void UIMoonSettingsMenu::SetMoon(int moon)
+void UIMoonSettingsMenu::SetMoonID(int moon_id)
 {
-    _moon = moon;
+    _moon_id = moon_id;
+}
+
+int UIMoonSettingsMenu::GetMoonID()
+{
+    return _moon_id;
+}
+
+MoonSettings UIMoonSettingsMenu::GetMoonSettings()
+{
+    return _moon_settings;
 }
 
 void UIMoonSettingsMenu::SetActive(bool status)
@@ -559,6 +595,16 @@ void UIMoonSettingsMenu::SetActive(bool status)
 bool UIMoonSettingsMenu::IsActive()
 {
     return _active;
+}
+
+void UIMoonSettingsMenu::SetLaunchButtonClicked(bool status)
+{
+    _launch_clicked = status;
+}
+
+bool UIMoonSettingsMenu::IsLaunchButtonClicked()
+{
+    return _launch_clicked;
 }
 
 void UIMoonSettingsMenu::Reset()
