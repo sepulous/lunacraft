@@ -19,6 +19,7 @@
 #include "input.h"
 #include "shader.h"
 #include "options.h"
+#include "viewport.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_STATIC
@@ -41,10 +42,10 @@ static void _HandleTextInput(GLFWwindow* window, int key, int scancode, int acti
 }
 
 // NOTE: Must compile shaders before calling this!
-void UIRescale(glm::dvec2 viewport, glm::mat4 virtual_to_window)
+void UIRescale(const Viewport &viewport)
 {
-    glm::mat4 proj = glm::ortho(0.0, viewport.x, 0.0, viewport.y, -1.0, 1.0);
-    glm::mat4 ui_matrix = proj * virtual_to_window;
+    glm::mat4 proj = glm::ortho(0.0, viewport.dimensions.x, 0.0, viewport.dimensions.y, -1.0, 1.0);
+    glm::mat4 ui_matrix = proj * viewport.ui_virtual_to_window;
 
     ShaderManager::UI_IMAGE_SHADER.Use();
     glUniformMatrix4fv(glGetUniformLocation(ShaderManager::UI_IMAGE_SHADER.GetID(), "ui_matrix"), 1, GL_FALSE, glm::value_ptr(ui_matrix));
@@ -53,14 +54,14 @@ void UIRescale(glm::dvec2 viewport, glm::mat4 virtual_to_window)
     glUniformMatrix4fv(glGetUniformLocation(ShaderManager::UI_TEXT_SHADER.GetID(), "ui_matrix"), 1, GL_FALSE, glm::value_ptr(ui_matrix));
 }
 
-void UIUpdateTransforms(glm::dvec2 viewport, glm::mat4& virtual_to_window)
+void UIUpdateTransforms(Viewport &viewport)
 {
-    float scale = std::max(viewport.x / VIRTUAL_UI_WIDTH, viewport.y / VIRTUAL_UI_HEIGHT);
+    float scale = std::max(viewport.dimensions.x / VIRTUAL_UI_WIDTH, viewport.dimensions.y / VIRTUAL_UI_HEIGHT);
     float scaled_virtual_width = VIRTUAL_UI_WIDTH * scale;
     float scaled_virtual_height = VIRTUAL_UI_HEIGHT * scale;
-    float offset_x = (viewport.x - scaled_virtual_width)  * 0.5f;
-    float offset_y = (viewport.y - scaled_virtual_height) * 0.5f;
-    virtual_to_window = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(offset_x, offset_y, 0.0f)), glm::vec3(scale, scale, 1.0f));
+    float offset_x = (viewport.dimensions.x - scaled_virtual_width)  * 0.5f;
+    float offset_y = (viewport.dimensions.y - scaled_virtual_height) * 0.5f;
+    viewport.ui_virtual_to_window = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(offset_x, offset_y, 0.0f)), glm::vec3(scale, scale, 1.0f));
 }
 
 //
@@ -1242,6 +1243,45 @@ void UIDebugMenu::Render()
 }
 
 //
+// In-game UI
+//
+
+UIGame::UIGame()
+{
+
+}
+
+UIPauseMenu &UIGame::GetPauseMenu()
+{
+    return _pause_menu;
+}
+
+UIDebugMenu &UIGame::GetDebugMenu()
+{
+    return _debug_menu;
+}
+
+void UIGame::Update(MouseState mouse_state, const DebugInfo& debug_info)
+{
+    if (_debug_menu.IsActive())
+        _debug_menu.Update(debug_info);
+
+    if (_pause_menu.IsActive())
+        _pause_menu.Update(mouse_state);
+}
+
+void UIGame::Render()
+{
+    glDepthFunc(GL_LEQUAL);
+
+    if (_debug_menu.IsActive())
+        _debug_menu.Render();
+
+    if (_pause_menu.IsActive())
+        _pause_menu.Render();
+}
+
+//
 // Images
 //
 
@@ -1691,7 +1731,7 @@ void UIText::SetColor(glm::vec4 color)
 
 glm::vec2 UIText::GetTextSizeInPixels(std::string text, float font_size)
 {
-    float width, height = 0;
+    float width = 0, height = 0;
     float current_line_width = 0;
     for (int i = 0; i < text.length(); i++)
     {

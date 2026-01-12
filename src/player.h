@@ -89,7 +89,17 @@ class Player : public Entity
             _camera.right = glm::normalize(glm::cross(_camera.forward, _camera.up));
         }
 
-        Camera GetCamera() { return _camera; }
+        PlayerData GetPlayerData()
+        {
+            PlayerData player_data;
+            player_data.health = _health;
+            player_data.suit_status = _suit_status;
+            player_data.position = _position;
+            player_data.camera_rotation = GetCameraRotation();
+            return player_data;
+        }
+
+        Camera &GetCamera() { return _camera; }
 
         void SetHealth(int health) { _health = health; }
         int GetHealth() { return _health; }

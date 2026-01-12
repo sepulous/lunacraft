@@ -13,7 +13,8 @@ class EntityManager
         std::vector<Entity *> _entities;
 
     public:
-        EntityManager();
+        EntityManager() = default;
+        ~EntityManager();
         void LinkChunkManager(ChunkManager *chunk_manager);
         void AddEntity(Entity *entity);
         void FixedUpdate();

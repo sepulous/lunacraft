@@ -2,22 +2,40 @@
 #include <filesystem>
 #include <string>
 #include <fstream>
+#include <thread>
+#include <stop_token>
+
+#define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_STATIC
+#include <stb_image/stb_image.h>
 
 #include "chunk_manager.h"
 #include "chunk_gen.h"
 #include "helpers.h"
 #include "storage.h"
 
-static void _ChunkWorker(int, MoonSettings, BlockingQueue<ChunkTask>&, BlockingQueue<ChunkResult>&);
-
-ChunkManager::ChunkManager()
-{
-    
-}
+static void _ChunkWorker(std::stop_token, int, MoonSettings, BlockingQueue<ChunkTask>&, BlockingQueue<ChunkResult>&);
 
 void ChunkManager::Init(int moon_id, MoonSettings moon_settings)
 {
     _moon_id = moon_id;
+
+    // Load texture atlas
+    int width, height, nrChannels;
+    stbi_set_flip_vertically_on_load(true);
+    std::filesystem::path atlas_path = Storage::IMAGE_DIR / "texture_atlas.png";
+    unsigned char *texture_atlas_data = stbi_load(reinterpret_cast<const char *>(atlas_path.u8string().c_str()), &width, &height, &nrChannels, 0);
+
+    glGenTextures(1, &_texture_atlas);
+    glBindTexture(GL_TEXTURE_2D, _texture_atlas);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture_atlas_data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    stbi_image_free(texture_atlas_data);
 
     // Create chunks folder
     std::filesystem::path moon_dir = Storage::MOON_DIR / (std::string("moon") + std::to_string(moon_id));
@@ -28,17 +46,18 @@ void ChunkManager::Init(int moon_id, MoonSettings moon_settings)
     // Start workers
     int num_workers = glm::max(1u, std::thread::hardware_concurrency() - 2);
     for (int i = 0; i < num_workers; i++)
-    {
-        std::thread worker(_ChunkWorker, moon_id, moon_settings, std::ref(_task_queue), std::ref(_result_queue));
-        worker.detach();
-        _workers.push_back(std::move(worker));
-    }
+        _workers.emplace_back(_ChunkWorker, moon_id, moon_settings, std::ref(_task_queue), std::ref(_result_queue));
+}
+
+ChunkManager::~ChunkManager()
+{
+    glDeleteTextures(1, &_texture_atlas);
 }
 
 void ChunkManager::QueueNewChunk(glm::ivec3 chunk_coords)
 {
     uint64_t chunk_id = ChunkCoordsToID(chunk_coords);
-    Chunk& chunk = _chunks[chunk_id];
+    Chunk &chunk = _chunks[chunk_id];
     if (chunk.state == ChunkState::MISSING)
     {
         chunk.state = ChunkState::QUEUED;
@@ -48,6 +67,10 @@ void ChunkManager::QueueNewChunk(glm::ivec3 chunk_coords)
 
 void ChunkManager::RenderChunks(Plane frustum[6])
 {
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, _texture_atlas);
+    glDepthFunc(GL_LESS);
+
     std::vector<Chunk *> visible_chunks;
 
     for (auto it = _chunks.begin(); it != _chunks.end(); it++)
@@ -101,6 +124,8 @@ void ChunkManager::BufferReadyChunks()
 
 void ChunkManager::RemoveDistantChunks(glm::ivec3 player_chunk, int render_distance)
 {
+    // TODO: This function is being called constantly. It should only be called when necessary.
+
     for (auto it = _chunks.begin(); it != _chunks.end(); )
     {
         glm::ivec3 coords = it->second.GetCoords();
@@ -112,7 +137,6 @@ void ChunkManager::RemoveDistantChunks(glm::ivec3 player_chunk, int render_dista
 
         if (not_being_processed && distant)
         {
-            it->second.Free();
             it = _chunks.erase(it);
             _loaded_chunk_count--;
         }
@@ -121,14 +145,6 @@ void ChunkManager::RemoveDistantChunks(glm::ivec3 player_chunk, int render_dista
             it++;
         }
     }
-}
-
-void ChunkManager::Unload()
-{
-    _task_queue.Stop();
-    _result_queue.Stop();
-    _loaded_chunk_count = 0;
-    _chunks.clear();
 }
 
 std::unordered_map<uint64_t, Chunk> &ChunkManager::GetChunks()
@@ -141,11 +157,13 @@ int ChunkManager::GetLoadedChunkCount()
     return _loaded_chunk_count;
 }
 
-static void _ChunkWorker(int moon_id, MoonSettings moon_settings, BlockingQueue<ChunkTask> &task_queue, BlockingQueue<ChunkResult> &result_queue)
+static void _ChunkWorker(std::stop_token stoken, int moon_id, MoonSettings moon_settings, BlockingQueue<ChunkTask> &task_queue, BlockingQueue<ChunkResult> &result_queue)
 {
-    while (!(task_queue.IsStopped() || result_queue.IsStopped()))
+    while (!stoken.stop_requested())
     {
-        ChunkTask task = task_queue.Pop();
+        ChunkTask task;
+        if (!task_queue.Pop(task, stoken))
+            continue;
 
         BlockArray blocks;
         std::vector<BlockVertex> opaque_vertices;

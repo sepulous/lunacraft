@@ -22,7 +22,7 @@ Chunk::Chunk(glm::ivec3 coords)
     _coords = coords;
 }
 
-Chunk::Chunk(Chunk&& other) noexcept
+Chunk::Chunk(Chunk &&other) noexcept
 {
     _opaque_vao = other._opaque_vao;
     _opaque_vbo = other._opaque_vbo;
@@ -34,7 +34,7 @@ Chunk::Chunk(Chunk&& other) noexcept
     _blocks = std::move(other._blocks);
 }
 
-Chunk& Chunk::operator=(Chunk&& other) noexcept
+Chunk &Chunk::operator=(Chunk &&other) noexcept
 {
     if (this != &other)
     {
@@ -50,7 +50,7 @@ Chunk& Chunk::operator=(Chunk&& other) noexcept
     return *this;
 }
 
-void Chunk::Free()
+Chunk::~Chunk()
 {
     glDeleteVertexArrays(1, &_opaque_vao);
     glDeleteVertexArrays(1, &_transparent_vao);
@@ -133,9 +133,9 @@ void Chunk::SetTransparentVertices(std::vector<BlockVertex> &transparent_vertice
     _transparent_vertices = std::move(transparent_vertices);
 }
 
-void BuildChunkVertices(BlockID *blocks, glm::ivec3 chunk_coords, std::vector<BlockVertex>& opaque_vertices, std::vector<BlockVertex>& transparent_vertices)
+void BuildChunkVertices(BlockID *blocks, glm::ivec3 chunk_coords, std::vector<BlockVertex> &opaque_vertices, std::vector<BlockVertex> &transparent_vertices)
 {
-    std::unordered_map<BlockID, glm::vec3> ATLAS_TILE_MAP = {
+    std::unordered_map<BlockID, glm::vec3> ATLAS_TILE_MAP = { // TODO: Mark this static
         {BlockID::aluminum,        glm::vec3(32, 32, 32)},
         {BlockID::aluminum_ore,    glm::vec3(17, 17, 17)},
         {BlockID::amethyst_ore,    glm::vec3(168, 168, 168)},
@@ -203,14 +203,14 @@ void BuildChunkVertices(BlockID *blocks, glm::ivec3 chunk_coords, std::vector<Bl
             ((int)atlas_tiles.z % 14) / 14.0f,
             (13 - ((int)atlas_tiles.z / 14)) / 14.0f
         );
-        TILE_ORIGINS.insert({block_id, glm::mat3x2(
+        TILE_ORIGINS.insert({block_id, glm::mat3x2( // TODO: This should use emplace() instead
             top_tile_origin, side_tile_origin, bottom_tile_origin
         )});
     }
 
     std::vector<BlockQuad> quads = GreedyMesh(blocks);
 
-    for (BlockQuad quad : quads)
+    for (BlockQuad quad : quads) // TODO: Take these by reference
     {
         // Determine vertex normal
         glm::vec3 normal = glm::normalize(glm::cross(quad.du, quad.dv));
@@ -234,9 +234,6 @@ void BuildChunkVertices(BlockID *blocks, glm::ivec3 chunk_coords, std::vector<Bl
         int quad_width = glm::length(quad.du);
         int quad_height = glm::length(quad.dv);
 
-        if (quad.block == BlockID::light) // Trick to make light blocks unlit (lighting involves dot product)
-            normal = {0, 0, 0};
-
         BlockVertex vert_1(base_pos,                     {0,          0,           tile_origin}, normal);
         BlockVertex vert_2(base_pos + quad.dv,           {0,          quad_height, tile_origin}, normal);
         BlockVertex vert_3(base_pos + quad.dv + quad.du, {quad_width, quad_height, tile_origin}, normal);
@@ -244,6 +241,7 @@ void BuildChunkVertices(BlockID *blocks, glm::ivec3 chunk_coords, std::vector<Bl
         BlockVertex vert_5(base_pos + quad.du,           {quad_width, 0,           tile_origin}, normal);
         BlockVertex vert_6(base_pos,                     {0,          0,           tile_origin}, normal);
 
+        // TODO: Simplify this with a reference
         if (BlockIsOpaque(quad.block))
         {
             if (!quad.back_face)

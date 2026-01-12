@@ -1,10 +1,13 @@
 
+#include <iostream>
+
 #include "entity_manager.h"
 #include "helpers.h"
 
-EntityManager::EntityManager()
+EntityManager::~EntityManager()
 {
-
+    for (Entity *entity : _entities)
+        delete entity;
 }
 
 void EntityManager::LinkChunkManager(ChunkManager *chunk_manager)

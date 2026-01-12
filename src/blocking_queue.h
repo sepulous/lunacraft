@@ -4,6 +4,7 @@
 #include <queue>
 #include <mutex>
 #include <condition_variable>
+#include <stop_token>
 
 template <typename T>
 class BlockingQueue
@@ -11,8 +12,7 @@ class BlockingQueue
     private:
         std::queue<T> _queue;
         std::mutex _mutex;
-        std::condition_variable _cv;
-        bool _stopped = false;
+        std::condition_variable_any _cv;
 
     public:
         void Push(T value)
@@ -24,23 +24,12 @@ class BlockingQueue
             _cv.notify_one();
         }
 
-        T Pop()
+        bool Pop(T &out, std::stop_token stoken)
         {
             std::unique_lock<std::mutex> lock(_mutex);
-            _cv.wait(lock, [&] { return !_queue.empty() || _stopped; });
+            _cv.wait(lock, stoken, [&] { return !_queue.empty(); });
 
-            if (_stopped)
-                return T{};
-
-            T value = std::move(_queue.front());
-            _queue.pop();
-            return value;
-        }
-
-        bool TryPop(T& out)
-        {
-            std::lock_guard<std::mutex> lock(_mutex);
-            if (_queue.empty())
+            if (stoken.stop_requested())
                 return false;
 
             out = std::move(_queue.front());
@@ -48,19 +37,16 @@ class BlockingQueue
             return true;
         }
 
-        void Stop()
-        {
-            {
-                std::lock_guard<std::mutex> lock(_mutex);
-                _stopped = true;
-            }
-            _cv.notify_all();
-        }
-
-        bool IsStopped()
+        bool TryPop(T &out)
         {
             std::lock_guard<std::mutex> lock(_mutex);
-            return _stopped;
+
+            if (_queue.empty())
+                return false;
+
+            out = std::move(_queue.front());
+            _queue.pop();
+            return true;
         }
 };
 

@@ -16,7 +16,8 @@ class Skybox
 
     public:
         Skybox();
-        void Update(const glm::mat4& view_projection, float skybox_angle);
+        ~Skybox();
+        void Update(const glm::mat4 &view_projection, float skybox_angle);
         void Render();
 };
 

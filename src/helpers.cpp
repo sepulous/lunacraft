@@ -99,6 +99,25 @@ bool ChunkInFrustum(const Plane frustum[6], const glm::vec3& chunk_min, const gl
     return true;
 }
 
+void GetFrustumPlanes(const glm::mat4 &view_proj, Plane *frustum)
+{
+    int a, b;
+    for (int i = 0; i < 6; i++)
+    {
+        a = i / 2;
+        b = 1 - 2*(i & 1);
+
+        frustum[i].normal.x = view_proj[0][3] + view_proj[0][a] * b;
+        frustum[i].normal.y = view_proj[1][3] + view_proj[1][a] * b;
+        frustum[i].normal.z = view_proj[2][3] + view_proj[2][a] * b;
+        frustum[i].d        = view_proj[3][3] + view_proj[3][a] * b;
+
+        float len = glm::length(frustum[i].normal);
+        frustum[i].normal /= len;
+        frustum[i].d      /= len;
+    }
+}
+
 uint64_t SplitMix64(uint64_t& x)
 {
     x += 0x9E3779B97F4A7C15ULL;

@@ -43,6 +43,8 @@ class Chunk
         Chunk();
         Chunk(glm::ivec3 coords);
 
+        ~Chunk();
+
         // Copy
         Chunk(const Chunk&) = delete;
         Chunk& operator=(const Chunk&) = delete;
@@ -50,8 +52,6 @@ class Chunk
         // Move
         Chunk(Chunk&& other) noexcept;
         Chunk& operator=(Chunk&& other) noexcept;
-
-        void Free();
 
         glm::ivec3 GetCoords();
         void SetCoords(glm::ivec3 coords);

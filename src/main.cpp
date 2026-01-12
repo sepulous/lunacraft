@@ -2,7 +2,6 @@
 #include <string>
 #include <fstream>
 #include <vector>
-#include <thread>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -11,6 +10,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include "viewport.h"
 #include "ui.h"
 #include "shader.h"
 #include "sound_system.h"
@@ -24,22 +24,13 @@
 #include "helpers.h"
 #include "moon.h"
 
-#define STB_IMAGE_IMPLEMENTATION
-#define STB_IMAGE_STATIC
-#include <stb_image/stb_image.h>
-
 enum class GameState {MAIN_MENU, IN_GAME};
 
-static glm::dvec2 viewport = {1280, 720};
-static glm::mat4 ui_virtual_to_window = glm::mat4(1.0f);
-static glm::dvec2 last_mouse_pos = {viewport.x / 2.0, viewport.y / 2.0};
-
-static Moon *moon = nullptr;
-static Player player;
-
+static Viewport viewport;
 static MouseState mouse_state;
 static GameState game_state = GameState::MAIN_MENU;
-//static float loading_moon_progress = 0;
+
+static Moon *moon = nullptr;
 
 void SetFullscreen(GLFWwindow *window, bool fullscreen);
 void UpdateCamera(GLFWwindow *window, double x_pos, double y_pos);
@@ -56,7 +47,7 @@ int main()
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     #endif
 
-    GLFWwindow *window = glfwCreateWindow(viewport.x, viewport.y, "Lunacraft", nullptr, nullptr);
+    GLFWwindow *window = glfwCreateWindow(viewport.dimensions.x, viewport.dimensions.y, "Lunacraft", nullptr, nullptr);
     if (!window)
     {
         std::cerr << "Failed to create GLFW window\n";
@@ -74,12 +65,17 @@ int main()
 
     glfwSetFramebufferSizeCallback(window, [](GLFWwindow *window, int width, int height) {
         glViewport(0, 0, width, height);
-        viewport = {width, height};
-        UIUpdateTransforms(viewport, ui_virtual_to_window);
-        UIRescale(viewport, ui_virtual_to_window);
+        //viewport = {width, height};
+        viewport.dimensions = {width, height};
+        //UIUpdateTransforms(viewport, ui_virtual_to_window);
+        UIUpdateTransforms(viewport);
+        //UIRescale(viewport, ui_virtual_to_window);
+        UIRescale(viewport);
     });
-    glViewport(0, 0, viewport.x, viewport.y);
-    UIUpdateTransforms(viewport, ui_virtual_to_window);
+    //glViewport(0, 0, viewport.x, viewport.y);
+    glViewport(0, 0, viewport.dimensions.x, viewport.dimensions.y);
+    //UIUpdateTransforms(viewport, ui_virtual_to_window);
+    UIUpdateTransforms(viewport);
 
     Storage::Init();
     OptionsManager::Init();
@@ -102,36 +98,17 @@ int main()
         );
     }
 
-    /////////////////////////////////////////
-    int width, height, nrChannels;
-    stbi_set_flip_vertically_on_load(true);
-    std::filesystem::path atlas_path = Storage::IMAGE_DIR / "texture_atlas.png";
-    unsigned char *texture_atlas_data = stbi_load(reinterpret_cast<const char *>(atlas_path.u8string().c_str()), &width, &height, &nrChannels, 0);
-
-    GLuint texture_atlas;
-    glGenTextures(1, &texture_atlas);
-    glBindTexture(GL_TEXTURE_2D, texture_atlas);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture_atlas_data);
-    glGenerateMipmap(GL_TEXTURE_2D);
-
-    stbi_image_free(texture_atlas_data);
-    /////////////////////////////////////////
-
-    UIRescale(viewport, ui_virtual_to_window);
+    UIRescale(viewport);
     UIMainMenu ui_main_menu(window);
-    UIPauseMenu ui_pause_menu;
-    UIDebugMenu ui_debug_menu;
+    UIGame ui_game;
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    float delta_time;
-    float last_frame_time = 0;
-    float accumulator = 0;
+    bool left_game = false;
+
+    double delta_time;
+    double last_frame_time = 0;
     float last_pause_toggle_time = 0;
     float last_debug_toggle_time = 0;
     float last_debug_update_time = 0;
@@ -140,46 +117,15 @@ int main()
     bool fullscreen = OptionsManager::GetOptions().fullscreen;
     while (!glfwWindowShouldClose(window))
     {
-        float current_time = glfwGetTime();
+        double current_time = glfwGetTime();
         delta_time = current_time - last_frame_time;
         last_frame_time = current_time;
 
-        // Update sound system
-        if (current_time - last_sound_update_time >= 0.2f)
-        {
-            SoundSystem::Update(OptionsManager::GetOptions());
-            SoundSystem::SetPlayerPosition(player.GetPosition());
-            SoundSystem::SetPlayerOrientation(player.GetCamera().forward, player.GetCamera().up);
-            last_sound_update_time = current_time;
-        }
-
-        // Fullscreen toggle
-        if (OptionsManager::GetOptions().fullscreen != fullscreen)
-        {
-            fullscreen = OptionsManager::GetOptions().fullscreen;
-            SetFullscreen(window, fullscreen);
-        }
-
-        // Play random song
-        if (current_time >= next_music_time)
-        {
-            int song = RandomRange(0, 4);
-            if (song == 0)
-                SoundSystem::Play(SoundSystem::Sound::SONG_2);
-            else if (song == 1)
-                SoundSystem::Play(SoundSystem::Sound::SONG_3);
-            else if (song == 2)
-                SoundSystem::Play(SoundSystem::Sound::SONG_4);
-            else
-                SoundSystem::Play(SoundSystem::Sound::SONG_5);
-
-            next_music_time = current_time + RandomRange(8 * 60, 12 * 60 + 1); // Every 8-12 minutes
-        }
-
         //
-        // Input
+        // Input (general)
         //
 
+        // Update mouse click state
         if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
         {
             if (!mouse_state.left_clicked && !mouse_state.left_held)
@@ -198,25 +144,115 @@ int main()
             mouse_state.left_held = false;
         }
 
-        // Cursor position is unbounded (and thus meaningless) when disabled. We don't care about the cursor position in that case anyway.
-        if (glfwGetInputMode(window, GLFW_CURSOR) != GLFW_CURSOR_DISABLED)
+        // Update mouse position state
+        if (glfwGetInputMode(window, GLFW_CURSOR) != GLFW_CURSOR_DISABLED) // Cursor position is unbounded (and thus meaningless) when disabled
         {
             double mouse_x, mouse_y;
             glfwGetCursorPos(window, &mouse_x, &mouse_y);
 
-            glm::vec4 virtual_mouse = glm::inverse(ui_virtual_to_window) * glm::vec4(mouse_x, viewport.y - mouse_y, 0.0f, 1.0f);
+            glm::vec4 virtual_mouse = glm::inverse(viewport.ui_virtual_to_window) * glm::vec4(mouse_x, viewport.dimensions.y - mouse_y, 0.0f, 1.0f);
             mouse_state.position.x = virtual_mouse.x;
             mouse_state.position.y = virtual_mouse.y;
         }
 
-        if (game_state == GameState::IN_GAME)
+        //
+        // Updates (general)
+        //
+
+        // Update sound system
+        if (current_time - last_sound_update_time >= 0.2f)
         {
+            SoundSystem::Update(OptionsManager::GetOptions());
+            if (moon != nullptr)
+            {
+                Player *player = moon->GetPlayer();
+                SoundSystem::SetPlayerPosition(player->GetPosition());
+                SoundSystem::SetPlayerOrientation(player->GetCamera().forward, player->GetCamera().up);
+            }
+            last_sound_update_time = current_time;
+        }
+
+        // Fullscreen toggle
+        bool new_fullscreen_state = OptionsManager::GetOptions().fullscreen;
+        if (new_fullscreen_state != fullscreen)
+        {
+            fullscreen = new_fullscreen_state;
+            SetFullscreen(window, fullscreen);
+        }
+
+        //
+        // Game state specific 
+        //
+
+        if (game_state == GameState::MAIN_MENU)
+        {
+            //
+            // Updates
+            //
+
+            ui_main_menu.Update(delta_time, mouse_state);
+
+            float moon_load_progress = 0;
+            if (moon != nullptr)
+            {
+                moon->GetChunkManager().BufferReadyChunks();
+                moon_load_progress = moon->GetLoadProgress();
+            }
+
+            if (moon_load_progress == 0)
+            {
+                if (ui_main_menu.IsLaunchButtonClicked())
+                {
+                    auto [moon_id, moon_settings] = ui_main_menu.GetMoonData();
+                    LoadMoon(moon_id, moon_settings);
+                    ui_main_menu.SetLaunchButtonClicked(false);
+                }
+            }
+            else
+            {
+                ui_main_menu.SetLoadProgressLevel(moon_load_progress);
+                if (moon_load_progress >= 1.0f) // Only runs once when loading in
+                {
+                    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+                    glfwSetCursorPos(window, viewport.last_mouse_pos.x, viewport.last_mouse_pos.y);
+                    if (glfwRawMouseMotionSupported())
+                        glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE); // More natural mouse motion
+                    glfwSetCursorPosCallback(window, UpdateCamera);
+                    UpdateCamera(window, viewport.last_mouse_pos.x, viewport.last_mouse_pos.y);
+
+                    ui_main_menu.ResetMoonSettings();
+                    moon_load_progress = 0;
+                    ui_main_menu.SetLoadProgressLevel(0);
+                    game_state = GameState::IN_GAME;
+                }
+            }
+
+            //
+            // Rendering
+            //
+
+            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            glDepthFunc(GL_LEQUAL);
+
+            ui_main_menu.Render(delta_time);
+        }
+        else // IN_GAME
+        {
+            UIPauseMenu &ui_pause_menu = ui_game.GetPauseMenu();
+            UIDebugMenu &ui_debug_menu = ui_game.GetDebugMenu();
+            int old_render_distance = OptionsManager::GetOptions().render_distance;
+
+            //
+            // Input
+            //
+
             if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS && current_time - last_pause_toggle_time > 0.2f)
             {
                 ui_pause_menu.SetActive(!ui_pause_menu.IsActive());
                 if (ui_pause_menu.IsActive())
                 {
-                    glfwGetCursorPos(window, &last_mouse_pos.x, &last_mouse_pos.y);
+                    glfwGetCursorPos(window, &viewport.last_mouse_pos.x, &viewport.last_mouse_pos.y);
                     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
                     glfwSetCursorPosCallback(window, nullptr);
                 }
@@ -224,7 +260,7 @@ int main()
                 {
                     
                     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-                    glfwSetCursorPos(window, last_mouse_pos.x, last_mouse_pos.y);
+                    glfwSetCursorPos(window, viewport.last_mouse_pos.x, viewport.last_mouse_pos.y);
                     if (glfwRawMouseMotionSupported())
                         glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE); // More natural mouse motion
                     glfwSetCursorPosCallback(window, UpdateCamera);
@@ -235,7 +271,9 @@ int main()
 
             if (!ui_pause_menu.IsActive())
             {
-                Camera player_camera = player.GetCamera();
+                Player *player = moon->GetPlayer();
+                Camera &player_camera = player->GetCamera();
+
                 glm::vec3 player_input_direction = glm::vec3(0);
                 if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
                     player_input_direction += glm::vec3(player_camera.forward.x, 0, player_camera.forward.z);
@@ -245,10 +283,10 @@ int main()
                     player_input_direction -= player_camera.right;
                 if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
                     player_input_direction += player_camera.right;
-                if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && player.IsGrounded())
-                    player.SetJumping(true);
+                if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && player->IsGrounded())
+                    player->SetJumping(true);
 
-                player.SetInputDirection(player_input_direction);
+                player->SetInputDirection(player_input_direction);
             }
 
             if (glfwGetKey(window, GLFW_KEY_F3) == GLFW_PRESS && current_time - last_debug_toggle_time > 0.2f)
@@ -258,147 +296,73 @@ int main()
                 OptionsManager::SetOptions(options);
                 last_debug_toggle_time = current_time;
             }
-        }
 
-        //
-        // Update/Render
-        //
-
-        if (game_state == GameState::MAIN_MENU)
-        {
-            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            glDepthFunc(GL_LEQUAL);
-
-            // Update moon loading progress
-            float moon_load_progress = 0;
-            if (moon != nullptr)
-            {
-                moon->GetChunkManager().BufferReadyChunks();
-                moon_load_progress = moon->GetLoadProgress();
-            }
-
-            // Render
-            if (moon_load_progress == 0)
-            {
-                ui_main_menu.Update(delta_time, mouse_state);
-                ui_main_menu.Render(delta_time);
-
-                if (ui_main_menu.IsLaunchButtonClicked())
-                {
-                    auto moon_data = ui_main_menu.GetMoonData();
-                    LoadMoon(moon_data.first, moon_data.second);
-                    ui_main_menu.SetLaunchButtonClicked(false);
-                }
-            }
-            else
-            {
-                ui_main_menu.Update(delta_time, mouse_state);
-                ui_main_menu.SetLoadProgressLevel(moon_load_progress);
-                ui_main_menu.Render(delta_time);
-
-                if (moon_load_progress >= 1.0f) // Only runs once when loading in
-                {
-                    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-                    glfwSetCursorPos(window, last_mouse_pos.x, last_mouse_pos.y);
-                    if (glfwRawMouseMotionSupported())
-                        glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE); // More natural mouse motion
-                    glfwSetCursorPosCallback(window, UpdateCamera);
-                    UpdateCamera(window, last_mouse_pos.x, last_mouse_pos.y);
-
-                    ui_main_menu.ResetMoonSettings();
-                    moon_load_progress = 0;
-                    ui_main_menu.SetLoadProgressLevel(0);
-                    game_state = GameState::IN_GAME;
-                }
-            }
-        }
-        else // IN_GAME
-        {
             //
             // Updates
             //
 
-            moon->UpdateWorldTime(delta_time);
+            // Play random song periodically
+            if (current_time >= next_music_time)
+            {
+                int song = RandomRange(0, 4);
+                if (song == 0)
+                    SoundSystem::Play(SoundSystem::Sound::SONG_2);
+                else if (song == 1)
+                    SoundSystem::Play(SoundSystem::Sound::SONG_3);
+                else if (song == 2)
+                    SoundSystem::Play(SoundSystem::Sound::SONG_4);
+                else
+                    SoundSystem::Play(SoundSystem::Sound::SONG_5);
 
-            ChunkManager &chunk_manager = moon->GetChunkManager();
-            EntityManager &entity_manager = moon->GetEntityManager();
+                next_music_time = current_time + RandomRange(8 * 60, 12 * 60 + 1); // Every 8-12 minutes
+            }
 
+            // Update debug menu
             if (ui_debug_menu.IsActive() && current_time - last_debug_update_time > 0.2f)
             {
                 DebugInfo debug_info;
                 debug_info.fps = (int)(1 / delta_time);
-                debug_info.player_pos = player.GetCamera().position;
+                debug_info.player_pos = moon->GetPlayer()->GetCamera().position;
                 debug_info.seed = moon->GetSettings().seed;
                 ui_debug_menu.Update(debug_info);
                 last_debug_update_time = current_time;
             }
 
-            int old_render_distance = OptionsManager::GetOptions().render_distance;
+            // Handle quit/resume buttons (this combines Update and Input; let's try to do better)
             if (ui_pause_menu.IsActive())
             {
                 ui_pause_menu.Update(mouse_state);
                 if (ui_pause_menu.QuitClicked())
                 {
-                    PlayerData player_data;
-                    player_data.health = player.GetHealth();
-                    player_data.suit_status = player.GetSuitStatus();
-                    player_data.position = player.GetPosition();
-                    player_data.camera_rotation = player.GetCameraRotation();
+                    PlayerData player_data = moon->GetPlayer()->GetPlayerData();
                     std::ofstream player_data_file(Storage::MOON_DIR / (std::string("moon") + std::to_string(moon->GetID())) / "player.dat", std::ios::binary);
                     player_data_file.write(reinterpret_cast<char *>(&player_data), sizeof(PlayerData));
                     player_data_file.close();
 
-                    moon->Unload();
+                    delete moon;
                     moon = nullptr;
 
                     ui_pause_menu.SetActive(false);
                     ui_main_menu.RefreshMoonButtonText();
                     game_state = GameState::MAIN_MENU;
+                    std::cout << "DELETED MOON" << std::endl;
+                    left_game = true;
                     continue;
                 }
                 else if (ui_pause_menu.ResumeClicked())
                 {
                     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-                    glfwSetCursorPos(window, last_mouse_pos.x, last_mouse_pos.y);
+                    glfwSetCursorPos(window, viewport.last_mouse_pos.x, viewport.last_mouse_pos.y);
                     if (glfwRawMouseMotionSupported())
                         glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE); // More natural mouse motion
                     glfwSetCursorPosCallback(window, UpdateCamera);
                 }
             }
-            int current_render_distance = OptionsManager::GetOptions().render_distance;
 
-            player.SetCameraSensitivity(0.05f * OptionsManager::GetOptions().sensitivity);
+            moon->GetPlayer()->SetCameraSensitivity(0.05f * OptionsManager::GetOptions().sensitivity);
             ui_debug_menu.SetActive(OptionsManager::GetOptions().show_debug_info);
 
-            glm::ivec3 old_player_chunk = VoxelToChunk(GetNearestVoxel(player.GetPosition()));
-
-            accumulator += delta_time;
-
-            // Fixed updates
-            if (accumulator >= FIXED_DELTA_TIME)
-                entity_manager.FixedUpdate();
-
-            // Physics
-            int physics_steps = 0;
-            if (accumulator >= FIXED_DELTA_TIME)
-                physics_steps = (int)((accumulator - FIXED_DELTA_TIME) / FIXED_DELTA_TIME) + 1;
-            accumulator -= physics_steps * FIXED_DELTA_TIME;
-            entity_manager.RunPhysics(physics_steps, accumulator / FIXED_DELTA_TIME);
-
-            // Non-physics updates
-            entity_manager.Update();
-            
-            // Load new chunks around player
-            glm::ivec3 new_player_chunk = VoxelToChunk(GetNearestVoxel(player.GetPosition()));
-            if (new_player_chunk != old_player_chunk || old_render_distance != current_render_distance)
-                for (int dx = -current_render_distance; dx <= current_render_distance; dx++)
-                    for (int dz = -current_render_distance; dz <= current_render_distance; dz++)
-                        chunk_manager.QueueNewChunk({new_player_chunk.x + dx, 0, new_player_chunk.z + dz});
-
-            // Remove distant chunks and upload new ones that are ready
-            chunk_manager.RemoveDistantChunks(new_player_chunk, current_render_distance);
-            chunk_manager.BufferReadyChunks();
+            moon->Update(delta_time, old_render_distance);
 
             //
             // Rendering
@@ -415,45 +379,9 @@ int main()
             }
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-            Camera player_camera = player.GetCamera();
-            glm::mat4 view = glm::lookAt(player_camera.position, player_camera.position + player_camera.forward, player_camera.up);
-            glm::mat4 projection = glm::perspective(glm::radians(45.0), viewport.x / viewport.y, 0.1, 500.0);
-            glm::mat4 view_projection = projection * view;
-
-            glEnable(GL_DEPTH_TEST);
-            glEnable(GL_CULL_FACE);
-
-            Shader block_shader = ShaderManager::BLOCK_SHADER;
-            block_shader.Use();
-            block_shader.SetMat4("view_projection", view_projection);
-            block_shader.SetVec3("camera_pos_ws", player_camera.position);
-            glm::vec4 fog_color = moon->GetFogColor();
-            if (!OptionsManager::GetOptions().show_fog)
-                fog_color.a = 0;
-            block_shader.SetVec4("fog_color", fog_color);
-            block_shader.SetFloat("fog_distance", current_render_distance * (CHUNK_SIZE / 1.5f));
-
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, texture_atlas);
-
-            glDepthFunc(GL_LESS);
-
-            Plane frustum[6];
-            GetFrustumPlanes(view_projection, frustum);
-            chunk_manager.RenderChunks(frustum);
-
-            // Render skybox
-            view = glm::mat4(glm::mat3(view));
-            view_projection = projection * view;
-            moon->RenderSkybox(view_projection);
-
-            glDepthFunc(GL_LEQUAL);
-
-            if (ui_debug_menu.IsActive())
-                ui_debug_menu.Render();
-
-            if (ui_pause_menu.IsActive())
-                ui_pause_menu.Render();
+            glm::mat4 projection = glm::perspective(glm::radians(45.0), viewport.dimensions.x / viewport.dimensions.y, 0.1, 500.0); // This only really needs to be recomputed when the viewport changes
+            moon->Render(projection);
+            ui_game.Render();
         }
 
         glfwSwapBuffers(window);
@@ -467,28 +395,10 @@ int main()
     return 0;
 }
 
-void GetFrustumPlanes(const glm::mat4& view_proj, Plane *frustum)
-{
-    int a, b;
-    for (int i = 0; i < 6; i++)
-    {
-        a = i / 2;
-        b = 1 - 2*(i & 1);
-
-        frustum[i].normal.x = view_proj[0][3] + view_proj[0][a] * b;
-        frustum[i].normal.y = view_proj[1][3] + view_proj[1][a] * b;
-        frustum[i].normal.z = view_proj[2][3] + view_proj[2][a] * b;
-        frustum[i].d        = view_proj[3][3] + view_proj[3][a] * b;
-
-        float len = glm::length(frustum[i].normal);
-        frustum[i].normal /= len;
-        frustum[i].d      /= len;
-    }
-};
-
 void LoadMoon(int moon_id, MoonSettings moon_settings)
 {
     moon = new Moon(moon_id, moon_settings);
+    Player *player = moon->GetPlayer();
 
     // Create/fetch player data
     std::filesystem::path moon_dir = Storage::MOON_DIR / (std::string("moon") + std::to_string(moon_id));
@@ -500,32 +410,25 @@ void LoadMoon(int moon_id, MoonSettings moon_settings)
         player_data_file.read(reinterpret_cast<char *>(&player_data), sizeof(PlayerData));
         player_data_file.close();
 
-        player.SetPosition(player_data.position);
-        player.SetPrevPosition(player_data.position);
-        player.SetNextPosition(player_data.position);
-        player.SetHealth(player_data.health);
-        player.SetSuitStatus(player_data.suit_status);
-        player.SetCameraRotation({player_data.camera_rotation.x, player_data.camera_rotation.y});
+        player->SetPosition(player_data.position);
+        player->SetPrevPosition(player_data.position);
+        player->SetNextPosition(player_data.position);
+        player->SetHealth(player_data.health);
+        player->SetSuitStatus(player_data.suit_status);
+        player->SetCameraRotation({player_data.camera_rotation.x, player_data.camera_rotation.y});
     }
     else
     {
-        PlayerData player_data;
-        player_data.health = player.GetHealth();
-        player_data.suit_status = player.GetSuitStatus();
-        player_data.position = player.GetPosition();
-        player_data.camera_rotation = player.GetCameraRotation();
-
+        PlayerData player_data = player->GetPlayerData();
         std::ofstream player_data_file(player_data_path, std::ios::binary);
         player_data_file.write(reinterpret_cast<char *>(&player_data), sizeof(PlayerData));
         player_data_file.close();
     }
-
-    moon->GetEntityManager().AddEntity(&player);
     
     // Load initial chunks around player
     ChunkManager &chunk_manager = moon->GetChunkManager();
     int render_distance = OptionsManager::GetOptions().render_distance;
-    glm::ivec3 player_chunk_coords = VoxelToChunk({player.GetPosition().x, player.GetPosition().y, player.GetPosition().z});
+    glm::ivec3 player_chunk_coords = VoxelToChunk({player->GetPosition().x, player->GetPosition().y, player->GetPosition().z});
     for (int dx = -render_distance; dx <= render_distance; dx++)
         for (int dz = -render_distance; dz <= render_distance; dz++)
             chunk_manager.QueueNewChunk({player_chunk_coords.x + dx, 0, player_chunk_coords.z + dz});
@@ -533,10 +436,13 @@ void LoadMoon(int moon_id, MoonSettings moon_settings)
 
 void UpdateCamera(GLFWwindow *window, double x_pos, double y_pos)
 {
-    float x_offset = x_pos - last_mouse_pos.x;
-    float y_offset = last_mouse_pos.y - y_pos; // Reversed since y ranges from bottom to top
-    last_mouse_pos = {x_pos, y_pos};
-    player.UpdateCamera(x_pos, y_pos, x_offset, y_offset);
+    if (moon != nullptr)
+    {
+        float x_offset = x_pos - viewport.last_mouse_pos.x;
+        float y_offset = viewport.last_mouse_pos.y - y_pos; // Reversed since y ranges from bottom to top
+        viewport.last_mouse_pos = {x_pos, y_pos};
+        moon->GetPlayer()->UpdateCamera(x_pos, y_pos, x_offset, y_offset);
+    }
 }
 
 void SetFullscreen(GLFWwindow *window, bool fullscreen)

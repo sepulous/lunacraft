@@ -11,6 +11,7 @@
 #include "shader.h"
 #include "input.h"
 #include "moon_settings.h"
+#include "viewport.h"
 
 const float VIRTUAL_UI_WIDTH = 1920.0f;
 const float VIRTUAL_UI_HEIGHT = 1080.0f;
@@ -31,8 +32,8 @@ class UIImage;
 class UIText;
 
 // Helpers
-void UIRescale(glm::dvec2 viewport, glm::mat4 virtual_to_window);
-void UIUpdateTransforms(glm::dvec2 viewport, glm::mat4& virtual_to_window);
+void UIRescale(const Viewport &viewport);
+void UIUpdateTransforms(Viewport &viewport);
 
 /////////////////////////////////////
 
@@ -385,6 +386,20 @@ class UIDebugMenu
         bool IsActive();
         void Update(const DebugInfo& debug_info);
         void Render();
+};
+
+class UIGame
+{
+    public:
+        UIGame();
+        UIPauseMenu &GetPauseMenu();
+        UIDebugMenu &GetDebugMenu();
+        void Update(MouseState mouse_state, const DebugInfo& debug_info);
+        void Render();
+
+    private:
+        UIPauseMenu _pause_menu;
+        UIDebugMenu _debug_menu;
 };
 
 #endif

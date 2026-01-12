@@ -72,9 +72,8 @@ Skybox::Skybox()
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
-    unsigned int skybox;
-    glGenTextures(1, &skybox);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, skybox);
+    glGenTextures(1, &_texture);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, _texture);
 
     std::vector<std::filesystem::path> faces = {
         Storage::IMAGE_DIR / "skybox" / "skybox_right.png",
@@ -107,7 +106,14 @@ Skybox::Skybox()
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 }
 
-void Skybox::Update(const glm::mat4& view_projection, float skybox_angle)
+Skybox::~Skybox()
+{
+    glDeleteVertexArrays(1, &_vao);
+    glDeleteBuffers(1, &_vbo);
+    glDeleteTextures(1, &_texture);
+}
+
+void Skybox::Update(const glm::mat4 &view_projection, float skybox_angle)
 {
     Shader skybox_shader = ShaderManager::SKYBOX_SHADER;
     skybox_shader.Use();

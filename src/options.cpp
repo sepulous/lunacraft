@@ -27,6 +27,7 @@ void OptionsManager::Init()
     }
 }
 
+// Returns a copy of the current options (options should be modified via OptionsManager::SetOptions)
 Options OptionsManager::GetOptions()
 {
     return _options;

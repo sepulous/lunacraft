@@ -10,6 +10,7 @@
 #include "player.h"
 #include "helpers.h"
 #include "constants.h"
+#include "shader.h"
 
 Moon::Moon(int moon_id, MoonSettings moon_settings)
 {
@@ -36,23 +37,40 @@ Moon::Moon(int moon_id, MoonSettings moon_settings)
     // Choose random fog color
     int fog_color = (int)((float)std::rand() * 4 / RAND_MAX);
     if (fog_color == 0)
-        _fog_color = glm::vec4(0.067, 0.208, 0.314, 1);
+        _base_fog_color = glm::vec4(0.067, 0.208, 0.314, 1);
     else if (fog_color == 1)
-        _fog_color = glm::vec4(0.314, 0.067, 0.31, 1);
+        _base_fog_color = glm::vec4(0.314, 0.067, 0.31, 1);
     else if (fog_color == 2)
-        _fog_color = glm::vec4(0.067, 0.314, 0.188, 1);
+        _base_fog_color = glm::vec4(0.067, 0.314, 0.188, 1);
     else if (fog_color == 3)
-        _fog_color = glm::vec4(0.067, 0.094, 0.314, 1);
+        _base_fog_color = glm::vec4(0.067, 0.094, 0.314, 1);
     else
-        _fog_color = glm::vec4(0.239, 0.067, 0.314, 1);
+        _base_fog_color = glm::vec4(0.239, 0.067, 0.314, 1);
 
     int render_distance = OptionsManager::GetOptions().render_distance;
     _initial_chunk_count = (2*render_distance + 1) * (2*render_distance + 1);
     _id = moon_id;
     _settings = moon_settings;
     _world_time = moon_settings.world_time;
+    _player = new Player;
     _chunk_manager.Init(moon_id, moon_settings);
     _entity_manager.LinkChunkManager(&_chunk_manager);
+    _entity_manager.AddEntity(_player);
+}
+
+Moon::~Moon()
+{
+    // Save world time to file
+    _settings.world_time = _world_time;
+    std::filesystem::path moon_data_path = Storage::MOON_DIR / (std::string("moon") + std::to_string(_id)) / "moon.dat";
+    std::ofstream moon_data_file(moon_data_path, std::ios::binary);
+    moon_data_file.write(reinterpret_cast<char *>(&_settings), sizeof(MoonSettings));
+    moon_data_file.close();
+}
+
+Player *Moon::GetPlayer()
+{
+    return _player;
 }
 
 ChunkManager &Moon::GetChunkManager()
@@ -65,35 +83,10 @@ EntityManager &Moon::GetEntityManager()
     return _entity_manager;
 }
 
-void Moon::UpdateWorldTime(double delta_time)
-{
-    _world_time += delta_time;
-}
-
-void Moon::RenderSkybox(const glm::mat4& view_proj)
-{
-    constexpr int PERIOD = LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE;
-    float skybox_angle = glm::radians(90.0f + (360.0f / PERIOD) * _world_time);
-    _skybox.Update(view_proj, skybox_angle);
-    _skybox.Render();
-}
-
 glm::vec4 Moon::GetFogColor()
 {
-    glm::vec3 fog_rgb = 0.5f * (1 + (float)glm::cos(2 * 3.1416f * _world_time / 300.0f)) * glm::vec3(_fog_color.r, _fog_color.g, _fog_color.b);
-    return {fog_rgb.r, fog_rgb.g, fog_rgb.b, _fog_color.a};
-}
-
-void Moon::Unload()
-{
-    _chunk_manager.Unload();
-
-    // Save world time to file
-    _settings.world_time = _world_time;
-    std::filesystem::path moon_data_path = Storage::MOON_DIR / (std::string("moon") + std::to_string(_id)) / "moon.dat";
-    std::ofstream moon_data_file(moon_data_path, std::ios::binary);
-    moon_data_file.write(reinterpret_cast<char *>(&_settings), sizeof(MoonSettings));
-    moon_data_file.close();
+    glm::vec3 fog_rgb = 0.5f * (1 + (float)glm::cos(2 * 3.1416 * _world_time / (LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE))) * glm::vec3(_base_fog_color);
+    return {fog_rgb.r, fog_rgb.g, fog_rgb.b, _base_fog_color.a};
 }
 
 int Moon::GetID()
@@ -110,4 +103,79 @@ float Moon::GetLoadProgress()
 MoonSettings Moon::GetSettings()
 {
     return _settings;
+}
+
+void Moon::Update(double delta_time, int old_render_distance)
+{
+    _world_time += delta_time;
+    _accumulator += delta_time;
+
+    glm::ivec3 old_player_chunk = VoxelToChunk(GetNearestVoxel(_player->GetPosition()));
+    int current_render_distance = OptionsManager::GetOptions().render_distance;
+
+    // Fixed updates
+    if (_accumulator >= FIXED_DELTA_TIME)
+        _entity_manager.FixedUpdate();
+
+    // Physics
+    int physics_steps = 0;
+    if (_accumulator >= FIXED_DELTA_TIME)
+        physics_steps = (int)((_accumulator - FIXED_DELTA_TIME) / FIXED_DELTA_TIME) + 1;
+    _accumulator -= physics_steps * FIXED_DELTA_TIME;
+    _entity_manager.RunPhysics(physics_steps, _accumulator / FIXED_DELTA_TIME);
+
+    // Non-physics updates
+    _entity_manager.Update();
+    
+    // Load new chunks around player
+    glm::ivec3 current_player_chunk = VoxelToChunk(GetNearestVoxel(_player->GetPosition()));
+    if (current_player_chunk != old_player_chunk || old_render_distance != current_render_distance)
+        for (int dx = -current_render_distance; dx <= current_render_distance; dx++)
+            for (int dz = -current_render_distance; dz <= current_render_distance; dz++)
+                _chunk_manager.QueueNewChunk({current_player_chunk.x + dx, 0, current_player_chunk.z + dz});
+
+    // Remove distant chunks and upload new ones that are ready
+    _chunk_manager.RemoveDistantChunks(current_player_chunk, current_render_distance);
+    _chunk_manager.BufferReadyChunks();
+}
+
+void Moon::Render(glm::mat4 projection)
+{
+    //
+    // Render world
+    //
+
+    Options options = OptionsManager::GetOptions();
+
+    Camera player_camera = _player->GetCamera();
+    glm::mat4 view = glm::lookAt(player_camera.position, player_camera.position + player_camera.forward, player_camera.up);
+    glm::mat4 view_projection = projection * view;
+
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
+
+    Shader block_shader = ShaderManager::BLOCK_SHADER;
+    block_shader.Use();
+    block_shader.SetMat4("view_projection", view_projection);
+    block_shader.SetVec3("camera_pos_ws", player_camera.position);
+    glm::vec4 fog_color = GetFogColor();
+    if (!options.show_fog)
+        fog_color.a = 0;
+    block_shader.SetVec4("fog_color", fog_color);
+    block_shader.SetFloat("fog_distance", options.render_distance * (CHUNK_SIZE / 1.5f));
+
+    Plane frustum[6];
+    GetFrustumPlanes(view_projection, frustum);
+    _chunk_manager.RenderChunks(frustum);
+
+    //
+    // Render skybox
+    //
+
+    view = glm::mat4(glm::mat3(view));
+    view_projection = projection * view;
+    constexpr int PERIOD = LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE;
+    float skybox_angle = glm::radians(90.0f + (360.0f / PERIOD) * _world_time);
+    _skybox.Update(view_projection, skybox_angle);
+    _skybox.Render();
 }

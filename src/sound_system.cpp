@@ -53,13 +53,12 @@ void SoundSystem::Update(Options options)
     // Update volumes
     _sfx_volume = options.sfx_volume;
     _music_volume = options.music_volume;
-    for (std::tuple<Sound, Soundlib::SoundSource *>& sound : _active_sounds)
+    for (auto &[sound_id, sound_source] : _active_sounds)
     {
-        Sound sound_id = std::get<0>(sound);
         if (sound_id == Sound::SONG_1 || sound_id == Sound::SONG_2 || sound_id == Sound::SONG_3 || sound_id == Sound::SONG_4 || sound_id == Sound::SONG_5)
-            std::get<1>(sound)->SetGain(_music_volume);
+            sound_source->SetGain(_music_volume);
         else
-            std::get<1>(sound)->SetGain(_sfx_volume);
+            sound_source->SetGain(_sfx_volume);
     }
 }
 

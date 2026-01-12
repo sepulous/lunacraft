@@ -30,13 +30,15 @@ class ChunkManager
     private:
         int _moon_id;
         int _loaded_chunk_count = 0;
+        GLuint _texture_atlas;
         std::unordered_map<uint64_t, Chunk> _chunks;
-        std::vector<std::thread> _workers;
         BlockingQueue<ChunkTask> _task_queue;
         BlockingQueue<ChunkResult> _result_queue;
+        std::vector<std::jthread> _workers; // These should be destroyed before the queues
 
     public:
-        ChunkManager();
+        ChunkManager() = default;
+        ~ChunkManager();
         void Init(int moon_id, MoonSettings moon_settings);
         void QueueNewChunk(glm::ivec3 chunk_coords);
         void RenderChunks(Plane frustum[6]);
@@ -44,7 +46,6 @@ class ChunkManager
         void RemoveDistantChunks(glm::ivec3 player_chunk, int render_distance);
         std::unordered_map<uint64_t, Chunk> &GetChunks();
         int GetLoadedChunkCount();
-        void Unload();
 };
 
 #endif
