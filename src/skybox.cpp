@@ -117,13 +117,13 @@ void Skybox::Update(const glm::mat4 &view_projection, float skybox_angle)
 {
     Shader skybox_shader = ShaderManager::SKYBOX_SHADER;
     skybox_shader.Use();
-    glUniformMatrix4fv(glGetUniformLocation(skybox_shader.GetID(), "view_projection"), 1, GL_FALSE, glm::value_ptr(view_projection));
+    skybox_shader.SetMat4("u_view_projection", view_projection);
     glm::mat3 skybox_rotation(
         glm::vec3(1, 0, 0),
         glm::vec3(0, glm::cos(skybox_angle), glm::sin(skybox_angle)),
         glm::vec3(0, -glm::sin(skybox_angle), glm::cos(skybox_angle))
     );
-    glUniformMatrix3fv(glGetUniformLocation(skybox_shader.GetID(), "rotation"), 1, GL_FALSE, glm::value_ptr(skybox_rotation));
+    skybox_shader.SetMat3("u_rotation", skybox_rotation);
 }
 
 void Skybox::Render()

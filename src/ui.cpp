@@ -48,10 +48,10 @@ void UIRescale(const Viewport &viewport)
     glm::mat4 ui_matrix = proj * viewport.ui_virtual_to_window;
 
     ShaderManager::UI_IMAGE_SHADER.Use();
-    glUniformMatrix4fv(glGetUniformLocation(ShaderManager::UI_IMAGE_SHADER.GetID(), "ui_matrix"), 1, GL_FALSE, glm::value_ptr(ui_matrix));
+    glUniformMatrix4fv(glGetUniformLocation(ShaderManager::UI_IMAGE_SHADER.GetID(), "u_ui_matrix"), 1, GL_FALSE, glm::value_ptr(ui_matrix));
 
     ShaderManager::UI_TEXT_SHADER.Use();
-    glUniformMatrix4fv(glGetUniformLocation(ShaderManager::UI_TEXT_SHADER.GetID(), "ui_matrix"), 1, GL_FALSE, glm::value_ptr(ui_matrix));
+    glUniformMatrix4fv(glGetUniformLocation(ShaderManager::UI_TEXT_SHADER.GetID(), "u_ui_matrix"), 1, GL_FALSE, glm::value_ptr(ui_matrix));
 }
 
 void UIUpdateTransforms(Viewport &viewport)
@@ -326,7 +326,7 @@ void UIMainMenu::Render(float delta_time)
     //
 
     ui_image_shader.Use();
-    ui_image_shader.SetFloat("darkness", 0.0f);
+    ui_image_shader.SetFloat("u_darkness", 0.0f);
 
     // Fully visible for 8 seconds, fades out in 1 second
     const float opaque_time = 8.0f;
@@ -338,7 +338,7 @@ void UIMainMenu::Render(float delta_time)
     if (_current_background_time < opaque_time) // Current background is fully opaque
     {
         float scale = scale_speed * _current_background_time + 1.0f;
-        ui_image_shader.SetFloat("opacity", 1.0f);
+        ui_image_shader.SetFloat("u_opacity", 1.0f);
 
         current_position = _background_images[_current_background].GetPosition();
         offset = {(VIRTUAL_UI_WIDTH * (scale - 1.0f)) / 2.0f, (VIRTUAL_UI_HEIGHT * (scale - 1.0f)) / 2.0f};
@@ -353,7 +353,7 @@ void UIMainMenu::Render(float delta_time)
         // Current
         scale = scale_speed * _current_background_time + 1.0f;
         opacity = (opaque_time + fade_time) - _current_background_time;
-        ui_image_shader.SetFloat("opacity", opacity);
+        ui_image_shader.SetFloat("u_opacity", opacity);
 
         current_position = _background_images[_current_background].GetPosition();
         offset = {(VIRTUAL_UI_WIDTH * (scale - 1.0f)) / 2.0f, (VIRTUAL_UI_HEIGHT * (scale - 1.0f)) / 2.0f};
@@ -364,7 +364,7 @@ void UIMainMenu::Render(float delta_time)
         // Next
         scale = scale_speed * (_current_background_time - opaque_time) + 1.0f;
         opacity = (_current_background_time - opaque_time) / fade_time;
-        ui_image_shader.SetFloat("opacity", opacity);
+        ui_image_shader.SetFloat("u_opacity", opacity);
 
         current_position = _background_images[(_current_background + 1) % 5].GetPosition();
         offset = {(VIRTUAL_UI_WIDTH * (scale - 1.0f)) / 2.0f, (VIRTUAL_UI_HEIGHT * (scale - 1.0f)) / 2.0f};
@@ -384,7 +384,7 @@ void UIMainMenu::Render(float delta_time)
     _current_background_time += delta_time;
 
 
-    ui_image_shader.SetFloat("opacity", 1.0f);
+    ui_image_shader.SetFloat("u_opacity", 1.0f);
 
     _lunacraft_logo.Render();
 
@@ -397,7 +397,7 @@ void UIMainMenu::Render(float delta_time)
     _options_button.Render();
     _quit_button.Render();
 
-    ui_image_shader.SetFloat("darkness", 0.0f);
+    ui_image_shader.SetFloat("u_darkness", 0.0f);
     if (_moon_settings_menu.IsActive())
         _moon_settings_menu.Render();
     else if (_options_menu.IsActive())
@@ -1192,9 +1192,9 @@ void UIPauseMenu::Render()
     Shader image_shader = ShaderManager::UI_IMAGE_SHADER;
     image_shader.Use();
 
-    image_shader.SetFloat("opacity", 0.4f);
+    image_shader.SetFloat("u_opacity", 0.4f);
     _background.Render();
-    image_shader.SetFloat("opacity", 1.0f);
+    image_shader.SetFloat("u_opacity", 1.0f);
 
     _resume_button.Render();
     _options_button.Render();
@@ -1629,9 +1629,9 @@ void UIText::Render()
 {
     Shader text_shader = ShaderManager::UI_TEXT_SHADER;
     text_shader.Use();
+    text_shader.SetInt("u_font_atlas", 0);
     glBindTexture(GL_TEXTURE_2D, _atlas_texture);
     glActiveTexture(GL_TEXTURE0);
-    glUniform1i(glGetUniformLocation(text_shader.GetID(), "uFontAtlasTexture"), 0);
     glBindVertexArray(_vao);
     glDrawArrays(GL_TRIANGLES, 0, _text.length() * 6 * (4 + 4));
 }
@@ -1825,11 +1825,11 @@ void UIButton::Render()
     image_shader.Use();
 
     if (_held)
-        image_shader.SetFloat("darkness", 0.2f);
+        image_shader.SetFloat("u_darkness", 0.2f);
     else if (_hovered)
-        image_shader.SetFloat("darkness", 0.1f);
+        image_shader.SetFloat("u_darkness", 0.1f);
     else
-        image_shader.SetFloat("darkness", 0.0f);
+        image_shader.SetFloat("u_darkness", 0.0f);
 
     _image.Render();
 
@@ -1894,9 +1894,9 @@ void UIToggleButton::Render()
     image_shader.Use();
 
     if (_hovered)
-        image_shader.SetFloat("darkness", 0.1f);
+        image_shader.SetFloat("u_darkness", 0.1f);
     else
-        image_shader.SetFloat("darkness", 0.0f);
+        image_shader.SetFloat("u_darkness", 0.0f);
 
     if (_toggled)
         _toggled_image.Render();

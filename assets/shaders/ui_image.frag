@@ -1,15 +1,15 @@
 #version 330 core
 
-out vec4 FragColor;
+out vec4 out_color;
 
-in vec2 uv;
+in vec2 v_uv;
 
-uniform sampler2D tex;
-uniform float opacity;
-uniform float darkness;
+uniform sampler2D u_tex;
+uniform float u_opacity;
+uniform float u_darkness;
 
 void main()
 {
-    vec4 tex_color = texture(tex, uv);
-    FragColor = vec4(tex_color.rgb * (1 - darkness), tex_color.a * opacity);
+    vec4 tex_color = texture(u_tex, v_uv);
+    out_color = vec4(tex_color.rgb * (1 - u_darkness), tex_color.a * u_opacity);
 }

@@ -1,30 +1,30 @@
 #version 330 core
 
-out vec4 FragColor;
+out vec4 out_color;
 
-in vec2 TexCoord;
-in vec2 TileOrigin;
-in vec3 FaceNormal;
-in vec3 pos_ws;
+in vec2 v_tex;
+in vec2 v_tile_origin;
+in vec3 v_normal;
+in vec3 v_ws_position;
 
-uniform vec3 main_light;
-uniform sampler2D block_texture;
-uniform vec3 camera_pos_ws;
-uniform vec4 fog_color;
-uniform float fog_distance;
+uniform vec3 u_main_light;
+uniform sampler2D u_block_texture;
+uniform vec3 u_ws_camera_position;
+uniform vec4 u_fog_color;
+uniform float u_fog_distance;
 
 void main()
 {
-    vec2 localUV = fract(TexCoord);
-    vec2 atlasUV = TileOrigin + localUV / 14.0; // atlas is 14x14
-    vec4 tex_color = texture(block_texture, atlasUV);
+    vec2 local_uv = fract(v_tex);
+    vec2 atlas_uv = v_tile_origin + local_uv / 14.0; // atlas is 14x14
+    vec4 tex_color = texture(u_block_texture, atlas_uv);
 
-    // float light = min(dot(FaceNormal, main_light) + 1 + 0.2, 1);
-    // vec4 theTexture = texture(block_texture, atlasUV);
-    // FragColor = vec4(light * theTexture.rgb, theTexture.a);
+    // float light = min(dot(v_normal, u_main_light) + 1 + 0.2, 1);
+    // vec4 theTexture = texture(u_block_texture, atlasUV);
+    // out_color = vec4(light * theTexture.rgb, theTexture.a);
 
-    float view_distance = length(camera_pos_ws - pos_ws) - fog_distance;
+    float view_distance = length(u_ws_camera_position - v_ws_position) - u_fog_distance;
     float fog_factor = clamp(exp(-0.1 * view_distance), 0, 1);
 
-    FragColor = mix(tex_color, mix(fog_color, tex_color, fog_factor), fog_color.a);
+    out_color = mix(tex_color, mix(u_fog_color, tex_color, fog_factor), u_fog_color.a);
 }

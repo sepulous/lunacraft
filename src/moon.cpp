@@ -156,13 +156,13 @@ void Moon::Render(glm::mat4 projection)
 
     Shader block_shader = ShaderManager::BLOCK_SHADER;
     block_shader.Use();
-    block_shader.SetMat4("view_projection", view_projection);
-    block_shader.SetVec3("camera_pos_ws", player_camera.position);
+    block_shader.SetMat4("u_view_projection", view_projection);
+    block_shader.SetVec3("u_ws_camera_position", player_camera.position);
     glm::vec4 fog_color = GetFogColor();
     if (!options.show_fog)
         fog_color.a = 0;
-    block_shader.SetVec4("fog_color", fog_color);
-    block_shader.SetFloat("fog_distance", options.render_distance * (CHUNK_SIZE / 1.5f));
+    block_shader.SetVec4("u_fog_color", fog_color);
+    block_shader.SetFloat("u_fog_distance", options.render_distance * (CHUNK_SIZE / 1.5f));
 
     Plane frustum[6];
     GetFrustumPlanes(view_projection, frustum);

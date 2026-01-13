@@ -1,12 +1,13 @@
 #version 330 core
-out vec4 FragColor;
 
-in vec3 TexCoords;
+out vec4 out_color;
 
-uniform samplerCube skybox;
-uniform mat3 rotation;
+in vec3 v_tex;
+
+uniform samplerCube u_skybox;
+uniform mat3 u_rotation;
 
 void main()
 {    
-    FragColor = texture(skybox, rotation * TexCoords);
+    out_color = texture(u_skybox, u_rotation * v_tex);
 }
