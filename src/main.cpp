@@ -345,7 +345,6 @@ int main()
                     ui_pause_menu.SetActive(false);
                     ui_main_menu.RefreshMoonButtonText();
                     game_state = GameState::MAIN_MENU;
-                    std::cout << "DELETED MOON" << std::endl;
                     left_game = true;
                     continue;
                 }
