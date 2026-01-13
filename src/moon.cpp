@@ -154,7 +154,7 @@ void Moon::Render(glm::mat4 projection)
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
 
-    Shader block_shader = ShaderManager::BLOCK_SHADER;
+    Shader &block_shader = ShaderManager::BLOCK_SHADER;
     block_shader.Use();
     block_shader.SetMat4("u_view_projection", view_projection);
     block_shader.SetVec3("u_ws_camera_position", player_camera.position);

@@ -319,7 +319,7 @@ void UIMainMenu::Update(float delta_time, MouseState mouse_state)
 
 void UIMainMenu::Render(float delta_time)
 {
-    Shader ui_image_shader = ShaderManager::UI_IMAGE_SHADER;
+    Shader &ui_image_shader = ShaderManager::UI_IMAGE_SHADER;
     
     //
     // Background images
@@ -1189,7 +1189,7 @@ void UIPauseMenu::Update(MouseState mouse_state)
 
 void UIPauseMenu::Render()
 {
-    Shader image_shader = ShaderManager::UI_IMAGE_SHADER;
+    Shader &image_shader = ShaderManager::UI_IMAGE_SHADER;
     image_shader.Use();
 
     image_shader.SetFloat("u_opacity", 0.4f);
@@ -1627,7 +1627,7 @@ UIText::UIText(std::string text, float font_size, glm::vec2 position, glm::vec4 
 
 void UIText::Render()
 {
-    Shader text_shader = ShaderManager::UI_TEXT_SHADER;
+    Shader &text_shader = ShaderManager::UI_TEXT_SHADER;
     text_shader.Use();
     text_shader.SetInt("u_font_atlas", 0);
     glBindTexture(GL_TEXTURE_2D, _atlas_texture);
@@ -1821,7 +1821,7 @@ void UIButton::Update(MouseState mouse_state)
 
 void UIButton::Render()
 {
-    Shader image_shader = ShaderManager::UI_IMAGE_SHADER;
+    Shader &image_shader = ShaderManager::UI_IMAGE_SHADER;
     image_shader.Use();
 
     if (_held)
@@ -1890,7 +1890,7 @@ void UIToggleButton::Update(MouseState mouse_state)
 
 void UIToggleButton::Render()
 {
-    Shader image_shader = ShaderManager::UI_IMAGE_SHADER;
+    Shader &image_shader = ShaderManager::UI_IMAGE_SHADER;
     image_shader.Use();
 
     if (_hovered)

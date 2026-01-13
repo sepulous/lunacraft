@@ -115,7 +115,7 @@ Skybox::~Skybox()
 
 void Skybox::Update(const glm::mat4 &view_projection, float skybox_angle)
 {
-    Shader skybox_shader = ShaderManager::SKYBOX_SHADER;
+    Shader &skybox_shader = ShaderManager::SKYBOX_SHADER;
     skybox_shader.Use();
     skybox_shader.SetMat4("u_view_projection", view_projection);
     glm::mat3 skybox_rotation(

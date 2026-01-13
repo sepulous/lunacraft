@@ -13,6 +13,13 @@ class Shader
     public:
         Shader();
         Shader(std::filesystem::path vertex_shader_path, std::filesystem::path fragment_shader_path);
+
+        Shader(const Shader&) = delete;
+        Shader &operator=(const Shader&) = delete;
+
+        Shader(Shader&&) = delete;
+        Shader &operator=(Shader&&) = delete;
+
         void MakeProgram(std::filesystem::path vertex_shader_path, std::filesystem::path fragment_shader_path);
         void Use();
         GLuint GetID();
