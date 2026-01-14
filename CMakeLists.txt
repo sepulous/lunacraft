@@ -64,6 +64,8 @@ target_link_libraries(Lunacraft
     Soundlib
 )
 
+target_compile_options(Lunacraft PRIVATE -Wno-volatile)
+
 if (WIN32)
     add_custom_command(TARGET Lunacraft POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
