@@ -65,16 +65,11 @@ int main()
 
     glfwSetFramebufferSizeCallback(window, [](GLFWwindow *window, int width, int height) {
         glViewport(0, 0, width, height);
-        //viewport = {width, height};
         viewport.dimensions = {width, height};
-        //UIUpdateTransforms(viewport, ui_virtual_to_window);
         UIUpdateTransforms(viewport);
-        //UIRescale(viewport, ui_virtual_to_window);
         UIRescale(viewport);
     });
-    //glViewport(0, 0, viewport.x, viewport.y);
     glViewport(0, 0, viewport.dimensions.x, viewport.dimensions.y);
-    //UIUpdateTransforms(viewport, ui_virtual_to_window);
     UIUpdateTransforms(viewport);
 
     Storage::Init();
@@ -334,14 +329,17 @@ int main()
                 ui_pause_menu.Update(mouse_state);
                 if (ui_pause_menu.QuitClicked())
                 {
+                    // Save player data
                     PlayerData player_data = moon->GetPlayer()->GetPlayerData();
                     std::ofstream player_data_file(Storage::MOON_DIR / (std::string("moon") + std::to_string(moon->GetID())) / "player.dat", std::ios::binary);
                     player_data_file.write(reinterpret_cast<char *>(&player_data), sizeof(PlayerData));
                     player_data_file.close();
 
+                    // Unload moon
                     delete moon;
                     moon = nullptr;
 
+                    // Reset to main menu
                     ui_pause_menu.SetActive(false);
                     ui_main_menu.RefreshMoonButtonText();
                     game_state = GameState::MAIN_MENU;

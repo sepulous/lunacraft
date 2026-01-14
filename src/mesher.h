@@ -46,6 +46,7 @@ std::vector<BlockQuad> GreedyMesh(BlockID *blocks)
     };
 
     std::vector<BlockQuad> quads;
+    quads.reserve(1500); // 1500 = empirically determined maximum (with padding). Depends on generation and meshing algorithms.
 
     //
     // X axis
@@ -55,6 +56,7 @@ std::vector<BlockQuad> GreedyMesh(BlockID *blocks)
     for (int block_x = -1; block_x < CHUNK_SIZE; block_x++)
     {
         std::vector<MaskEntry> mask;
+        mask.reserve(CHUNK_SIZE * WORLD_HEIGHT_LIMIT);
 
         // Build mask
         for (int block_z = 0; block_z < CHUNK_SIZE; block_z++)
@@ -65,11 +67,11 @@ std::vector<BlockQuad> GreedyMesh(BlockID *blocks)
                 BlockID next_block = (BlockID)blocks[GetChunkIndex(block_x + 1 + 1, block_y, block_z + 1)];
 
                 if (ShouldRenderFace(current_block, next_block) && !ShouldRenderFace(next_block, current_block))
-                    mask.push_back({current_block, false});
+                    mask.emplace_back(current_block, false);
                 else if (ShouldRenderFace(next_block, current_block) && !ShouldRenderFace(current_block, next_block))
-                    mask.push_back({next_block, true});
+                    mask.emplace_back(next_block, true);
                 else
-                    mask.push_back({BlockID::air, false}); // Don't render
+                    mask.emplace_back(BlockID::air, false); // Don't render
             }
         }
 
@@ -119,13 +121,13 @@ std::vector<BlockQuad> GreedyMesh(BlockID *blocks)
                         mask[y2 + z2 * WORLD_HEIGHT_LIMIT] = {BlockID::air, false};
 
                 // Push quad
-                quads.push_back({
+                quads.emplace_back(
                     base_entry.block,
-                    {block_x, y, block_z},
-                    {0, 0, quad_width},
-                    {0, quad_height, 0},
+                    glm::vec3{block_x, y, block_z},
+                    glm::vec3{0, 0, quad_width},
+                    glm::vec3{0, quad_height, 0},
                     base_entry.back_face
-                });
+                );
 
                 // Advance y past this quad
                 y += quad_height;
@@ -141,6 +143,7 @@ std::vector<BlockQuad> GreedyMesh(BlockID *blocks)
     for (int block_z = -1; block_z < CHUNK_SIZE; block_z++)
     {
         std::vector<MaskEntry> mask;
+        mask.reserve(CHUNK_SIZE * WORLD_HEIGHT_LIMIT);
 
         // Build mask
         for (int block_x = 0; block_x < CHUNK_SIZE; block_x++)
@@ -151,11 +154,11 @@ std::vector<BlockQuad> GreedyMesh(BlockID *blocks)
                 BlockID next_block = (BlockID)blocks[GetChunkIndex(block_x + 1, block_y, block_z + 1 + 1)];
 
                 if (ShouldRenderFace(current_block, next_block) && !ShouldRenderFace(next_block, current_block))
-                    mask.push_back({current_block, false});
+                    mask.emplace_back(current_block, false);
                 else if (ShouldRenderFace(next_block, current_block) && !ShouldRenderFace(current_block, next_block))
-                    mask.push_back({next_block, true});
+                    mask.emplace_back(next_block, true);
                 else
-                    mask.push_back({BlockID::air, false}); // Don't render
+                    mask.emplace_back(BlockID::air, false); // Don't render
             }
         }
 
@@ -205,13 +208,13 @@ std::vector<BlockQuad> GreedyMesh(BlockID *blocks)
                         mask[y2 + x2 * WORLD_HEIGHT_LIMIT] = {BlockID::air, false};
 
                 // Push quad
-                quads.push_back({
+                quads.emplace_back(
                     base_entry.block,
-                    {block_x, y, block_z},
-                    {quad_width, 0, 0},
-                    {0, quad_height, 0},
+                    glm::vec3{block_x, y, block_z},
+                    glm::vec3{quad_width, 0, 0},
+                    glm::vec3{0, quad_height, 0},
                     !base_entry.back_face
-                });
+                );
 
                 // Advance y past this quad
                 y += quad_height;
@@ -228,6 +231,7 @@ std::vector<BlockQuad> GreedyMesh(BlockID *blocks)
     for (int block_y = 0; block_y < WORLD_HEIGHT_LIMIT; block_y++)
     {
         std::vector<MaskEntry> mask;
+        mask.reserve(CHUNK_SIZE * CHUNK_SIZE);
 
         // Build mask
         for (int block_x = 0; block_x < CHUNK_SIZE; block_x++)
@@ -240,15 +244,15 @@ std::vector<BlockQuad> GreedyMesh(BlockID *blocks)
                     BlockID next_block = (BlockID)blocks[GetChunkIndex(block_x + 1, block_y + 1, block_z + 1)]; //
 
                     if (ShouldRenderFace(current_block, next_block) && !ShouldRenderFace(next_block, current_block))
-                        mask.push_back({current_block, false});
+                        mask.emplace_back(current_block, false);
                     else if (ShouldRenderFace(next_block, current_block) && !ShouldRenderFace(current_block, next_block))
-                        mask.push_back({next_block, true});
+                        mask.emplace_back(next_block, true);
                     else
-                        mask.push_back({BlockID::air, false}); // Don't render
+                        mask.emplace_back(BlockID::air, false); // Don't render
                 }
                 else
                 {
-                    mask.push_back({BlockID::air, false});
+                    mask.emplace_back(BlockID::air, false);
                 }
             }
         }
@@ -299,13 +303,13 @@ std::vector<BlockQuad> GreedyMesh(BlockID *blocks)
                         mask[z2 + x2 * CHUNK_SIZE] = {BlockID::air, false};
 
                 // Push quad
-                quads.push_back({
+                quads.emplace_back(
                     base_entry.block,
-                    {block_x, block_y, z},
-                    {quad_width, 0, 0},
-                    {0, 0, quad_height},
+                    glm::vec3{block_x, block_y, z},
+                    glm::vec3{quad_width, 0, 0},
+                    glm::vec3{0, 0, quad_height},
                     base_entry.back_face
-                });
+                );
 
                 // Advance z past this quad
                 z += quad_height;

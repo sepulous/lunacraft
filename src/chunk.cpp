@@ -135,7 +135,7 @@ void Chunk::SetTransparentVertices(std::vector<BlockVertex> &transparent_vertice
 
 void BuildChunkVertices(BlockID *blocks, glm::ivec3 chunk_coords, std::vector<BlockVertex> &opaque_vertices, std::vector<BlockVertex> &transparent_vertices)
 {
-    std::unordered_map<BlockID, glm::vec3> ATLAS_TILE_MAP = { // TODO: Mark this static
+    static std::unordered_map<BlockID, glm::vec3> ATLAS_TILE_MAP = { // Tile coordinates are: (top, side, bottom)
         {BlockID::aluminum,        glm::vec3(32, 32, 32)},
         {BlockID::aluminum_ore,    glm::vec3(17, 17, 17)},
         {BlockID::amethyst_ore,    glm::vec3(168, 168, 168)},
@@ -163,7 +163,7 @@ void BuildChunkVertices(BlockID *blocks, glm::ivec3 chunk_coords, std::vector<Bl
         {BlockID::polymer,         glm::vec3(30, 30, 30)},
         {BlockID::quartz_ore,      glm::vec3(169, 169, 169)},
         {BlockID::rock,            glm::vec3(3, 3, 3)},
-        {BlockID::sand,            glm::vec3(2, 2, 2)}, // NOTE: Not certain about this one
+        {BlockID::sand,            glm::vec3(2, 2, 2)},
         {BlockID::shale_gravel,    glm::vec3(16, 16, 16)},
         {BlockID::silver_ore,      glm::vec3(59, 59, 59)},
         {BlockID::snow,            glm::vec3(4, 4, 4)},
@@ -186,31 +186,37 @@ void BuildChunkVertices(BlockID *blocks, glm::ivec3 chunk_coords, std::vector<Bl
         {BlockID::minilight_ny,    glm::vec3(9, 9, 9)}
     };
 
-    std::unordered_map<BlockID, glm::mat3x2> TILE_ORIGINS;
-    for (auto it = ATLAS_TILE_MAP.begin(); it != ATLAS_TILE_MAP.end(); it++)
+    static std::unordered_map<BlockID, glm::mat3x2> TILE_ORIGINS;
+    static bool tile_origins_built = false;
+    if (!tile_origins_built) // This is kind of a silly hack, but I'd rather be explicit about the tile coordinates and build from them
     {
-        BlockID block_id = it->first;
-        glm::vec3 atlas_tiles = it->second;
-        glm::vec2 top_tile_origin = glm::vec2(
-            ((int)atlas_tiles.x % 14) / 14.0f,
-            (13 - ((int)atlas_tiles.x / 14)) / 14.0f
-        );
-        glm::vec2 side_tile_origin = glm::vec2(
-            ((int)atlas_tiles.y % 14) / 14.0f,
-            (13 - ((int)atlas_tiles.y / 14)) / 14.0f
-        );
-        glm::vec2 bottom_tile_origin = glm::vec2(
-            ((int)atlas_tiles.z % 14) / 14.0f,
-            (13 - ((int)atlas_tiles.z / 14)) / 14.0f
-        );
-        TILE_ORIGINS.insert({block_id, glm::mat3x2( // TODO: This should use emplace() instead
-            top_tile_origin, side_tile_origin, bottom_tile_origin
-        )});
+        for (auto it = ATLAS_TILE_MAP.begin(); it != ATLAS_TILE_MAP.end(); it++)
+        {
+            BlockID block_id = it->first;
+            glm::vec3 atlas_tiles = it->second;
+            glm::vec2 top_tile_origin = glm::vec2(
+                ((int)atlas_tiles.x % 14) / 14.0f,
+                (13 - ((int)atlas_tiles.x / 14)) / 14.0f
+            );
+            glm::vec2 side_tile_origin = glm::vec2(
+                ((int)atlas_tiles.y % 14) / 14.0f,
+                (13 - ((int)atlas_tiles.y / 14)) / 14.0f
+            );
+            glm::vec2 bottom_tile_origin = glm::vec2(
+                ((int)atlas_tiles.z % 14) / 14.0f,
+                (13 - ((int)atlas_tiles.z / 14)) / 14.0f
+            );
+            TILE_ORIGINS.emplace(block_id, glm::mat3x2(
+                top_tile_origin, side_tile_origin, bottom_tile_origin
+            ));
+        }
+
+        tile_origins_built = true;
     }
 
     std::vector<BlockQuad> quads = GreedyMesh(blocks);
 
-    for (BlockQuad quad : quads) // TODO: Take these by reference
+    for (BlockQuad &quad : quads)
     {
         // Determine vertex normal
         glm::vec3 normal = glm::normalize(glm::cross(quad.du, quad.dv));
@@ -234,55 +240,25 @@ void BuildChunkVertices(BlockID *blocks, glm::ivec3 chunk_coords, std::vector<Bl
         int quad_width = glm::length(quad.du);
         int quad_height = glm::length(quad.dv);
 
-        BlockVertex vert_1(base_pos,                     {0,          0,           tile_origin}, normal);
-        BlockVertex vert_2(base_pos + quad.dv,           {0,          quad_height, tile_origin}, normal);
-        BlockVertex vert_3(base_pos + quad.dv + quad.du, {quad_width, quad_height, tile_origin}, normal);
-        BlockVertex vert_4(base_pos + quad.dv + quad.du, {quad_width, quad_height, tile_origin}, normal);
-        BlockVertex vert_5(base_pos + quad.du,           {quad_width, 0,           tile_origin}, normal);
-        BlockVertex vert_6(base_pos,                     {0,          0,           tile_origin}, normal);
-
-        // TODO: Simplify this with a reference
-        if (BlockIsOpaque(quad.block))
+        // Push vertices
+        auto &vertices = BlockIsOpaque(quad.block) ? opaque_vertices : transparent_vertices;
+        if (!quad.back_face)
         {
-            if (!quad.back_face)
-            {
-                opaque_vertices.push_back(vert_1);
-                opaque_vertices.push_back(vert_2);
-                opaque_vertices.push_back(vert_3);
-                opaque_vertices.push_back(vert_4);
-                opaque_vertices.push_back(vert_5);
-                opaque_vertices.push_back(vert_6);
-            }
-            else
-            {
-                opaque_vertices.push_back(vert_6);
-                opaque_vertices.push_back(vert_5);
-                opaque_vertices.push_back(vert_4);
-                opaque_vertices.push_back(vert_3);
-                opaque_vertices.push_back(vert_2);
-                opaque_vertices.push_back(vert_1);
-            }
+            vertices.emplace_back(base_pos,                     glm::vec4{0,          0,           tile_origin}, normal);
+            vertices.emplace_back(base_pos + quad.dv,           glm::vec4{0,          quad_height, tile_origin}, normal);
+            vertices.emplace_back(base_pos + quad.dv + quad.du, glm::vec4{quad_width, quad_height, tile_origin}, normal);
+            vertices.emplace_back(base_pos + quad.dv + quad.du, glm::vec4{quad_width, quad_height, tile_origin}, normal);
+            vertices.emplace_back(base_pos + quad.du,           glm::vec4{quad_width, 0,           tile_origin}, normal);
+            vertices.emplace_back(base_pos,                     glm::vec4{0,          0,           tile_origin}, normal);
         }
         else
         {
-            if (!quad.back_face)
-            {
-                transparent_vertices.push_back(vert_1);
-                transparent_vertices.push_back(vert_2);
-                transparent_vertices.push_back(vert_3);
-                transparent_vertices.push_back(vert_4);
-                transparent_vertices.push_back(vert_5);
-                transparent_vertices.push_back(vert_6);
-            }
-            else
-            {
-                transparent_vertices.push_back(vert_6);
-                transparent_vertices.push_back(vert_5);
-                transparent_vertices.push_back(vert_4);
-                transparent_vertices.push_back(vert_3);
-                transparent_vertices.push_back(vert_2);
-                transparent_vertices.push_back(vert_1);
-            }
+            vertices.emplace_back(base_pos,                     glm::vec4{0,          0,           tile_origin}, normal);
+            vertices.emplace_back(base_pos + quad.du,           glm::vec4{quad_width, 0,           tile_origin}, normal);
+            vertices.emplace_back(base_pos + quad.dv + quad.du, glm::vec4{quad_width, quad_height, tile_origin}, normal);
+            vertices.emplace_back(base_pos + quad.dv + quad.du, glm::vec4{quad_width, quad_height, tile_origin}, normal);
+            vertices.emplace_back(base_pos + quad.dv,           glm::vec4{0,          quad_height, tile_origin}, normal);
+            vertices.emplace_back(base_pos,                     glm::vec4{0,          0,           tile_origin}, normal);
         }
     }
 }

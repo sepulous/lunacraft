@@ -109,7 +109,7 @@ void ChunkManager::BufferReadyChunks()
     while (_result_queue.TryPop(result))
     {
         uint64_t chunk_id = ChunkCoordsToID(result.coords);
-        Chunk& chunk = _chunks[chunk_id];
+        Chunk &chunk = _chunks[chunk_id];
 
         chunk.SetCoords(result.coords);
         chunk.SetBlocks(result.blocks);
@@ -124,8 +124,6 @@ void ChunkManager::BufferReadyChunks()
 
 void ChunkManager::RemoveDistantChunks(glm::ivec3 player_chunk, int render_distance)
 {
-    // TODO: This function is being called constantly. It should only be called when necessary.
-
     for (auto it = _chunks.begin(); it != _chunks.end(); )
     {
         glm::ivec3 coords = it->second.GetCoords();
@@ -167,7 +165,9 @@ static void _ChunkWorker(std::stop_token stoken, int moon_id, MoonSettings moon_
 
         BlockArray blocks;
         std::vector<BlockVertex> opaque_vertices;
+        opaque_vertices.reserve(8192);
         std::vector<BlockVertex> transparent_vertices;
+        transparent_vertices.reserve(128);
 
         // Load blocks
         uint64_t chunk_id = ChunkCoordsToID(task.coords);

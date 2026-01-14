@@ -127,15 +127,16 @@ void Moon::Update(double delta_time, int old_render_distance)
     // Non-physics updates
     _entity_manager.Update();
     
-    // Load new chunks around player
+    // Load new chunks around player (and unload old ones)
     glm::ivec3 current_player_chunk = VoxelToChunk(GetNearestVoxel(_player->GetPosition()));
     if (current_player_chunk != old_player_chunk || old_render_distance != current_render_distance)
+    {
+        _chunk_manager.RemoveDistantChunks(current_player_chunk, current_render_distance);
         for (int dx = -current_render_distance; dx <= current_render_distance; dx++)
             for (int dz = -current_render_distance; dz <= current_render_distance; dz++)
                 _chunk_manager.QueueNewChunk({current_player_chunk.x + dx, 0, current_player_chunk.z + dz});
+    }
 
-    // Remove distant chunks and upload new ones that are ready
-    _chunk_manager.RemoveDistantChunks(current_player_chunk, current_render_distance);
     _chunk_manager.BufferReadyChunks();
 }
 
