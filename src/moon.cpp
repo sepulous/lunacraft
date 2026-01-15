@@ -110,8 +110,7 @@ void Moon::Update(double delta_time, int old_render_distance)
     _world_time += delta_time;
     _accumulator += delta_time;
 
-    glm::ivec3 old_player_chunk = VoxelToChunk(GetNearestVoxel(_player->GetPosition()));
-    int current_render_distance = OptionsManager::GetOptions().render_distance;
+    glm::ivec3 old_player_chunk = VoxelToChunk(GetNearestVoxel(_player->GetPosition())); // Save before allowing player to move
 
     // Fixed updates
     if (_accumulator >= FIXED_DELTA_TIME)
@@ -129,6 +128,7 @@ void Moon::Update(double delta_time, int old_render_distance)
     
     // Load new chunks around player (and unload old ones)
     glm::ivec3 current_player_chunk = VoxelToChunk(GetNearestVoxel(_player->GetPosition()));
+    int current_render_distance = OptionsManager::GetOptions().render_distance;
     if (current_player_chunk != old_player_chunk || old_render_distance != current_render_distance)
     {
         _chunk_manager.RemoveDistantChunks(current_player_chunk, current_render_distance);

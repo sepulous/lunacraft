@@ -13,11 +13,9 @@ void OptionsManager::Init()
     std::filesystem::path options_file_path =  Storage::ROOT_DIR / "options.dat";
     if (std::filesystem::exists(options_file_path))
     {
-        Options options;
         std::ifstream options_file(options_file_path, std::ios::binary);
-        options_file.read(reinterpret_cast<char *>(&options), sizeof(Options));
+        options_file.read(reinterpret_cast<char *>(&_options), sizeof(Options));
         options_file.close();
-        _options = options;
     }
     else
     {

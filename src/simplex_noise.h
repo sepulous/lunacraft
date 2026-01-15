@@ -1,8 +1,7 @@
 #include <cstdint>
-#include <iostream>
 #include <cmath>
 
-static const uint8_t _perm[] = {
+static constexpr uint8_t _perm[] = {
     151,160,137,91,90,15,
     131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
     190, 6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,
@@ -50,8 +49,8 @@ static inline double Grad(uint8_t hash, double x, double y)
 
 double SimplexNoise(double x, double y)
 {
-    const double F = 0.366025403784; // (sqrt(3) - 1) / 2
-    const double G = 0.211324865405; // (3 - sqrt(3)) / 6
+    constexpr double F = 0.366025403784; // (sqrt(3) - 1) / 2
+    constexpr double G = 0.211324865405; // (3 - sqrt(3)) / 6
 
     double n0, n1, n2;
     double s = (x + y) * F;
@@ -61,10 +60,8 @@ double SimplexNoise(double x, double y)
     long j = ys > 0 ? (long)ys : (long)ys - 1;
 
     double t = (i + j) * G;
-    double X0 = i - t;
-    double Y0 = j - t;
-    double x0 = x - X0;
-    double y0 = y - Y0;
+    double x0 = x + t - i;
+    double y0 = y + t - j;
 
     long i1, j1;
     if (x0 > y0)
