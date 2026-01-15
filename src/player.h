@@ -13,6 +13,7 @@
 #include "entity.h"
 #include "sound_system.h"
 #include "constants.h"
+#include "input.h"
 
 struct PlayerData
 {
@@ -75,10 +76,11 @@ class Player : public Entity
             _was_grounded = _is_grounded;
         }
 
-        void UpdateCamera(double x_pos, double y_pos, double x_offset, double y_offset)
+        void UpdateCamera()
         {
-            _camera.yaw += x_offset * _camera.sensitivity;
-            _camera.pitch += y_offset * _camera.sensitivity;
+            auto mouse_delta = Input::GetMouseDelta();
+            _camera.yaw += mouse_delta.x * _camera.sensitivity;
+            _camera.pitch += mouse_delta.y * _camera.sensitivity;
             _camera.pitch = glm::clamp(_camera.pitch, -89.8f, 89.8f);
 
             glm::vec3 direction;

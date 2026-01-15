@@ -9,9 +9,7 @@
 #include <stb_truetype/stb_truetype.h>
 
 #include "shader.h"
-#include "input.h"
 #include "moon_settings.h"
-#include "viewport.h"
 
 const float VIRTUAL_UI_WIDTH = 1920.0f;
 const float VIRTUAL_UI_HEIGHT = 1080.0f;
@@ -32,8 +30,8 @@ class UIImage;
 class UIText;
 
 // Helpers
-void UIRescale(const Viewport &viewport);
-void UIUpdateTransforms(Viewport &viewport);
+void UIRescale();
+glm::mat4 UIGetVirtualToWindow();
 
 /////////////////////////////////////
 
@@ -108,7 +106,7 @@ class UIButton
         void SetText(std::string text, float font_size, glm::vec4 color);
         void SetClickAction(std::function<void()> click_action);
         bool IsClicked();
-        void Update(MouseState mouse_state);
+        void Update();
         void Render();
 
         UIText& GetText() { return _text; }
@@ -132,7 +130,7 @@ class UIToggleButton
         void SetSize(glm::vec2 size);
         void SetToggled(bool toggled);
         bool IsToggled();
-        void Update(MouseState mouse_state);
+        void Update();
         void Render();
 };
 
@@ -163,7 +161,7 @@ class UISlider
         void SetBounds(glm::vec2 bounds);
         void SetPosition(glm::vec2 position);
         void SetSize(glm::vec2 size);
-        void Update(MouseState mouse_state);
+        void Update();
         void Render();
 };
 
@@ -202,7 +200,7 @@ class UITextBox
         void SetSize(glm::vec2 size);
         void SetText(std::string text);
         std::string GetText();
-        void Update(float delta_time, MouseState mouse_state);
+        void Update(float delta_time);
         void Render();
 };
 
@@ -258,7 +256,7 @@ class UIMoonSettingsMenu
         void SetLaunchButtonClicked(bool status);
         bool IsLaunchButtonClicked();
         void Reset();
-        void Update(float delta_time, MouseState mouse_state);
+        void Update(float delta_time);
         void Render();
 };
 
@@ -290,7 +288,7 @@ class UIOptionsMenu
         UIOptionsMenu();
         void SetActive(bool status);
         bool IsActive();
-        void Update(MouseState mouse_state);
+        void Update();
         void Render();
 };
 
@@ -311,14 +309,13 @@ class UIResetMoonMenu
         void SetActive(bool status);
         bool IsActive();
         bool ResetClicked();
-        void Update(MouseState mouse_state);
+        void Update();
         void Render();
 };
 
 class UIMainMenu
 {
     private:
-        GLFWwindow *_window;
         UIImage _lunacraft_logo;
         UIImage _background_images[5];
         int _current_background = 0;
@@ -333,14 +330,15 @@ class UIMainMenu
         UILoadMoonMenu _load_moon_menu;
 
     public:
-        UIMainMenu(GLFWwindow *window);
+        UIMainMenu();
         void RefreshMoonButtonText();
         void ResetMoonSettings();
         void SetLoadProgressLevel(float progress);
+        bool IsQuitClicked();
         bool IsLaunchButtonClicked();
         void SetLaunchButtonClicked(bool status);
         std::pair<int, MoonSettings> GetMoonData();
-        void Update(float delta_time, MouseState mouse_state);
+        void Update(float delta_time);
         void Render(float delta_time);
 };
 
@@ -362,7 +360,7 @@ class UIPauseMenu
         bool IsActive();
         bool QuitClicked();
         bool ResumeClicked();
-        void Update(MouseState mouse_state);
+        void Update();
         void Render();
 };
 
@@ -384,7 +382,7 @@ class UIDebugMenu
         UIDebugMenu();
         void SetActive(bool value);
         bool IsActive();
-        void Update(const DebugInfo& debug_info);
+        void Update(const DebugInfo &debug_info);
         void Render();
 };
 
@@ -394,7 +392,7 @@ class UIGame
         UIGame();
         UIPauseMenu &GetPauseMenu();
         UIDebugMenu &GetDebugMenu();
-        void Update(MouseState mouse_state, const DebugInfo& debug_info);
+        void Update(const DebugInfo &debug_info);
         void Render();
 
     private:

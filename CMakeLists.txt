@@ -50,6 +50,8 @@ add_executable(Lunacraft
     src/chunk_manager.cpp
     src/entity_manager.cpp
     src/sound_system.cpp
+    src/input.cpp
+    src/viewport.cpp
 )
 
 # Include directories

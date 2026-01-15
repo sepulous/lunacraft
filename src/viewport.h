@@ -3,11 +3,18 @@
 
 #include <glm/glm.hpp>
 
-struct Viewport
+class Viewport
 {
-    glm::dvec2 dimensions = {1280.0, 720.0};
-    glm::dvec2 last_mouse_pos = {1280.0 / 2.0, 720.0 / 2.0};
-    glm::mat4 ui_virtual_to_window = glm::mat4(1.0);
+public:
+    static void SetDimensions(const glm::ivec2 &dimensions);
+    static glm::ivec2 GetDimensions();
+
+    static void SetLastMousePosition(const glm::dvec2 &position);
+    static glm::dvec2 GetLastMousePosition();
+
+private:
+    static glm::dvec2 _dimensions;
+    static glm::dvec2 _last_mouse_pos;
 };
 
 #endif

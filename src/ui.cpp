@@ -29,23 +29,12 @@
 #define STBTT_STATIC
 #include <stb_truetype/stb_truetype.h>
 
-int LAST_INPUT_KEY = ' ';
-bool LAST_INPUT_KEY_HANDLED = true;
-
-static void _HandleTextInput(GLFWwindow* window, int key, int scancode, int action, int mods)
+// Must compile shaders before calling this!
+void UIRescale()
 {
-    if (key >= (int)' ' && (key < 128 || key == GLFW_KEY_BACKSPACE) && action == GLFW_PRESS)
-    {
-        LAST_INPUT_KEY = key;
-        LAST_INPUT_KEY_HANDLED = false;
-    }
-}
-
-// NOTE: Must compile shaders before calling this!
-void UIRescale(const Viewport &viewport)
-{
-    glm::mat4 proj = glm::ortho(0.0, viewport.dimensions.x, 0.0, viewport.dimensions.y, -1.0, 1.0);
-    glm::mat4 ui_matrix = proj * viewport.ui_virtual_to_window;
+    auto viewport_dimensions = Viewport::GetDimensions();
+    glm::mat4 proj = glm::ortho(0.0, (double)viewport_dimensions.x, 0.0, (double)viewport_dimensions.y, -1.0, 1.0);
+    glm::mat4 ui_matrix = proj * UIGetVirtualToWindow();
 
     ShaderManager::UI_IMAGE_SHADER.Use();
     glUniformMatrix4fv(glGetUniformLocation(ShaderManager::UI_IMAGE_SHADER.GetID(), "u_ui_matrix"), 1, GL_FALSE, glm::value_ptr(ui_matrix));
@@ -54,24 +43,23 @@ void UIRescale(const Viewport &viewport)
     glUniformMatrix4fv(glGetUniformLocation(ShaderManager::UI_TEXT_SHADER.GetID(), "u_ui_matrix"), 1, GL_FALSE, glm::value_ptr(ui_matrix));
 }
 
-void UIUpdateTransforms(Viewport &viewport)
+glm::mat4 UIGetVirtualToWindow()
 {
-    float scale = std::max(viewport.dimensions.x / VIRTUAL_UI_WIDTH, viewport.dimensions.y / VIRTUAL_UI_HEIGHT);
+    auto viewport_dimensions = Viewport::GetDimensions();
+    float scale = std::max((float)viewport_dimensions.x / VIRTUAL_UI_WIDTH, (float)viewport_dimensions.y / VIRTUAL_UI_HEIGHT);
     float scaled_virtual_width = VIRTUAL_UI_WIDTH * scale;
     float scaled_virtual_height = VIRTUAL_UI_HEIGHT * scale;
-    float offset_x = (viewport.dimensions.x - scaled_virtual_width)  * 0.5f;
-    float offset_y = (viewport.dimensions.y - scaled_virtual_height) * 0.5f;
-    viewport.ui_virtual_to_window = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(offset_x, offset_y, 0.0f)), glm::vec3(scale, scale, 1.0f));
+    float offset_x = ((float)viewport_dimensions.x - scaled_virtual_width)  * 0.5f;
+    float offset_y = ((float)viewport_dimensions.y - scaled_virtual_height) * 0.5f;
+    return glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(offset_x, offset_y, 0.0f)), glm::vec3(scale, scale, 1.0f));
 }
 
 //
 // Main Menu
 //
 
-UIMainMenu::UIMainMenu(GLFWwindow *window)
+UIMainMenu::UIMainMenu()
 {
-    _window = window;
-
     // Lunacraft logo
     _lunacraft_logo.LoadImage(Storage::IMAGE_DIR / "lunacraft.png");
     _lunacraft_logo.SetPosition({70, 875});
@@ -198,9 +186,6 @@ UIMainMenu::UIMainMenu(GLFWwindow *window)
         quit_button_position.y + (quit_button_size.y / 2.0f) - (quit_text_size.y / 2.0f)
     });
     _quit_button.SetText("Quit", quit_font_size, {0.0f, 0.0f, 0.0f, 1.0f});
-    _quit_button.SetClickAction([this]() { glfwSetWindowShouldClose(_window, true); });
-
-    glfwSetKeyCallback(window, _HandleTextInput);
 }
 
 void UIMainMenu::RefreshMoonButtonText()
@@ -271,6 +256,11 @@ void UIMainMenu::SetLoadProgressLevel(float progress)
     _load_moon_menu.SetProgressLevel(progress);
 }
 
+bool UIMainMenu::IsQuitClicked()
+{
+    return _quit_button.IsClicked();
+}
+
 bool UIMainMenu::IsLaunchButtonClicked()
 {
     return _moon_settings_menu.IsLaunchButtonClicked();
@@ -286,34 +276,34 @@ std::pair<int, MoonSettings> UIMainMenu::GetMoonData()
     return std::pair<int, MoonSettings>{_moon_settings_menu.GetMoonID(), _moon_settings_menu.GetMoonSettings()};
 }
 
-void UIMainMenu::Update(float delta_time, MouseState mouse_state)
+void UIMainMenu::Update(float delta_time)
 {
     if (_moon_settings_menu.IsActive())
     {
-        _moon_settings_menu.Update(delta_time, mouse_state);
+        _moon_settings_menu.Update(delta_time);
         if (_moon_settings_menu.IsLaunchButtonClicked())
             _load_moon_menu.SetActive(true);
     }
     else if (_options_menu.IsActive())
     {
-        _options_menu.Update(mouse_state);
+        _options_menu.Update();
     }
     else if (_reset_moon_menu.IsActive())
     {
-        _reset_moon_menu.Update(mouse_state);
+        _reset_moon_menu.Update();
         if (_reset_moon_menu.ResetClicked())
             RefreshMoonButtonText();
     }
     else if (!_load_moon_menu.IsActive()) // Player can't interact with buttons behind active menus
     {
         for (UIButton& moon_button : _moon_buttons)
-            moon_button.Update(mouse_state);
+            moon_button.Update();
 
         for (UIButton& reset_button : _reset_buttons)
-            reset_button.Update(mouse_state);
+            reset_button.Update();
 
-        _options_button.Update(mouse_state);
-        _quit_button.Update(mouse_state);
+        _options_button.Update();
+        _quit_button.Update();
     }
 }
 
@@ -628,24 +618,24 @@ void UIMoonSettingsMenu::Reset()
     _creative_button.SetToggled(false);
 }
 
-void UIMoonSettingsMenu::Update(float delta_time, MouseState mouse_state)
+void UIMoonSettingsMenu::Update(float delta_time)
 {
-    _back_button.Update(mouse_state);
-    _launch_button.Update(mouse_state);
-    _tree_cover_slider.Update(mouse_state);
-    _roughness_slider.Update(mouse_state);
-    _wildlife_slider.Update(mouse_state);
-    _seed_textbox.Update(delta_time, mouse_state);
+    _back_button.Update();
+    _launch_button.Update();
+    _tree_cover_slider.Update();
+    _roughness_slider.Update();
+    _wildlife_slider.Update();
+    _seed_textbox.Update(delta_time);
 
     bool explore_was_toggled = _explore_button.IsToggled();
-    _explore_button.Update(mouse_state);
+    _explore_button.Update();
     if (explore_was_toggled && !_explore_button.IsToggled()) // Prevent both buttons being untoggled
         _explore_button.SetToggled(true);
     if (_explore_button.IsToggled())
         _creative_button.SetToggled(false);
 
     bool creative_was_toggled = _creative_button.IsToggled();
-    _creative_button.Update(mouse_state);
+    _creative_button.Update();
     if (creative_was_toggled && !_creative_button.IsToggled()) // Prevent both buttons being untoggled
         _creative_button.SetToggled(true);
     if (_creative_button.IsToggled())
@@ -955,17 +945,17 @@ bool UIOptionsMenu::IsActive()
     return _active;
 }
 
-void UIOptionsMenu::Update(MouseState mouse_state)
+void UIOptionsMenu::Update()
 {
-    _back_button.Update(mouse_state);
-    _sfx_volume_slider.Update(mouse_state);
-    _music_volume_slider.Update(mouse_state);
-    _sensitivity_slider.Update(mouse_state);
-    _render_distance_slider.Update(mouse_state);
-    _show_gui_toggle.Update(mouse_state);
-    _show_fog_toggle.Update(mouse_state);
-    _show_debug_toggle.Update(mouse_state);
-    _fullscreen_toggle.Update(mouse_state);
+    _back_button.Update();
+    _sfx_volume_slider.Update();
+    _music_volume_slider.Update();
+    _sensitivity_slider.Update();
+    _render_distance_slider.Update();
+    _show_gui_toggle.Update();
+    _show_fog_toggle.Update();
+    _show_debug_toggle.Update();
+    _fullscreen_toggle.Update();
 
     // if (mouse_state.left_held)
     {
@@ -1088,10 +1078,10 @@ bool UIResetMoonMenu::ResetClicked()
     return _reset_button.IsClicked();
 }
 
-void UIResetMoonMenu::Update(MouseState mouse_state)
+void UIResetMoonMenu::Update()
 {
-    _cancel_button.Update(mouse_state);
-    _reset_button.Update(mouse_state);
+    _cancel_button.Update();
+    _reset_button.Update();
 }
 
 void UIResetMoonMenu::Render()
@@ -1171,17 +1161,17 @@ bool UIPauseMenu::ResumeClicked()
     return _resume_clicked;
 }
 
-void UIPauseMenu::Update(MouseState mouse_state)
+void UIPauseMenu::Update()
 {
     if (_options_menu.IsActive())
     {
-        _options_menu.Update(mouse_state);
+        _options_menu.Update();
     }
     else
     {
-        _resume_button.Update(mouse_state);
-        _options_button.Update(mouse_state);
-        _quit_button.Update(mouse_state);
+        _resume_button.Update();
+        _options_button.Update();
+        _quit_button.Update();
         _resume_clicked = _resume_button.IsClicked();
         _quit_clicked = _quit_button.IsClicked();
     }
@@ -1261,13 +1251,13 @@ UIDebugMenu &UIGame::GetDebugMenu()
     return _debug_menu;
 }
 
-void UIGame::Update(MouseState mouse_state, const DebugInfo& debug_info)
+void UIGame::Update(const DebugInfo& debug_info)
 {
     if (_debug_menu.IsActive())
         _debug_menu.Update(debug_info);
 
     if (_pause_menu.IsActive())
-        _pause_menu.Update(mouse_state);
+        _pause_menu.Update();
 }
 
 void UIGame::Render()
@@ -1800,14 +1790,16 @@ bool UIButton::IsClicked()
     return _clicked;
 }
 
-void UIButton::Update(MouseState mouse_state)
+void UIButton::Update()
 {
-    _hovered = mouse_state.position.x >= _position.x && mouse_state.position.x <= _position.x + _size.x
-            && mouse_state.position.y >= _position.y && mouse_state.position.y <= _position.y + _size.y;
+    glm::dvec2 mouse_position = Input::GetVirtualMousePosition(UIGetVirtualToWindow());
+
+    _hovered = mouse_position.x >= _position.x && mouse_position.x <= _position.x + _size.x
+            && mouse_position.y >= _position.y && mouse_position.y <= _position.y + _size.y;
     if (_hovered)
     {
-        _clicked = mouse_state.left_clicked;
-        _held = mouse_state.left_held;
+        _clicked = Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT);
+        _held = Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_LEFT);
     }
     else
     {
@@ -1881,10 +1873,11 @@ bool UIToggleButton::IsToggled()
     return _toggled;
 }
 
-void UIToggleButton::Update(MouseState mouse_state)
+void UIToggleButton::Update()
 {
-    _hovered = mouse_state.position.x >= _position.x && mouse_state.position.x <= _position.x + _size.x && mouse_state.position.y >= _position.y && mouse_state.position.y <= _position.y + _size.y;
-    if (_hovered && mouse_state.left_clicked)
+    glm::dvec2 mouse_position = Input::GetVirtualMousePosition(UIGetVirtualToWindow());
+    _hovered = mouse_position.x >= _position.x && mouse_position.x <= _position.x + _size.x && mouse_position.y >= _position.y && mouse_position.y <= _position.y + _size.y;
+    if (_hovered && Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT))
         _toggled = !_toggled;
 }
 
@@ -1995,27 +1988,27 @@ void UISlider::SetDiscrete(bool value)
     _discrete = value;
 }
 
-void UISlider::Update(MouseState mouse_state)
+void UISlider::Update()
 {
-    glm::vec2 mouse_pos = mouse_state.position;
+    glm::dvec2 mouse_pos = Input::GetVirtualMousePosition(UIGetVirtualToWindow());
     glm::vec2 handle_pos = _slider_handle.GetPosition();
     glm::vec2 handle_size = _slider_handle.GetSize();
     bool mouse_on_slider = mouse_pos.x >= _position.x - 20 && mouse_pos.x <= _position.x + _size.x + 20 && mouse_pos.y >= handle_pos.y && mouse_pos.y <= handle_pos.y + handle_size.y;
 
     if (_clicked)
-        _clicked = mouse_state.left_held;
+        _clicked = Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_LEFT);
     else
-        _clicked = mouse_state.left_clicked && mouse_on_slider;
+        _clicked = Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT) && mouse_on_slider;
 
     if (_held)
-        _held = mouse_state.left_held;
+        _held = Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_LEFT);
     else
-        _held = _clicked && mouse_state.left_held && mouse_on_slider;
+        _held = _clicked && Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_LEFT) && mouse_on_slider;
 
     if (_held) // Still held; drag slider
     {
         _value = glm::clamp(
-            ((mouse_pos.x - _position.x) / _size.x) * (_value_max - _value_min) + _value_min,
+            (((float)mouse_pos.x - _position.x) / _size.x) * (_value_max - _value_min) + _value_min,
             _value_min,
             _value_max
         );
@@ -2135,28 +2128,27 @@ std::string UITextBox::GetText()
     return _text_str;
 }
 
-void UITextBox::Update(float delta_time, MouseState mouse_state)
+void UITextBox::Update(float delta_time)
 {
     // Text
-    if (_active && !LAST_INPUT_KEY_HANDLED)
+    if (_active)
     {
-        if (LAST_INPUT_KEY == GLFW_KEY_BACKSPACE)
+        if (Input::IsKeyPressed(GLFW_KEY_BACKSPACE))
         {
             _text_str = _text_str.substr(0, _text_str.length() - 1);
         }
         else
         {
-            float text_width = UIText::GetTextSizeInPixels(_text_str, 0.4f).x;
-            if (text_width < 0.9f * _size.x)
-                _text_str += (char)LAST_INPUT_KEY;
+            auto input_char = Input::GetLastCharInput();
+            if (input_char > 0 && input_char <= 127)
+            {
+                float text_width = UIText::GetTextSizeInPixels(_text_str, 0.4f).x;
+                if (text_width < 0.9f * _size.x)
+                    _text_str += (char)input_char;
+            }
         }
         _text.SetText(_text_str);
-        LAST_INPUT_KEY_HANDLED = true;
         _cursor_time = 0;
-    }
-    else if (!_active)
-    {
-        LAST_INPUT_KEY_HANDLED = true;
     }
 
     // Cursor
@@ -2173,9 +2165,12 @@ void UITextBox::Update(float delta_time, MouseState mouse_state)
         _cursor_time = 0;
     }
 
-    bool mouse_on_box = mouse_state.position.x >= _position.x && mouse_state.position.x <= _position.x + _size.x && mouse_state.position.y >= _position.y && mouse_state.position.y <= _position.y + _size.y;
-    if (mouse_state.left_clicked)
+    if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT))
+    {
+        glm::dvec2 mouse_position = Input::GetVirtualMousePosition(UIGetVirtualToWindow());
+        bool mouse_on_box = mouse_position.x >= _position.x && mouse_position.x <= _position.x + _size.x && mouse_position.y >= _position.y && mouse_position.y <= _position.y + _size.y;
         _active = mouse_on_box;
+    }
 }
 
 void UITextBox::Render()
