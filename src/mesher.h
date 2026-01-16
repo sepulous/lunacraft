@@ -15,6 +15,7 @@
 struct BlockQuad
 {
     BlockID block;
+    glm::ivec3 base_coords;
     glm::vec3 base; // Local coordinates
     glm::vec3 du;
     glm::vec3 dv;
@@ -37,12 +38,13 @@ std::vector<BlockQuad> GreedyMesh(BlockID *blocks)
     struct MaskEntry
     {
         BlockID block;
+        glm::ivec3 coords;
         bool back_face;
 
         MaskEntry() { block = BlockID::air, back_face = false; }
-        MaskEntry(BlockID block, bool back_face) : block(block), back_face(back_face) {}
-        bool operator==(const MaskEntry& other) { return block == other.block && back_face == other.back_face; }
-        bool operator!=(const MaskEntry& other) { return block != other.block || back_face != other.back_face; }
+        MaskEntry(BlockID block, glm::ivec3 coords, bool back_face) : block(block), coords(coords), back_face(back_face) {}
+        bool operator==(const MaskEntry& other) { return block == other.block && coords == other.coords && back_face == other.back_face; }
+        bool operator!=(const MaskEntry& other) { return block != other.block || coords != other.coords || back_face != other.back_face; }
     };
 
     std::vector<BlockQuad> quads;
@@ -67,11 +69,11 @@ std::vector<BlockQuad> GreedyMesh(BlockID *blocks)
                 BlockID next_block = (BlockID)blocks[GetChunkIndex(block_x + 1 + 1, block_y, block_z + 1)];
 
                 if (ShouldRenderFace(current_block, next_block) && !ShouldRenderFace(next_block, current_block))
-                    mask.emplace_back(current_block, false);
+                    mask.emplace_back(current_block, glm::ivec3{block_x + 1, block_y, block_z + 1}, false);
                 else if (ShouldRenderFace(next_block, current_block) && !ShouldRenderFace(current_block, next_block))
-                    mask.emplace_back(next_block, true);
+                    mask.emplace_back(next_block, glm::ivec3{block_x + 1 + 1, block_y, block_z + 1}, true);
                 else
-                    mask.emplace_back(BlockID::air, false); // Don't render
+                    mask.emplace_back(BlockID::air, glm::ivec3{0, 0, 0}, false); // Don't render
             }
         }
 
@@ -118,11 +120,12 @@ std::vector<BlockQuad> GreedyMesh(BlockID *blocks)
                 // Mark mask entries covered by this quad as "handled"
                 for (int z2 = block_z; z2 < block_z + quad_width; z2++)
                     for (int y2 = y; y2 < y + quad_height; y2++)
-                        mask[y2 + z2 * WORLD_HEIGHT_LIMIT] = {BlockID::air, false};
+                        mask[y2 + z2 * WORLD_HEIGHT_LIMIT] = {BlockID::air, {0, 0, 0}, false};
 
                 // Push quad
                 quads.emplace_back(
                     base_entry.block,
+                    base_entry.coords,
                     glm::vec3{block_x, y, block_z},
                     glm::vec3{0, 0, quad_width},
                     glm::vec3{0, quad_height, 0},
@@ -154,11 +157,11 @@ std::vector<BlockQuad> GreedyMesh(BlockID *blocks)
                 BlockID next_block = (BlockID)blocks[GetChunkIndex(block_x + 1, block_y, block_z + 1 + 1)];
 
                 if (ShouldRenderFace(current_block, next_block) && !ShouldRenderFace(next_block, current_block))
-                    mask.emplace_back(current_block, false);
+                    mask.emplace_back(current_block, glm::ivec3{block_x + 1, block_y, block_z + 1}, false);
                 else if (ShouldRenderFace(next_block, current_block) && !ShouldRenderFace(current_block, next_block))
-                    mask.emplace_back(next_block, true);
+                    mask.emplace_back(next_block, glm::ivec3{block_x + 1, block_y, block_z + 1 + 1}, true);
                 else
-                    mask.emplace_back(BlockID::air, false); // Don't render
+                    mask.emplace_back(BlockID::air, glm::ivec3{0, 0, 0}, false); // Don't render
             }
         }
 
@@ -205,11 +208,12 @@ std::vector<BlockQuad> GreedyMesh(BlockID *blocks)
                 // Mark mask entries covered by this quad as "handled"
                 for (int x2 = block_x; x2 < block_x + quad_width; x2++)
                     for (int y2 = y; y2 < y + quad_height; y2++)
-                        mask[y2 + x2 * WORLD_HEIGHT_LIMIT] = {BlockID::air, false};
+                        mask[y2 + x2 * WORLD_HEIGHT_LIMIT] = {BlockID::air, {0, 0, 0}, false};
 
                 // Push quad
                 quads.emplace_back(
                     base_entry.block,
+                    base_entry.coords,
                     glm::vec3{block_x, y, block_z},
                     glm::vec3{quad_width, 0, 0},
                     glm::vec3{0, quad_height, 0},
@@ -244,15 +248,15 @@ std::vector<BlockQuad> GreedyMesh(BlockID *blocks)
                     BlockID next_block = (BlockID)blocks[GetChunkIndex(block_x + 1, block_y + 1, block_z + 1)]; //
 
                     if (ShouldRenderFace(current_block, next_block) && !ShouldRenderFace(next_block, current_block))
-                        mask.emplace_back(current_block, false);
+                        mask.emplace_back(current_block, glm::ivec3{block_x + 1, block_y, block_z + 1}, false);
                     else if (ShouldRenderFace(next_block, current_block) && !ShouldRenderFace(current_block, next_block))
-                        mask.emplace_back(next_block, true);
+                        mask.emplace_back(next_block, glm::ivec3{block_x + 1, block_y + 1, block_z + 1}, true);
                     else
-                        mask.emplace_back(BlockID::air, false); // Don't render
+                        mask.emplace_back(BlockID::air, glm::ivec3{0, 0, 0}, false); // Don't render
                 }
                 else
                 {
-                    mask.emplace_back(BlockID::air, false);
+                    mask.emplace_back(BlockID::air, glm::ivec3{0, 0, 0}, false);
                 }
             }
         }
@@ -300,11 +304,12 @@ std::vector<BlockQuad> GreedyMesh(BlockID *blocks)
                 // Mark mask entries covered by this quad as "handled"
                 for (int x2 = block_x; x2 < block_x + quad_width; x2++)
                     for (int z2 = z; z2 < z + quad_height; z2++)
-                        mask[z2 + x2 * CHUNK_SIZE] = {BlockID::air, false};
+                        mask[z2 + x2 * CHUNK_SIZE] = {BlockID::air, {0, 0, 0}, false};
 
                 // Push quad
                 quads.emplace_back(
                     base_entry.block,
+                    base_entry.coords,
                     glm::vec3{block_x, block_y, z},
                     glm::vec3{quad_width, 0, 0},
                     glm::vec3{0, 0, quad_height},

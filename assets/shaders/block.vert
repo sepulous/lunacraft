@@ -3,11 +3,13 @@
 layout (location = 0) in vec3 in_position;
 layout (location = 1) in vec4 in_uv;
 layout (location = 2) in vec3 in_normal;
+layout (location = 3) in float in_sky_light;
 
 out vec2 v_tex;
 out vec2 v_tile_origin;
 out vec3 v_normal;
 out vec3 v_ws_position;
+out float v_sky_light;
 
 uniform mat4 u_view_projection;
 
@@ -18,4 +20,5 @@ void main()
     v_tex = in_uv.xy;
     v_tile_origin = in_uv.zw;
     v_normal = in_normal;
+    v_sky_light = in_sky_light;
 }
