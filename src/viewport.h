@@ -1,5 +1,4 @@
-#ifndef VIEWPORT_H
-#define VIEWPORT_H
+#pragma once
 
 #include <glm/glm.hpp>
 
@@ -16,5 +15,3 @@ private:
     static glm::dvec2 _dimensions;
     static glm::dvec2 _last_mouse_pos;
 };
-
-#endif

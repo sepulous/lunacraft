@@ -1,5 +1,4 @@
-#ifndef ENTITY_H
-#define ENTITY_H
+#pragma once
 
 #include "aabb.h"
 
@@ -43,5 +42,3 @@ class Entity
         void SetGrounded(bool value) noexcept;
         bool IsGrounded() noexcept;
 };
-
-#endif

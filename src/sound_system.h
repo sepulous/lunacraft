@@ -1,5 +1,4 @@
-#ifndef SOUND_SYSTEM_H
-#define SOUND_SYSTEM_H
+#pragma once
 
 #include <vector>
 #include <tuple>
@@ -53,5 +52,3 @@ class SoundSystem
         static float _sfx_volume;
         static float _music_volume;
 };
-
-#endif

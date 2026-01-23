@@ -1,5 +1,4 @@
-#ifndef STORAGE_H
-#define STORAGE_H
+#pragma once
 
 #include <filesystem>
 
@@ -35,5 +34,3 @@ class Storage
         Storage() = delete;
         static void Init();
 };
-
-#endif

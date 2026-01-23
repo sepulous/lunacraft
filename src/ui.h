@@ -1,5 +1,4 @@
-#ifndef UI_H
-#define UI_H
+#pragma once
 
 #include <string>
 #include <filesystem>
@@ -399,5 +398,3 @@ class UIGame
         UIPauseMenu _pause_menu;
         UIDebugMenu _debug_menu;
 };
-
-#endif

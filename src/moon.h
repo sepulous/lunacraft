@@ -1,5 +1,4 @@
-#ifndef MOON_H
-#define MOON_H
+#pragma once
 
 #include <cstdint>
 
@@ -38,5 +37,3 @@ class Moon
         void Update(double delta_time, int old_render_distance);
         void Render(glm::mat4 projection);
 };
-
-#endif

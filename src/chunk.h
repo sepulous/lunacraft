@@ -1,5 +1,4 @@
-#ifndef CHUNK_H
-#define CHUNK_H
+#pragma once
 
 #include <cstdint>
 #include <vector>
@@ -64,5 +63,3 @@ class Chunk
         void RenderOpaques();
         void RenderTransparents();
 };
-
-#endif

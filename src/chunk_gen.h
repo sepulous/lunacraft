@@ -1,5 +1,4 @@
-#ifndef CHUNK_GEN_H
-#define CHUNK_GEN_H
+#pragma once
 
 #include <vector>
 #include <cstdlib>
@@ -1907,5 +1906,3 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
         }
     }
 }
-
-#endif

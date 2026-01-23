@@ -1,5 +1,4 @@
-#ifndef MESHER_H
-#define MESHER_H
+#pragma once
 
 #include <iostream>
 #include <cstdint>
@@ -324,5 +323,3 @@ std::vector<BlockQuad> GreedyMesh(BlockID *blocks)
 
     return quads;
 }
-
-#endif

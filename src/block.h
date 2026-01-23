@@ -1,5 +1,4 @@
-#ifndef BLOCKS_H
-#define BLOCKS_H
+#pragma once
 
 #include <cstdint>
 
@@ -72,5 +71,3 @@ struct BlockVertex
     
     BlockVertex(glm::vec3 position, glm::vec4 uv, glm::vec3 face_normal, float sky_light) : position(position), uv(uv), face_normal(face_normal), sky_light(sky_light) {}
 };
-
-#endif

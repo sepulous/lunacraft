@@ -1,5 +1,4 @@
-#ifndef CHUNK_MANAGER_H
-#define CHUNK_MANAGER_H
+#pragma once
 
 #include <unordered_map>
 #include <vector>
@@ -47,5 +46,3 @@ class ChunkManager
         std::unordered_map<uint64_t, Chunk> &GetChunks();
         int GetLoadedChunkCount();
 };
-
-#endif

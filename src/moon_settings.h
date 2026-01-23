@@ -1,5 +1,4 @@
-#ifndef MOON_SETTINGS_H
-#define MOON_SETTINGS_H
+#pragma once
 
 #include <cstdint>
 
@@ -12,5 +11,3 @@ struct MoonSettings
     double world_time = 0;
     bool is_creative = false;
 };
-
-#endif

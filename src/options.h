@@ -1,5 +1,4 @@
-#ifndef OPTIONS_H
-#define OPTIONS_H
+#pragma once
 
 struct Options
 {
@@ -24,5 +23,3 @@ class OptionsManager
         static void SetOptions(Options new_options);
         static void SaveOptions();
 };
-
-#endif

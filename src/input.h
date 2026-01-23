@@ -1,5 +1,4 @@
-#ifndef INPUT_H
-#define INPUT_H
+#pragma once
 
 #include <GLFW/glfw3.h>
 
@@ -52,5 +51,3 @@ private:
     static int _mouse_scroll;
     static unsigned int _last_char_input;
 };
-
-#endif

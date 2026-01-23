@@ -1,5 +1,4 @@
-#ifndef SKYBOX_H
-#define SKYBOX_H
+#pragma once
 
 #include <glad/glad.h>
 
@@ -20,5 +19,3 @@ class Skybox
         void Update(const glm::mat4 &view_projection, float skybox_angle);
         void Render();
 };
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef BLOCKING_QUEUE_H
-#define BLOCKING_QUEUE_H
+#pragma once
 
 #include <queue>
 #include <mutex>
@@ -49,5 +48,3 @@ class BlockingQueue
             return true;
         }
 };
-
-#endif

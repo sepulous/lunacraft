@@ -1,5 +1,4 @@
-#ifndef PLAYER_H
-#define PLAYER_H
+#pragma once
 
 #include <iostream>
 #include <vector>
@@ -114,5 +113,3 @@ class Player : public Entity
 
         void SetCameraSensitivity(float sensitivity) { _camera.SetSensitivity(sensitivity); }
 };
-
-#endif
