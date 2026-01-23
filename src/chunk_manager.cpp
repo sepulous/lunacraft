@@ -73,7 +73,7 @@ void ChunkManager::RenderChunks(Plane frustum[6])
 
     std::vector<Chunk *> visible_chunks;
 
-    for (auto it = _chunks.begin(); it != _chunks.end(); it++)
+    for (auto it = _chunks.begin(); it != _chunks.end(); ++it)
     {
         if (it->second.state == ChunkState::UPLOADED)
         {
@@ -140,7 +140,7 @@ void ChunkManager::RemoveDistantChunks(glm::ivec3 player_chunk, int render_dista
         }
         else
         {
-            it++;
+            ++it;
         }
     }
 }
