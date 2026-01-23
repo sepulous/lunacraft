@@ -34,18 +34,26 @@ Moon::Moon(int moon_id, MoonSettings moon_settings)
         moon_data_file.close();
     }
 
-    // Choose random fog color
-    int fog_color = (int)((float)std::rand() * 4 / RAND_MAX);
-    if (fog_color == 0)
-        _base_fog_color = glm::vec4(0.067, 0.208, 0.314, 1);
-    else if (fog_color == 1)
-        _base_fog_color = glm::vec4(0.314, 0.067, 0.31, 1);
-    else if (fog_color == 2)
-        _base_fog_color = glm::vec4(0.067, 0.314, 0.188, 1);
-    else if (fog_color == 3)
-        _base_fog_color = glm::vec4(0.067, 0.094, 0.314, 1);
+    // Choose random fog color (this code was reverse engineered
+    // from an unknown version of the original Lunacraft)
+
+    int _case = std::rand() % 6;
+    float _rand = (float)(std::rand() % 1'000'000) / 1'000'000.0f;
+    float comp1 = (1.0 - _rand * 0.85) * 0.9;
+    float comp2 = (1.0 - (1.0 - _rand) * 0.85) * 0.9;
+
+    if (_case == 0)
+        _base_fog_color = {0.9, comp2, 0.135, 1};
+    else if (_case == 1)
+        _base_fog_color = {comp1, 0.9, 0.135, 1};
+    else if (_case == 2)
+        _base_fog_color = {0.135, 0.9, comp2, 1};
+    else if (_case == 3)
+        _base_fog_color = {0.135, comp1, 0.9, 1};
+    else if (_case == 4)
+        _base_fog_color = {comp2, 0.135, 0.9, 1};
     else
-        _base_fog_color = glm::vec4(0.239, 0.067, 0.314, 1);
+        _base_fog_color = {0.9, 0.135, comp1, 1};
 
     int render_distance = OptionsManager::GetOptions().render_distance;
     _initial_chunk_count = (2*render_distance + 1) * (2*render_distance + 1);
