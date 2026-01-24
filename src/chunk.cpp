@@ -249,7 +249,7 @@ void BuildLightmap(BlockID *blocks, Lightmap &lightmap)
 
         for (const glm::ivec3 &neighbor_coords : neighbors)
         {
-            if (neighbor_coords.x == 0 || neighbor_coords.z == 0 || neighbor_coords.x == CHUNK_SIZE + 1 || neighbor_coords.z == CHUNK_SIZE + 1 || neighbor_coords.y < 0 || neighbor_coords.y == WORLD_HEIGHT_LIMIT)
+            if (neighbor_coords.x < 0 || neighbor_coords.z < 0 || neighbor_coords.x > CHUNK_SIZE + 1 || neighbor_coords.z > CHUNK_SIZE + 1 || neighbor_coords.y < 0 || neighbor_coords.y >= WORLD_HEIGHT_LIMIT)
                 continue;
 
             BlockID neighbor_block = blocks[GetChunkIndex(neighbor_coords.x, neighbor_coords.y, neighbor_coords.z)];
