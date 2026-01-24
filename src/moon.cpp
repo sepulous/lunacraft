@@ -12,6 +12,8 @@
 #include "constants.h"
 #include "shader.h"
 
+Moon *Moon::_current_moon;
+
 Moon::Moon(int moon_id, MoonSettings moon_settings)
 {
     // Create moon folder (if necessary)
@@ -61,6 +63,7 @@ Moon::Moon(int moon_id, MoonSettings moon_settings)
     _settings = moon_settings;
     _world_time = moon_settings.world_time;
     _player = new Player;
+    _current_moon = this;
     _chunk_manager.Init(moon_id, moon_settings);
     _entity_manager.LinkChunkManager(&_chunk_manager);
     _entity_manager.AddEntity(_player);
@@ -68,12 +71,19 @@ Moon::Moon(int moon_id, MoonSettings moon_settings)
 
 Moon::~Moon()
 {
+    _current_moon = nullptr;
+
     // Save world time to file
     _settings.world_time = _world_time;
     std::filesystem::path moon_data_path = Storage::MOON_DIR / (std::string("moon") + std::to_string(_id)) / "moon.dat";
     std::ofstream moon_data_file(moon_data_path, std::ios::binary);
     moon_data_file.write(reinterpret_cast<char *>(&_settings), sizeof(MoonSettings));
     moon_data_file.close();
+}
+
+Moon *Moon::GetCurrentMoon()
+{
+    return _current_moon;
 }
 
 Player *Moon::GetPlayer()
@@ -93,7 +103,11 @@ EntityManager &Moon::GetEntityManager()
 
 glm::vec4 Moon::GetFogColor()
 {
-    glm::vec3 fog_rgb = 0.5f * (1 + (float)glm::cos(2 * 3.1416 * _world_time / (LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE))) * glm::vec3(_base_fog_color);
+    float factor = glm::cos(_world_time * (2 * 3.1416 / (LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE)));
+    if (factor < 0)
+        factor = 0;
+    glm::vec3 fog_rgb = factor * glm::vec3(_base_fog_color);
+
     return {fog_rgb.r, fog_rgb.g, fog_rgb.b, _base_fog_color.a};
 }
 
@@ -111,6 +125,36 @@ float Moon::GetLoadProgress()
 MoonSettings Moon::GetSettings()
 {
     return _settings;
+}
+
+double Moon::GetWorldTime()
+{
+    return _world_time;
+}
+
+glm::vec3 Moon::GetSunlightDirection()
+{
+    constexpr int PERIOD = LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE;
+    int phase = ((int)(_world_time + (3 * SECONDS_PER_LIGHT_PHASE)) / SECONDS_PER_LIGHT_PHASE) % LIGHT_PHASES; // The offset initializes moon on Phase 3
+    float main_light_angle_deg;
+    if (phase <= 6) // Day
+    {
+        main_light_angle_deg = -180.0f + 30.0f * phase;
+        return {
+            0.0f,
+            glm::sin(glm::radians(main_light_angle_deg)),
+            glm::cos(glm::radians(main_light_angle_deg))
+        };
+    }
+    else // Night
+    {
+        main_light_angle_deg = -180.0f + 60.0f * (phase - 7);
+        return {
+            0.0f,
+            glm::sin(glm::radians(main_light_angle_deg)),
+            glm::cos(glm::radians(main_light_angle_deg))
+        };
+    }
 }
 
 void Moon::Update(double delta_time, int old_render_distance)

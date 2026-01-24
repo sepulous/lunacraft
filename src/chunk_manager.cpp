@@ -164,10 +164,14 @@ static void _ChunkWorker(std::stop_token stoken, int moon_id, MoonSettings moon_
             continue;
 
         BlockArray blocks;
+        Lightmap lightmap;
         std::vector<BlockVertex> opaque_vertices;
-        opaque_vertices.reserve(8192);
         std::vector<BlockVertex> transparent_vertices;
+        opaque_vertices.reserve(8192);
         transparent_vertices.reserve(128);
+
+        // TODO: Let's rethink the need to create this data here. I'd like to make BuildLightmaps and BuildChunkVertices methods of Chunk, but
+        //       I have to be able to work with a chunk object to do that, and I shyed away from that for some reason.
 
         // Load blocks
         uint64_t chunk_id = ChunkCoordsToID(task.coords);
@@ -187,8 +191,8 @@ static void _ChunkWorker(std::stop_token stoken, int moon_id, MoonSettings moon_
             chunk_file.close();
         }
 
-        // Build vertices
-        BuildChunkVertices(blocks.data(), task.coords, opaque_vertices, transparent_vertices);
+        BuildLightmap(blocks.data(), lightmap);
+        BuildChunkVertices(blocks.data(), task.coords, opaque_vertices, transparent_vertices, lightmap);
 
         result_queue.Push({task.coords, blocks, std::move(opaque_vertices), std::move(transparent_vertices)});
     }

@@ -11,9 +11,22 @@
 #include "block.h"
 #include "constants.h"
 
-typedef std::array<BlockID, BLOCKS_IN_CHUNK> BlockArray;
+typedef std::array<BlockID, BLOCKS_IN_CHUNK> BlockArray; // TODO: Get rid of this. It's stupid.
 
-void BuildChunkVertices(BlockID *blocks, glm::ivec3 chunk_coords, std::vector<BlockVertex> &opaque_vertices, std::vector<BlockVertex> &transparent_vertices);
+class Lightmap
+{
+    private:
+        uint8_t _map[BLOCKS_IN_CHUNK];
+
+    public:
+        Lightmap() = default;
+        ~Lightmap() = default;
+        uint8_t GetSkyLevel(glm::ivec3 coords) const;
+        void SetSkyLevel(glm::ivec3 coords, uint8_t level);
+        uint8_t GetBlockLevel(glm::ivec3 coords) const;
+        void SetBlockLevel(glm::ivec3 coords, uint8_t level);
+        uint8_t GetTotalLightLevel(glm::ivec3 coords) const;
+};
 
 enum class ChunkState
 {
@@ -27,6 +40,7 @@ class Chunk
     private:
         glm::ivec3 _coords;
         BlockArray _blocks;
+        Lightmap _lightmap;
         std::vector<BlockVertex> _opaque_vertices;
         GLuint _opaque_vao;
         GLuint _opaque_vbo;
@@ -61,3 +75,6 @@ class Chunk
         void RenderOpaques();
         void RenderTransparents();
 };
+
+void BuildLightmap(BlockID *blocks, Lightmap &lightmap);
+void BuildChunkVertices(BlockID *blocks, glm::ivec3 chunk_coords, std::vector<BlockVertex> &opaque_vertices, std::vector<BlockVertex> &transparent_vertices, const Lightmap &light_map);

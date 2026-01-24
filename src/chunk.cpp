@@ -12,6 +12,7 @@
 #include "helpers.h"
 #include "block.h"
 #include "mesher.h"
+#include "moon.h"
 
 Chunk::Chunk()
 {
@@ -91,13 +92,13 @@ void Chunk::BufferVertices()
     glBindBuffer(GL_ARRAY_BUFFER, _opaque_vbo);
     glBufferData(GL_ARRAY_BUFFER, _opaque_vertices.size() * sizeof(BlockVertex), _opaque_vertices.data(), GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 13 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)(3 * sizeof(float)));
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 13 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)(7 * sizeof(float)));
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 13 * sizeof(float), (void*)(7 * sizeof(float)));
     glEnableVertexAttribArray(2);
-    glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)(10 * sizeof(float)));
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 13 * sizeof(float), (void*)(10 * sizeof(float)));
     glEnableVertexAttribArray(3);
     
     // Transparents
@@ -108,13 +109,13 @@ void Chunk::BufferVertices()
     glBindBuffer(GL_ARRAY_BUFFER, _transparent_vbo);
     glBufferData(GL_ARRAY_BUFFER, _transparent_vertices.size() * sizeof(BlockVertex), _transparent_vertices.data(), GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 13 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)(3 * sizeof(float)));
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 13 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)(7 * sizeof(float)));
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 13 * sizeof(float), (void*)(7 * sizeof(float)));
     glEnableVertexAttribArray(2);
-    glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)(10 * sizeof(float)));
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 13 * sizeof(float), (void*)(10 * sizeof(float)));
     glEnableVertexAttribArray(3);
 }
 
@@ -138,9 +139,134 @@ void Chunk::SetTransparentVertices(std::vector<BlockVertex> &transparent_vertice
     _transparent_vertices = std::move(transparent_vertices);
 }
 
-static std::array<float, BLOCKS_IN_CHUNK> BuildSkylightMap(BlockID *blocks);
+void BuildLightmap(BlockID *blocks, Lightmap &lightmap)
+{
+    std::vector<glm::ivec3> to_expand;
+    std::vector<glm::ivec3> lights;
 
-void BuildChunkVertices(BlockID *blocks, glm::ivec3 chunk_coords, std::vector<BlockVertex> &opaque_vertices, std::vector<BlockVertex> &transparent_vertices)
+    // Skylight initial fill
+    for (int x = 0; x < CHUNK_SIZE + 2; x++)
+    {
+        for (int z = 0; z < CHUNK_SIZE + 2; z++)
+        {
+            uint8_t skylight_level = 15;
+            for (int y = WORLD_HEIGHT_LIMIT - 1; y >= 0; y--)
+            {
+                BlockID block = blocks[GetChunkIndex(x, y, z)];
+                if (BlockIsOpaque(block))
+                    skylight_level = 0;
+
+                lightmap.SetSkyLevel({x, y, z}, skylight_level);
+                lightmap.SetBlockLevel({x, y, z}, 0);
+
+                if (x >= 1 && z >= 1 && x <= CHUNK_SIZE && z <= CHUNK_SIZE)
+                {
+                    if (skylight_level == 15)
+                        to_expand.emplace_back(x, y, z);
+
+                    if (block == BlockID::light)
+                        lights.emplace_back(x, y, z);
+                }
+            }
+        }
+    }
+
+    // Skylight expansion
+    while (to_expand.size() > 0)
+    {
+        glm::ivec3 coords = to_expand.back();
+        uint8_t skylight_level = lightmap.GetSkyLevel(coords);
+        to_expand.pop_back();
+
+        glm::ivec3 neighbors[] = {
+            {coords.x - 1, coords.y, coords.z},
+            {coords.x + 1, coords.y, coords.z},
+            {coords.x, coords.y - 1, coords.z},
+            {coords.x, coords.y + 1, coords.z},
+            {coords.x, coords.y, coords.z - 1},
+            {coords.x, coords.y, coords.z + 1},
+        };
+
+        for (const glm::ivec3 &neighbor_coords : neighbors)
+        {
+            if (neighbor_coords.x == 0 || neighbor_coords.z == 0 || neighbor_coords.x == CHUNK_SIZE + 1 || neighbor_coords.z == CHUNK_SIZE + 1 || neighbor_coords.y == -1 || neighbor_coords.y == WORLD_HEIGHT_LIMIT)
+                continue;
+
+            BlockID neighbor_block = blocks[GetChunkIndex(neighbor_coords.x, neighbor_coords.y, neighbor_coords.z)];
+            if (!BlockIsOpaque(neighbor_block))
+            {
+                uint8_t skylight_propagated = skylight_level - 1;
+                if (skylight_propagated > lightmap.GetSkyLevel(neighbor_coords))
+                {
+                    lightmap.SetSkyLevel(neighbor_coords, skylight_propagated);
+                    to_expand.push_back(neighbor_coords);
+                }
+            }
+        }
+    }
+
+    // Blocklight initial fill
+    for (glm::ivec3 light_coords : lights)
+    {
+        glm::ivec3 neighbors[] = {
+            {light_coords.x - 1, light_coords.y, light_coords.z},
+            {light_coords.x + 1, light_coords.y, light_coords.z},
+            {light_coords.x, light_coords.y - 1, light_coords.z},
+            {light_coords.x, light_coords.y + 1, light_coords.z},
+            {light_coords.x, light_coords.y, light_coords.z - 1},
+            {light_coords.x, light_coords.y, light_coords.z + 1},
+        };
+
+        for (const glm::ivec3 &neighbor_coords : neighbors)
+        {
+            if (neighbor_coords.y < 0 || neighbor_coords.y >= WORLD_HEIGHT_LIMIT)
+                continue;
+
+            BlockID neighbor_block = blocks[GetChunkIndex(neighbor_coords.x, neighbor_coords.y, neighbor_coords.z)];
+            if (!BlockIsOpaque(neighbor_block))
+            {
+                lightmap.SetBlockLevel(neighbor_coords, 15);
+                to_expand.emplace_back(neighbor_coords.x, neighbor_coords.y, neighbor_coords.z);
+            }
+        }
+    }
+
+    // Blocklight expansion
+    while (to_expand.size() > 0)
+    {
+        glm::ivec3 coords = to_expand.back();
+        uint8_t blocklight_level = lightmap.GetBlockLevel(coords);
+        to_expand.pop_back();
+
+        glm::ivec3 neighbors[] = {
+            {coords.x - 1, coords.y, coords.z},
+            {coords.x + 1, coords.y, coords.z},
+            {coords.x, coords.y - 1, coords.z},
+            {coords.x, coords.y + 1, coords.z},
+            {coords.x, coords.y, coords.z - 1},
+            {coords.x, coords.y, coords.z + 1},
+        };
+
+        for (const glm::ivec3 &neighbor_coords : neighbors)
+        {
+            if (neighbor_coords.x == 0 || neighbor_coords.z == 0 || neighbor_coords.x == CHUNK_SIZE + 1 || neighbor_coords.z == CHUNK_SIZE + 1 || neighbor_coords.y < 0 || neighbor_coords.y == WORLD_HEIGHT_LIMIT)
+                continue;
+
+            BlockID neighbor_block = blocks[GetChunkIndex(neighbor_coords.x, neighbor_coords.y, neighbor_coords.z)];
+            if (!BlockIsOpaque(neighbor_block))
+            {
+                uint8_t blocklight_propagated = blocklight_level - 1;
+                if (blocklight_propagated > lightmap.GetBlockLevel(neighbor_coords))
+                {
+                    lightmap.SetBlockLevel(neighbor_coords, blocklight_propagated);
+                    to_expand.push_back(neighbor_coords);
+                }
+            }
+        }
+    }
+}
+
+void BuildChunkVertices(BlockID *blocks, glm::ivec3 chunk_coords, std::vector<BlockVertex> &opaque_vertices, std::vector<BlockVertex> &transparent_vertices, const Lightmap &lightmap)
 {
     static std::unordered_map<BlockID, glm::vec3> ATLAS_TILE_MAP = { // Tile coordinates are: (top, side, bottom)
         {BlockID::aluminum,        glm::vec3(32, 32, 32)},
@@ -197,7 +323,7 @@ void BuildChunkVertices(BlockID *blocks, glm::ivec3 chunk_coords, std::vector<Bl
     static bool tile_origins_built = false;
     if (!tile_origins_built) // This is kind of a silly hack, but I'd rather be explicit about the tile coordinates and build from them
     {
-        for (auto it = ATLAS_TILE_MAP.begin(); it != ATLAS_TILE_MAP.end(); it++)
+        for (auto it = ATLAS_TILE_MAP.begin(); it != ATLAS_TILE_MAP.end(); ++it)
         {
             BlockID block_id = it->first;
             glm::vec3 atlas_tiles = it->second;
@@ -221,10 +347,9 @@ void BuildChunkVertices(BlockID *blocks, glm::ivec3 chunk_coords, std::vector<Bl
         tile_origins_built = true;
     }
 
-    std::array<float, BLOCKS_IN_CHUNK> skylight_map = BuildSkylightMap(blocks);
     std::vector<BlockQuad> quads = GreedyMesh(blocks);
 
-    for (BlockQuad &quad : quads)
+    for (const BlockQuad &quad : quads)
     {
         // Determine vertex normal
         glm::vec3 normal = glm::normalize(glm::cross(quad.du, quad.dv));
@@ -248,98 +373,108 @@ void BuildChunkVertices(BlockID *blocks, glm::ivec3 chunk_coords, std::vector<Bl
         int quad_width = glm::length(quad.du);
         int quad_height = glm::length(quad.dv);
 
-        // Compute coordinates for skylight map
-        auto base = quad.base_coords - glm::ivec3{normal.x, normal.y, normal.z};
-        auto scaled_du = (1.0f - (1.0f / glm::length(quad.du))) * quad.du;
-        auto scaled_dv = (1.0f - (1.0f / glm::length(quad.dv))) * quad.dv;
-        auto base_du = base + glm::ivec3{scaled_du.x, scaled_du.y, scaled_du.z};
-        auto base_dv = base + glm::ivec3{scaled_dv.x, scaled_dv.y, scaled_dv.z};
-        auto base_du_dv = base + glm::ivec3{scaled_du.x + scaled_dv.x, scaled_du.y + scaled_dv.y, scaled_du.z + scaled_dv.z};
+        //
+        // Lighting
+        //
+
+        glm::vec3 light;
+
+        double world_time = Moon::GetCurrentMoon()->GetWorldTime();
+        double sin_world_time = glm::sin((world_time + 3*SECONDS_PER_LIGHT_PHASE) * (2 * 3.14159 / (LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE)));
+        glm::vec3 sunlight_direction = Moon::GetCurrentMoon()->GetSunlightDirection();
+        double ambient_light = 0.5 * sin_world_time;
+        if (ambient_light < 0)
+            ambient_light *= -0.5;
+        double sunlight_factor = ambient_light + 0.5;
+
+        double dot = glm::dot(sunlight_direction, normal);
+        if (dot < 0)
+            dot = 0;
+
+        glm::ivec3 adjacent = quad.base_coords - glm::ivec3(normal); // Block in front of the one this quad is based at
+        uint8_t _sky_light = lightmap.GetSkyLevel(adjacent);
+        uint8_t _block_light = lightmap.GetBlockLevel(adjacent);
+        float sky_light = (float)_sky_light * (100.0f / 15.0f);      // Apparently Charlie's light values were in [0, 100]. Mine are in [0, 15], 
+        float block_light = (float)_block_light * (100.0f / 15.0f);  // so let's scale to [0, 100] so his code works as-is
+
+        float corrected_sky_light = (sky_light * ambient_light + (1.0 - ambient_light) * sky_light * dot) * sunlight_factor;
+        float scaled_sky_light;
+        if (corrected_sky_light != 0)
+            scaled_sky_light = ((corrected_sky_light / 100.0) * 68.0) + 32;
+        else
+            scaled_sky_light = 0;
+
+        if (sin_world_time > 0)
+        {
+            light = glm::vec3(glm::max(scaled_sky_light, block_light) / 100.0f);
+        }
+        else
+        {
+            float red_green = block_light / 100.0f + scaled_sky_light * sunlight_factor * 0.01f;
+            if (red_green > 1.0f)
+                red_green = 1.0f;
+
+            float blue = block_light / 100.0f + scaled_sky_light * 0.01f;
+            if (blue > 1.0f)
+                blue = 1.0f;
+
+            light = {red_green, red_green, blue};
+        }
 
         // Push vertices
         auto &vertices = BlockIsOpaque(quad.block) ? opaque_vertices : transparent_vertices;
         if (!quad.back_face)
         {
-            vertices.emplace_back(base_pos,                     glm::vec4{0,          0,           tile_origin}, normal, skylight_map[GetChunkIndex(base.x, base.y, base.z)]);
-            vertices.emplace_back(base_pos + quad.dv,           glm::vec4{0,          quad_height, tile_origin}, normal, skylight_map[GetChunkIndex(base_dv.x, base_dv.y, base_dv.z)]);
-            vertices.emplace_back(base_pos + quad.dv + quad.du, glm::vec4{quad_width, quad_height, tile_origin}, normal, skylight_map[GetChunkIndex(base_du_dv.x, base_du_dv.y, base_du_dv.z)]);
-            vertices.emplace_back(base_pos + quad.dv + quad.du, glm::vec4{quad_width, quad_height, tile_origin}, normal, skylight_map[GetChunkIndex(base_du_dv.x, base_du_dv.y, base_du_dv.z)]);
-            vertices.emplace_back(base_pos + quad.du,           glm::vec4{quad_width, 0,           tile_origin}, normal, skylight_map[GetChunkIndex(base_du.x, base_du.y, base_du.z)]);
-            vertices.emplace_back(base_pos,                     glm::vec4{0,          0,           tile_origin}, normal, skylight_map[GetChunkIndex(base.x, base.y, base.z)]);
+            vertices.emplace_back(base_pos,                     glm::vec4{0,          0,           tile_origin}, normal, light);
+            vertices.emplace_back(base_pos + quad.dv,           glm::vec4{0,          quad_height, tile_origin}, normal, light);
+            vertices.emplace_back(base_pos + quad.dv + quad.du, glm::vec4{quad_width, quad_height, tile_origin}, normal, light);
+            vertices.emplace_back(base_pos + quad.dv + quad.du, glm::vec4{quad_width, quad_height, tile_origin}, normal, light);
+            vertices.emplace_back(base_pos + quad.du,           glm::vec4{quad_width, 0,           tile_origin}, normal, light);
+            vertices.emplace_back(base_pos,                     glm::vec4{0,          0,           tile_origin}, normal, light);
         }
         else
         {
-            vertices.emplace_back(base_pos,                     glm::vec4{0,          0,           tile_origin}, normal, skylight_map[GetChunkIndex(base.x, base.y, base.z)]);
-            vertices.emplace_back(base_pos + quad.du,           glm::vec4{quad_width, 0,           tile_origin}, normal, skylight_map[GetChunkIndex(base_du.x, base_du.y, base_du.z)]);
-            vertices.emplace_back(base_pos + quad.dv + quad.du, glm::vec4{quad_width, quad_height, tile_origin}, normal, skylight_map[GetChunkIndex(base_du_dv.x, base_du_dv.y, base_du_dv.z)]);
-            vertices.emplace_back(base_pos + quad.dv + quad.du, glm::vec4{quad_width, quad_height, tile_origin}, normal, skylight_map[GetChunkIndex(base_du_dv.x, base_du_dv.y, base_du_dv.z)]);
-            vertices.emplace_back(base_pos + quad.dv,           glm::vec4{0,          quad_height, tile_origin}, normal, skylight_map[GetChunkIndex(base_dv.x, base_dv.y, base_dv.z)]);
-            vertices.emplace_back(base_pos,                     glm::vec4{0,          0,           tile_origin}, normal, skylight_map[GetChunkIndex(base.x, base.y, base.z)]);
+            vertices.emplace_back(base_pos,                     glm::vec4{0,          0,           tile_origin}, normal, light);
+            vertices.emplace_back(base_pos + quad.du,           glm::vec4{quad_width, 0,           tile_origin}, normal, light);
+            vertices.emplace_back(base_pos + quad.dv + quad.du, glm::vec4{quad_width, quad_height, tile_origin}, normal, light);
+            vertices.emplace_back(base_pos + quad.dv + quad.du, glm::vec4{quad_width, quad_height, tile_origin}, normal, light);
+            vertices.emplace_back(base_pos + quad.dv,           glm::vec4{0,          quad_height, tile_origin}, normal, light);
+            vertices.emplace_back(base_pos,                     glm::vec4{0,          0,           tile_origin}, normal, light);
         }
     }
 }
 
-static std::array<float, BLOCKS_IN_CHUNK> BuildSkylightMap(BlockID *blocks)
+//
+// Lightmap
+//
+
+uint8_t Lightmap::GetSkyLevel(glm::ivec3 coords) const
 {
-    std::array<float, BLOCKS_IN_CHUNK> skylight_map;
-    std::queue<glm::ivec3> to_expand;
+    uint8_t entry = _map[GetChunkIndex(coords.x, coords.y, coords.z)];
+    return (entry >> 4);
+}
 
-    // Vertical fill
-    for (int x = 0; x <= CHUNK_SIZE + 1; x++)
-    {
-        for (int z = 0; z <= CHUNK_SIZE + 1; z++)
-        {
-            bool blocked = false;
-            for (int y = WORLD_HEIGHT_LIMIT - 1; y >= 0; y--)
-            {
-                int chunk_index = GetChunkIndex(x, y, z);
+// Level must be in the range [0, 15]
+void Lightmap::SetSkyLevel(glm::ivec3 coords, uint8_t sky_level)
+{
+    uint8_t entry = _map[GetChunkIndex(coords.x, coords.y, coords.z)];
+    _map[GetChunkIndex(coords.x, coords.y, coords.z)] = (entry & 0x0F) | (sky_level << 4);
+}
 
-                if (BlockIsOpaque(blocks[chunk_index]))
-                    blocked = true;
+uint8_t Lightmap::GetBlockLevel(glm::ivec3 coords) const
+{
+    uint8_t entry = _map[GetChunkIndex(coords.x, coords.y, coords.z)];
+    return (entry & 0x0f);
+}
 
-                skylight_map[chunk_index] = blocked ? 0.0f : 15.0f;
+// Level must be in the range [0, 15]
+void Lightmap::SetBlockLevel(glm::ivec3 coords, uint8_t block_level)
+{
+    uint8_t entry = _map[GetChunkIndex(coords.x, coords.y, coords.z)];
+    _map[GetChunkIndex(coords.x, coords.y, coords.z)] = (entry & 0xF0) | block_level;
+}
 
-                if (!blocked && x != 0 && z != 0 && x != CHUNK_SIZE + 1 && z != CHUNK_SIZE + 1)
-                    to_expand.emplace(x, y, z);
-            }
-        }
-    }
-
-    // Outward expansion
-    while (!to_expand.empty())
-    {
-        glm::ivec3 coords = to_expand.front();
-        to_expand.pop();
-
-        float this_sky_light = skylight_map[GetChunkIndex(coords.x, coords.y, coords.z)];
-        
-        glm::ivec3 neighbor_coords[] = {
-            {coords.x - 1, coords.y, coords.z},
-            {coords.x, coords.y - 1, coords.z},
-            {coords.x, coords.y, coords.z - 1},
-            {coords.x + 1, coords.y, coords.z},
-            {coords.x, coords.y + 1, coords.z},
-            {coords.x, coords.y, coords.z + 1}
-        };
-
-        for (glm::ivec3 &neighbor_coord : neighbor_coords)
-        {
-            if (neighbor_coord.x == 0 || neighbor_coord.x == CHUNK_SIZE + 1 || neighbor_coord.z == 0 || neighbor_coord.x == CHUNK_SIZE + 1 || neighbor_coord.y == -1 || neighbor_coord.y == WORLD_HEIGHT_LIMIT)
-                continue;
-
-            int neighbor_chunk_index = GetChunkIndex(neighbor_coord.x, neighbor_coord.y, neighbor_coord.z);
-            if (!BlockIsOpaque(blocks[neighbor_chunk_index]))
-            {
-                auto propagated = this_sky_light - 1.0f;
-                auto &neighbor_sky_light = skylight_map[neighbor_chunk_index];
-                if (propagated > neighbor_sky_light)
-                {
-                    neighbor_sky_light = propagated;
-                    to_expand.emplace(neighbor_coord.x, neighbor_coord.y, neighbor_coord.z);
-                }
-            }
-        }
-    }
-
-    return skylight_map;
+uint8_t Lightmap::GetTotalLightLevel(glm::ivec3 coords) const
+{
+    return glm::max(GetSkyLevel(coords), GetBlockLevel(coords));
 }

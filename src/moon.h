@@ -13,6 +13,9 @@
 class Moon
 {
     private:
+        static Moon *_current_moon;
+
+    private:
         int _id = 0;
         int _initial_chunk_count = 0;
         double _world_time = 0;
@@ -34,6 +37,10 @@ class Moon
         int GetID();
         float GetLoadProgress();
         MoonSettings GetSettings();
+        double GetWorldTime();
+        glm::vec3 GetSunlightDirection();
         void Update(double delta_time, int old_render_distance);
         void Render(glm::mat4 projection);
+
+        static Moon *GetCurrentMoon();
 };
