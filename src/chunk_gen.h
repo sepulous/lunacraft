@@ -1887,11 +1887,22 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
                     {
                         TreeBlock tree_block = tree_data[j];
                         if (tree_orientation == 2) // 90 degrees
-                            (tree_block.local_x, tree_block.local_z) = (-tree_block.local_z, tree_block.local_x);
+                        {
+                            int temp = tree_block.local_x;
+                            tree_block.local_x = -tree_block.local_z;
+                            tree_block.local_z = temp;
+                        }
                         else if (tree_orientation == 3) // 180 degrees
-                            (tree_block.local_x, tree_block.local_z) = (-tree_block.local_x, -tree_block.local_z);
+                        {
+                            tree_block.local_x *= -1;
+                            tree_block.local_z *= -1;
+                        }
                         else if (tree_orientation == 4) // 270 degrees
-                            (tree_block.local_x, tree_block.local_z) = (tree_block.local_z, -tree_block.local_x);
+                        {
+                            int temp = tree_block.local_x;
+                            tree_block.local_x = tree_block.local_z;
+                            tree_block.local_z = -temp;
+                        }
 
                         chunk_index = GetChunkIndex(base_block_x + tree_block.local_x, base_block_y + tree_block.local_y, base_block_z + tree_block.local_z);
                         chunk[chunk_index] = tree_block.block;
