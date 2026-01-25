@@ -966,7 +966,7 @@ uint32_t GetStructureSeed(uint64_t world_seed, int chunk_x, int chunk_z)
     return (int)(hash & 0x7FFFFFFF);
 }
 
-void GenerateHeightMap(uint8_t *height_map, int chunk_x, int chunk_z, uint64_t seed, float amplitude, float frequency, float persistence, int octaves, int roughness)
+void GenerateHeightMap(uint8_t *height_map, int chunk_x, int chunk_z, uint64_t seed, float amplitude, float frequency, float persistence, int octaves, float roughness)
 {
     float frequency0 = frequency;
     float amplitude0 = amplitude;
@@ -975,22 +975,22 @@ void GenerateHeightMap(uint8_t *height_map, int chunk_x, int chunk_z, uint64_t s
     double offset_x = (double)(SplitMix64(seed) & 0xFFFFFFFF);
     double offset_z = (double)(SplitMix64(seed) & 0xFFFFFFFF);
 
-    for (int x = -1; x < CHUNK_SIZE + 1; x++)
+    for (int x = 0; x < CHUNK_SIZE + 2; x++)
     {
-        for (int z = -1; z < CHUNK_SIZE + 1; z++)
+        for (int z = 0; z < CHUNK_SIZE + 2; z++)
         {
             frequency = frequency0;
             amplitude = amplitude0;
             height_limit = 0.0f;
             for (int i = 0; i < octaves; i++)
             {
-                double xArg = (((x + chunk_x * CHUNK_SIZE) + offset_x) / divFactor) * frequency;
-                double zArg = (((z + chunk_z * CHUNK_SIZE) + offset_z) / divFactor) * frequency;
+                double xArg = ((((x - 1) + chunk_x * CHUNK_SIZE) + offset_x) / divFactor) * frequency;
+                double zArg = ((((z - 1) + chunk_z * CHUNK_SIZE) + offset_z) / divFactor) * frequency;
                 height_limit += SimplexNoise(xArg, zArg) * amplitude;
                 frequency *= 3.0f;
                 amplitude *= persistence;
             }
-            height_map[(z + 1) + (CHUNK_SIZE + 2) * (x + 1)] = (uint8_t)height_limit;
+            height_map[z + (CHUNK_SIZE + 2) * x] = (uint8_t)height_limit;
         }
     }
 }
@@ -1006,10 +1006,10 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
     const int GRAVEL_OFFSET = 1 * (CHUNK_SIZE + 2) * (CHUNK_SIZE + 2);
     const int DIRT_OFFSET   = 2 * (CHUNK_SIZE + 2) * (CHUNK_SIZE + 2);
     const int SAND_OFFSET   = 3 * (CHUNK_SIZE + 2) * (CHUNK_SIZE + 2);
-    GenerateHeightMap(&height_maps[ROCK_OFFSET], chunk_x, chunk_z, seed, 14, 0.2, 0.4, 4, 2);
-    GenerateHeightMap(&height_maps[GRAVEL_OFFSET], chunk_x, chunk_z, seed, 4, 0.2, 0.6, 2, 2);
-    GenerateHeightMap(&height_maps[DIRT_OFFSET], chunk_x, chunk_z, seed, 3, 0.2, 0.6, 3, 2);
-    GenerateHeightMap(&height_maps[SAND_OFFSET], chunk_x, chunk_z, seed, 2, 0.2, 0.8, 2, 2);
+    GenerateHeightMap(&height_maps[ROCK_OFFSET], chunk_x, chunk_z, seed, 14, 0.2, 0.4, 4, 1.5f);
+    GenerateHeightMap(&height_maps[GRAVEL_OFFSET], chunk_x, chunk_z, seed, 4, 0.2, 0.6, 2, 1.5f);
+    GenerateHeightMap(&height_maps[DIRT_OFFSET], chunk_x, chunk_z, seed, 3, 0.2, 0.6, 3, 1.5f);
+    GenerateHeightMap(&height_maps[SAND_OFFSET], chunk_x, chunk_z, seed, 2, 0.2, 0.8, 2, 1.5f);
 
     int chunk_index = 0;
     for (int x = 0; x < CHUNK_SIZE + 2; x++)
