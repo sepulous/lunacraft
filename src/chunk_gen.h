@@ -966,12 +966,12 @@ uint32_t GetStructureSeed(uint64_t world_seed, int chunk_x, int chunk_z)
     return (int)(hash & 0x7FFFFFFF);
 }
 
-void GenerateHeightMap(int *heightMap, int chunkX, int chunkZ, uint64_t seed, float amplitude, float frequency, float persistence, int octaves, int terrainRoughness)
+void GenerateHeightMap(uint8_t *height_map, int chunk_x, int chunk_z, uint64_t seed, float amplitude, float frequency, float persistence, int octaves, int roughness)
 {
     float frequency0 = frequency;
     float amplitude0 = amplitude;
-    float divFactor = 32.0f - 4.0f * terrainRoughness;
-    float heightLimit;
+    float divFactor = 32.0f - 4.0f * roughness;
+    float height_limit;
     double offset_x = (double)(SplitMix64(seed) & 0xFFFFFFFF);
     double offset_z = (double)(SplitMix64(seed) & 0xFFFFFFFF);
 
@@ -981,23 +981,23 @@ void GenerateHeightMap(int *heightMap, int chunkX, int chunkZ, uint64_t seed, fl
         {
             frequency = frequency0;
             amplitude = amplitude0;
-            heightLimit = 0.0f;
+            height_limit = 0.0f;
             for (int i = 0; i < octaves; i++)
             {
-                double xArg = (((x + chunkX * CHUNK_SIZE) + offset_x) / divFactor) * frequency;
-                double zArg = (((z + chunkZ * CHUNK_SIZE) + offset_z) / divFactor) * frequency;
-                heightLimit += SimplexNoise(xArg, zArg) * amplitude;
+                double xArg = (((x + chunk_x * CHUNK_SIZE) + offset_x) / divFactor) * frequency;
+                double zArg = (((z + chunk_z * CHUNK_SIZE) + offset_z) / divFactor) * frequency;
+                height_limit += SimplexNoise(xArg, zArg) * amplitude;
                 frequency *= 3.0f;
                 amplitude *= persistence;
             }
-            heightMap[(z + 1) + (CHUNK_SIZE + 2) * (x + 1)] = (int)heightLimit;
+            height_map[(z + 1) + (CHUNK_SIZE + 2) * (x + 1)] = (uint8_t)height_limit;
         }
     }
 }
 
 void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
 {
-    thread_local int height_maps[(CHUNK_SIZE + 2) * (CHUNK_SIZE + 2) * 4];
+    thread_local uint8_t height_maps[(CHUNK_SIZE + 2) * (CHUNK_SIZE + 2) * 4];
 
     //
     // Generate terrain
