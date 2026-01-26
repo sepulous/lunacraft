@@ -231,17 +231,16 @@ int main()
             if (!ui_pause_menu.IsActive())
             {
                 Player *player = moon->GetPlayer();
-                Camera &player_camera = player->GetCamera();
 
                 glm::vec3 player_input_direction = glm::vec3(0);
                 if (Input::IsKeyHeld(GLFW_KEY_W))
-                    player_input_direction += glm::vec3(player_camera.forward.x, 0, player_camera.forward.z);
+                    player_input_direction += player->GetForward();
                 if (Input::IsKeyHeld(GLFW_KEY_S))
-                    player_input_direction -= glm::vec3(player_camera.forward.x, 0, player_camera.forward.z);
+                    player_input_direction -= player->GetForward();
                 if (Input::IsKeyHeld(GLFW_KEY_A))
-                    player_input_direction -= player_camera.right;
+                    player_input_direction -= player->GetRight();
                 if (Input::IsKeyHeld(GLFW_KEY_D))
-                    player_input_direction += player_camera.right;
+                    player_input_direction += player->GetRight();
                 if (Input::IsKeyHeld(GLFW_KEY_SPACE) && player->IsGrounded())
                     player->SetJumping(true);
 

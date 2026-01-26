@@ -112,4 +112,18 @@ class Player : public Entity
         glm::vec2 GetCameraRotation() { return {_camera.pitch, _camera.yaw}; }
 
         void SetCameraSensitivity(float sensitivity) { _camera.SetSensitivity(sensitivity); }
+
+        glm::vec3 GetForward()
+        {
+            return {
+                glm::cos(glm::radians(_camera.yaw)),
+                0,
+                glm::sin(glm::radians(_camera.yaw))
+            };
+        }
+
+        glm::vec3 GetRight()
+        {
+            return glm::cross(GetForward(), glm::vec3{0, 1, 0});
+        }
 };
