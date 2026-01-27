@@ -84,12 +84,13 @@ int main()
         return -1;
     }
 
+    glViewport(0, 0, initial_viewport_dims.x, initial_viewport_dims.y);
+
     glfwSetFramebufferSizeCallback(window, [](GLFWwindow *window, int width, int height) {
         glViewport(0, 0, width, height);
         Viewport::SetDimensions({width, height});
         UIRescale();
     });
-    glViewport(0, 0, initial_viewport_dims.x, initial_viewport_dims.y);
 
     // Input callbacks
     glfwSetKeyCallback(window, Input::KeyInputCallback);
@@ -141,11 +142,11 @@ int main()
         if (new_fullscreen_state != fullscreen)
         {
             fullscreen = new_fullscreen_state;
-            SetFullscreen(window, fullscreen);
+            SetFullscreen(window, new_fullscreen_state);
         }
 
         //
-        // Game state specific 
+        // Main
         //
 
         if (game_state == GameState::MAIN_MENU)
@@ -263,12 +264,12 @@ int main()
             if (current_time >= next_music_time)
             {
                 RNG rng;
-                int song = rng.Range(0, 3);
-                if (song == 0)
+                int song = rng.Range(1, 4);
+                if (song == 1)
                     SoundSystem::Play(SoundSystem::Sound::SONG_2);
-                else if (song == 1)
-                    SoundSystem::Play(SoundSystem::Sound::SONG_3);
                 else if (song == 2)
+                    SoundSystem::Play(SoundSystem::Sound::SONG_3);
+                else if (song == 3)
                     SoundSystem::Play(SoundSystem::Sound::SONG_4);
                 else
                     SoundSystem::Play(SoundSystem::Sound::SONG_5);
@@ -343,6 +344,7 @@ int main()
 
             auto viewport_dimensions = Viewport::GetDimensions();
             glm::mat4 projection = glm::perspective(glm::radians(45.0), (double)viewport_dimensions.x / (double)viewport_dimensions.y, 0.1, 500.0); // This only really needs to be recomputed when the viewport changes
+            
             moon->Render(projection);
             ui_game.Render();
         }

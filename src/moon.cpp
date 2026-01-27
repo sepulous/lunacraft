@@ -42,20 +42,20 @@ Moon::Moon(int moon_id, MoonSettings moon_settings)
 
     RNG rng;
 
-    int _case = rng.Range(0, 5);
+    int _case = rng.Range(1, 6);
     float _rand = rng.Range(0.0f, 1.0f);
     float comp1 = (1.0 - _rand * 0.85) * 0.9;
     float comp2 = (1.0 - (1.0 - _rand) * 0.85) * 0.9;
 
-    if (_case == 0)
+    if (_case == 1)
         _base_fog_color = {0.9, comp2, 0.135, 1};
-    else if (_case == 1)
-        _base_fog_color = {comp1, 0.9, 0.135, 1};
     else if (_case == 2)
-        _base_fog_color = {0.135, 0.9, comp2, 1};
+        _base_fog_color = {comp1, 0.9, 0.135, 1};
     else if (_case == 3)
-        _base_fog_color = {0.135, comp1, 0.9, 1};
+        _base_fog_color = {0.135, 0.9, comp2, 1};
     else if (_case == 4)
+        _base_fog_color = {0.135, comp1, 0.9, 1};
+    else if (_case == 5)
         _base_fog_color = {comp2, 0.135, 0.9, 1};
     else
         _base_fog_color = {0.9, 0.135, comp1, 1};

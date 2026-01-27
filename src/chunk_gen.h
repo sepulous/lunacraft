@@ -1080,8 +1080,8 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
     //
     // Ores
     //
-    int ore_spawn_chance = rng.Range(0, 9);
-    if (ore_spawn_chance <= 3)
+    int ore_spawn_chance = rng.Range(1, 10);
+    if (ore_spawn_chance <= 4)
     {
         int seed_block_x = rng.Range(5, CHUNK_SIZE - 7);
         int seed_block_z = rng.Range(5, CHUNK_SIZE - 7);
@@ -1168,7 +1168,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
     //
     // Astronaut lairs
     //
-    bool spawn_astronaut_lair = rng.Range(0, 99) == 69; // 1% chance, each chunk
+    bool spawn_astronaut_lair = rng.Range(1, 100) == 69; // 1% chance, each chunk
     const int lair_depth = 26;
     if (spawn_astronaut_lair)
     {
@@ -1266,7 +1266,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
         chunk[chunk_index] = BlockID::polymer;
 
         // Extra front shaft(s)
-        if (rng.Range(0, 3) == 0)
+        if (rng.Range(1, 4) == 1)
         {
             for (int dz = 0; dz < 10; dz++)
             {
@@ -1310,7 +1310,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
             chunk[chunk_index] = BlockID::polymer;
 
             // Extra vertical shaft?
-            if (rng.Range(0, 3) == 0)
+            if (rng.Range(1, 4) == 1)
             {
                 for (int dz = -1; dz <= 1; dz++)
                 {
@@ -1339,7 +1339,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
             }
 
             // Extra horizontal shaft (left)?
-            if (rng.Range(0, 3) == 0)
+            if (rng.Range(1, 4) == 1)
             {
                 for (int dz = -1; dz <= 1; dz++)
                 {
@@ -1368,7 +1368,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
             }
 
             // Extra horizontal shaft (right)?
-            if (rng.Range(0, 3) == 0)
+            if (rng.Range(1, 4) == 1)
             {
                 for (int dz = -1; dz <= 1; dz++)
                 {
@@ -1398,7 +1398,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
         }
 
         // Extra back shaft(s)
-        if (rng.Range(0, 3) == 0)
+        if (rng.Range(1, 4) == 1)
         {
             for (int dz = 0; dz < 10; dz++)
             {
@@ -1442,7 +1442,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
             chunk[chunk_index] = BlockID::polymer;
 
             // Extra vertical shaft?
-            if (rng.Range(0, 3) == 0)
+            if (rng.Range(1, 4) == 1)
             {
                 for (int dz = -1; dz <= 1; dz++)
                 {
@@ -1471,7 +1471,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
             }
 
             // Extra horizontal shaft (left)?
-            if (rng.Range(0, 3) == 0)
+            if (rng.Range(1, 4) == 1)
             {
                 for (int dz = -1; dz <= 1; dz++)
                 {
@@ -1500,7 +1500,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
             }
 
             // Extra horizontal shaft (right)?
-            if (rng.Range(0, 3) == 0)
+            if (rng.Range(1, 4) == 1)
             {
                 for (int dz = -1; dz <= 1; dz++)
                 {
@@ -1530,7 +1530,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
         }
 
         // Extra right shaft(s)
-        if (rng.Range(0, 3) == 0)
+        if (rng.Range(1, 4) == 1)
         {
             for (int dx = 0; dx < 10; dx++)
             {
@@ -1574,7 +1574,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
             chunk[chunk_index] = BlockID::polymer;
 
             // Extra vertical shaft?
-            if (rng.Range(0, 3) == 0)
+            if (rng.Range(1, 4) == 1)
             {
                 for (int dz = -1; dz <= 1; dz++)
                 {
@@ -1603,7 +1603,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
             }
 
             // Extra horizontal shaft (left)?
-            if (rng.Range(0, 3) == 0)
+            if (rng.Range(1, 4) == 1)
             {
                 for (int dx = -1; dx <= 1; dx++)
                 {
@@ -1632,7 +1632,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
             }
 
             // Extra horizontal shaft (right)?
-            if (rng.Range(0, 3) == 0)
+            if (rng.Range(1, 4) == 1)
             {
                 for (int dx = -1; dx <= 1; dx++)
                 {
@@ -1662,7 +1662,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
         }
 
         // Extra left shaft(s)
-        if (rng.Range(0, 3) == 0)
+        if (rng.Range(1, 4) == 1)
         {
             for (int dx = 0; dx < 10; dx++)
             {
@@ -1706,7 +1706,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
             chunk[chunk_index] = BlockID::polymer;
 
             // Extra vertical shaft?
-            if (rng.Range(0, 3) == 0)
+            if (rng.Range(1, 4) == 1)
             {
                 for (int dz = -1; dz <= 1; dz++)
                 {
@@ -1735,7 +1735,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
             }
 
             // Extra horizontal shaft (left)?
-            if (rng.Range(0, 3) == 0)
+            if (rng.Range(1, 4) == 1)
             {
                 for (int dx = -1; dx <= 1; dx++)
                 {
@@ -1764,7 +1764,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
             }
 
             // Extra horizontal shaft (right)?
-            if (rng.Range(0, 3) == 0)
+            if (rng.Range(1, 4) == 1)
             {
                 for (int dx = -1; dx <= 1; dx++)
                 {
@@ -1797,17 +1797,17 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
     //
     // Crystal plants
     //
-    int spawn_crystal_plant = rng.Range(0, 39);
-    if (spawn_crystal_plant == 0)
+    int spawn_crystal_plant = rng.Range(1, 40);
+    if (spawn_crystal_plant == 1)
     {
-        int crystal_plant_type = rng.Range(0, 4);
+        int crystal_plant_type = rng.Range(1, 5);
         BlockID crystal;
-        if (crystal_plant_type == 0)
-            crystal = BlockID::blue_crystal;
-        else if (crystal_plant_type < 3)
-            crystal = BlockID::sulphur_crystal;
+        if (crystal_plant_type == 1)
+            crystal = BlockID::blue_crystal; // 20% chance
+        else if (crystal_plant_type < 4)
+            crystal = BlockID::sulphur_crystal; // 40% chance
         else
-            crystal = BlockID::boron_crystal;
+            crystal = BlockID::boron_crystal; // 40% chance
 
         int crystal_plant_orientation = rng.Range(1, 4);
         int crystal_plant_shape = rng.Range(0, CRYSTAL_PLANT_SHAPES.size() - 1);
@@ -1850,17 +1850,17 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
     int num_trees = rng.Range(1, 3);
     for (int i = 0; i < num_trees; i++)
     {
-        int tree_type = rng.Range(0, 9);
+        int tree_type = rng.Range(1, 10);
         int tree_orientation = rng.Range(1, 4);
 
         int tree_shape;
         std::vector<TreeBlock> tree_data;
-        if (tree_type < 5) // Green light tree
+        if (tree_type < 6) // Green light tree
         {
             tree_shape = rng.Range(0, GREEN_LIGHT_TREE_SHAPES.size() - 1);
             tree_data = GREEN_LIGHT_TREE_SHAPES[tree_shape];
         }
-        else if (tree_type < 8) // Color wood tree
+        else if (tree_type < 9) // Color wood tree
         {
             tree_shape = rng.Range(0, COLOR_WOOD_TREE_SHAPES.size() - 1);
             tree_data = COLOR_WOOD_TREE_SHAPES[tree_shape];
