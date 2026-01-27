@@ -15,9 +15,12 @@ const float VIRTUAL_UI_HEIGHT = 1080.0f;
 
 // Menus
 class UIMainMenu;
+class UIGame;
 class UILoadMoonMenu;
 class UIResetMoonMenu;
 class UIOptionsMenu;
+class UIPauseMenu;
+class UIDebugMenu;
 class UIMoonSettingsMenu;
 
 // UI elements
@@ -27,6 +30,7 @@ class UIToggleButton;
 class UIButton;
 class UIImage;
 class UIText;
+class UIProgressBar;
 
 // Helpers
 void UIRescale();
