@@ -145,9 +145,9 @@ void BuildLightmap(BlockID *blocks, Lightmap &lightmap)
     std::vector<glm::ivec3> lights;
 
     // Skylight initial fill
-    for (int x = 0; x < CHUNK_SIZE + 2; x++)
+    for (int x = 0; x < CHUNK_SIZE; x++)
     {
-        for (int z = 0; z < CHUNK_SIZE + 2; z++)
+        for (int z = 0; z < CHUNK_SIZE; z++)
         {
             uint8_t skylight_level = 15;
             for (int y = WORLD_HEIGHT_LIMIT - 1; y >= 0; y--)
@@ -159,14 +159,11 @@ void BuildLightmap(BlockID *blocks, Lightmap &lightmap)
                 lightmap.SetSkyLevel({x, y, z}, skylight_level);
                 lightmap.SetBlockLevel({x, y, z}, 0);
 
-                if (x >= 1 && z >= 1 && x <= CHUNK_SIZE && z <= CHUNK_SIZE)
-                {
-                    if (skylight_level == 15)
-                        to_expand.emplace_back(x, y, z);
+                if (skylight_level == 15)
+                    to_expand.emplace_back(x, y, z);
 
-                    if (block == BlockID::light)
-                        lights.emplace_back(x, y, z);
-                }
+                if (block == BlockID::light)
+                    lights.emplace_back(x, y, z);
             }
         }
     }
@@ -189,7 +186,7 @@ void BuildLightmap(BlockID *blocks, Lightmap &lightmap)
 
         for (const glm::ivec3 &neighbor_coords : neighbors)
         {
-            if (neighbor_coords.x == 0 || neighbor_coords.z == 0 || neighbor_coords.x == CHUNK_SIZE + 1 || neighbor_coords.z == CHUNK_SIZE + 1 || neighbor_coords.y == -1 || neighbor_coords.y == WORLD_HEIGHT_LIMIT)
+            if (!BlockIsInChunk(neighbor_coords))
                 continue;
 
             BlockID neighbor_block = blocks[GetChunkIndex(neighbor_coords.x, neighbor_coords.y, neighbor_coords.z)];
@@ -219,7 +216,7 @@ void BuildLightmap(BlockID *blocks, Lightmap &lightmap)
 
         for (const glm::ivec3 &neighbor_coords : neighbors)
         {
-            if (neighbor_coords.y < 0 || neighbor_coords.y >= WORLD_HEIGHT_LIMIT)
+            if (!BlockIsInChunk(neighbor_coords))
                 continue;
 
             BlockID neighbor_block = blocks[GetChunkIndex(neighbor_coords.x, neighbor_coords.y, neighbor_coords.z)];
@@ -249,7 +246,7 @@ void BuildLightmap(BlockID *blocks, Lightmap &lightmap)
 
         for (const glm::ivec3 &neighbor_coords : neighbors)
         {
-            if (neighbor_coords.x < 0 || neighbor_coords.z < 0 || neighbor_coords.x > CHUNK_SIZE + 1 || neighbor_coords.z > CHUNK_SIZE + 1 || neighbor_coords.y < 0 || neighbor_coords.y >= WORLD_HEIGHT_LIMIT)
+            if (!BlockIsInChunk(neighbor_coords))
                 continue;
 
             BlockID neighbor_block = blocks[GetChunkIndex(neighbor_coords.x, neighbor_coords.y, neighbor_coords.z)];
@@ -363,11 +360,11 @@ void BuildChunkVertices(BlockID *blocks, glm::ivec3 chunk_coords, std::vector<Bl
         // Determine global base vertex position
         glm::vec3 base_pos;
         if (normal.x != 0)
-            base_pos = {quad.base.x + 0.5f + CHUNK_SIZE * chunk_coords.x, quad.base.y - 0.5f, quad.base.z - 0.5f + CHUNK_SIZE * chunk_coords.z};
+            base_pos = {quad.base_coords.x - normal.x*0.5f + CHUNK_SIZE * chunk_coords.x, quad.base_coords.y - 0.5f, quad.base_coords.z - 0.5f + CHUNK_SIZE * chunk_coords.z};
         else if (normal.y != 0)
-            base_pos = {quad.base.x - 0.5f + CHUNK_SIZE * chunk_coords.x, quad.base.y + 0.5f, quad.base.z - 0.5f + CHUNK_SIZE * chunk_coords.z};
+            base_pos = {quad.base_coords.x - 0.5f + CHUNK_SIZE * chunk_coords.x, quad.base_coords.y - normal.y*0.5f, quad.base_coords.z - 0.5f + CHUNK_SIZE * chunk_coords.z};
         else
-            base_pos = {quad.base.x - 0.5f + CHUNK_SIZE * chunk_coords.x, quad.base.y - 0.5f, quad.base.z + 0.5f + CHUNK_SIZE * chunk_coords.z};
+            base_pos = {quad.base_coords.x - 0.5f + CHUNK_SIZE * chunk_coords.x, quad.base_coords.y - 0.5f, quad.base_coords.z - normal.z*0.5f + CHUNK_SIZE * chunk_coords.z};
 
         // Determine texture tiling repeats
         int quad_width = glm::length(quad.du);
@@ -391,9 +388,19 @@ void BuildChunkVertices(BlockID *blocks, glm::ivec3 chunk_coords, std::vector<Bl
         if (dot < 0)
             dot = 0;
 
-        glm::ivec3 adjacent = quad.base_coords - glm::ivec3(normal); // Block in front of the one this quad is based at
-        uint8_t _sky_light = lightmap.GetSkyLevel(adjacent);
-        uint8_t _block_light = lightmap.GetBlockLevel(adjacent);
+        
+        uint8_t _sky_light, _block_light;
+        if (IsBorderBlock(quad.base_coords))
+        {
+            _sky_light = 15;
+            _block_light = 0;
+        }
+        else
+        {
+            glm::ivec3 adjacent = quad.base_coords - glm::ivec3(normal); // Block in front of the one this quad is based at
+            _sky_light = lightmap.GetSkyLevel(adjacent);
+            _block_light = lightmap.GetBlockLevel(adjacent);
+        }
         float sky_light = (float)_sky_light * (100.0f / 15.0f);      // Apparently Charlie's light values were in [0, 100]. Mine are in [0, 15], 
         float block_light = (float)_block_light * (100.0f / 15.0f);  // so let's scale to [0, 100] so his code works as-is
 

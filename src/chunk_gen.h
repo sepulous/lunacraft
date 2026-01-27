@@ -976,51 +976,51 @@ void GenerateHeightMap(uint8_t *height_map, int chunk_x, int chunk_z, uint64_t s
     double offset_x = (double)(SplitMix64(seed) & 0xFFFFFFFF);
     double offset_z = (double)(SplitMix64(seed) & 0xFFFFFFFF);
 
-    for (int x = 0; x < CHUNK_SIZE + 2; x++)
+    for (int x = 0; x < CHUNK_SIZE; x++)
     {
-        for (int z = 0; z < CHUNK_SIZE + 2; z++)
+        for (int z = 0; z < CHUNK_SIZE; z++)
         {
             frequency = frequency0;
             amplitude = amplitude0;
             height_limit = 0.0f;
             for (int i = 0; i < octaves; i++)
             {
-                double xArg = ((((x - 1) + chunk_x * CHUNK_SIZE) + offset_x) / divFactor) * frequency;
-                double zArg = ((((z - 1) + chunk_z * CHUNK_SIZE) + offset_z) / divFactor) * frequency;
+                double xArg = (((x + chunk_x * CHUNK_SIZE) + offset_x) / divFactor) * frequency;
+                double zArg = (((z + chunk_z * CHUNK_SIZE) + offset_z) / divFactor) * frequency;
                 height_limit += SimplexNoise(xArg, zArg) * amplitude;
                 frequency *= 3.0f;
                 amplitude *= persistence;
             }
-            height_map[z + (CHUNK_SIZE + 2) * x] = (uint8_t)height_limit;
+            height_map[z + CHUNK_SIZE * x] = (uint8_t)height_limit;
         }
     }
 }
 
 void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
 {
-    thread_local uint8_t height_maps[(CHUNK_SIZE + 2) * (CHUNK_SIZE + 2) * 4];
+    thread_local uint8_t height_maps[CHUNK_SIZE * CHUNK_SIZE * 4];
 
     //
     // Generate terrain
     //
     const int ROCK_OFFSET   = 0;
-    const int GRAVEL_OFFSET = 1 * (CHUNK_SIZE + 2) * (CHUNK_SIZE + 2);
-    const int DIRT_OFFSET   = 2 * (CHUNK_SIZE + 2) * (CHUNK_SIZE + 2);
-    const int SAND_OFFSET   = 3 * (CHUNK_SIZE + 2) * (CHUNK_SIZE + 2);
+    const int GRAVEL_OFFSET = 1 * CHUNK_SIZE * CHUNK_SIZE;
+    const int DIRT_OFFSET   = 2 * CHUNK_SIZE * CHUNK_SIZE;
+    const int SAND_OFFSET   = 3 * CHUNK_SIZE * CHUNK_SIZE;
     GenerateHeightMap(&height_maps[ROCK_OFFSET], chunk_x, chunk_z, seed, 14, 0.2, 0.4, 4, 1.5f);
     GenerateHeightMap(&height_maps[GRAVEL_OFFSET], chunk_x, chunk_z, seed, 4, 0.2, 0.6, 2, 1.5f);
     GenerateHeightMap(&height_maps[DIRT_OFFSET], chunk_x, chunk_z, seed, 3, 0.2, 0.6, 3, 1.5f);
     GenerateHeightMap(&height_maps[SAND_OFFSET], chunk_x, chunk_z, seed, 2, 0.2, 0.8, 2, 1.5f);
 
     int chunk_index = 0;
-    for (int x = 0; x < CHUNK_SIZE + 2; x++)
+    for (int x = 0; x < CHUNK_SIZE; x++)
     {
-        for (int z = 0; z < CHUNK_SIZE + 2; z++)
+        for (int z = 0; z < CHUNK_SIZE; z++)
         {
-            int rock_height   = height_maps[ROCK_OFFSET   + z + (CHUNK_SIZE + 2) * x];
-            int gravel_height = height_maps[GRAVEL_OFFSET + z + (CHUNK_SIZE + 2) * x];
-            int dirt_height   = height_maps[DIRT_OFFSET   + z + (CHUNK_SIZE + 2) * x];
-            int sand_height   = height_maps[SAND_OFFSET   + z + (CHUNK_SIZE + 2) * x];
+            int rock_height   = height_maps[ROCK_OFFSET   + z + CHUNK_SIZE * x];
+            int gravel_height = height_maps[GRAVEL_OFFSET + z + CHUNK_SIZE * x];
+            int dirt_height   = height_maps[DIRT_OFFSET   + z + CHUNK_SIZE * x];
+            int sand_height   = height_maps[SAND_OFFSET   + z + CHUNK_SIZE * x];
             int y = 0;
 
             // Base rock
@@ -1814,8 +1814,8 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
         auto shape_offsets = CRYSTAL_PLANT_SHAPES[crystal_plant_shape];
 
         int padding_needed = shape_offsets[0].x;
-        int base_block_x = rng.Range(1 + padding_needed, CHUNK_SIZE - padding_needed - 1);
-        int base_block_z = rng.Range(1 + padding_needed, CHUNK_SIZE - padding_needed - 1);
+        int base_block_x = rng.Range(padding_needed, CHUNK_SIZE - padding_needed);
+        int base_block_z = rng.Range(padding_needed, CHUNK_SIZE - padding_needed);
         int base_block_y;
         for (int y = 63; y < WORLD_HEIGHT_LIMIT; y++)
         {
@@ -1872,8 +1872,8 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
         }
 
         int padding_needed = tree_data[0].local_x;
-        int base_block_x = rng.Range(1 + padding_needed, CHUNK_SIZE - padding_needed - 1);
-        int base_block_z = rng.Range(1 + padding_needed, CHUNK_SIZE - padding_needed - 1);
+        int base_block_x = rng.Range(padding_needed, CHUNK_SIZE - padding_needed);
+        int base_block_z = rng.Range(padding_needed, CHUNK_SIZE - padding_needed);
         int base_block_y;
         for (int y = 63; y < WORLD_HEIGHT_LIMIT; y++)
         {

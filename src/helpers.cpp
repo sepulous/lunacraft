@@ -8,12 +8,27 @@
 int GetChunkIndex(int x, int y, int z) noexcept
 {
     // This formula is tied to the loop order when chunks are generated (see chunk_gen.h)
-    return y + (WORLD_HEIGHT_LIMIT * z) + (WORLD_HEIGHT_LIMIT * (CHUNK_SIZE + 2) * x);
+    return y + (WORLD_HEIGHT_LIMIT * z) + (WORLD_HEIGHT_LIMIT * CHUNK_SIZE * x);
 }
 
 bool BlockIsOpaque(BlockID block) noexcept
 {
     return !(block == BlockID::air || block == BlockID::water || block == BlockID::sulphur_crystal || block == BlockID::boron_crystal || block == BlockID::blue_crystal || block == BlockID::glass);
+}
+
+bool IsBorderBlock(const glm::ivec3 &block_coords) noexcept
+{
+    return block_coords.x == 0 || block_coords.x == CHUNK_SIZE - 1 || block_coords.z == 0 || block_coords.z == CHUNK_SIZE - 1;
+}
+
+bool BlockIsInChunk(const glm::ivec3 &block_coords) noexcept
+{
+    return block_coords.x >= 0
+        && block_coords.x < CHUNK_SIZE
+        && block_coords.z >= 0
+        && block_coords.z < CHUNK_SIZE
+        && block_coords.y >= 0
+        && block_coords.y < WORLD_HEIGHT_LIMIT;
 }
 
 bool ShouldRenderFace(BlockID face, BlockID neighbor_face) noexcept
@@ -62,9 +77,9 @@ glm::ivec3 GlobalToLocalVoxel(const glm::ivec3& global_voxel_pos) noexcept
 {
     glm::ivec3 chunk_coord = VoxelToChunk(global_voxel_pos);
     return glm::ivec3(
-        (global_voxel_pos.x - chunk_coord.x * CHUNK_SIZE) + 1,
+        (global_voxel_pos.x - chunk_coord.x * CHUNK_SIZE),
         global_voxel_pos.y,
-        (global_voxel_pos.z - chunk_coord.z * CHUNK_SIZE) + 1
+        (global_voxel_pos.z - chunk_coord.z * CHUNK_SIZE)
     );
 }
 
@@ -72,9 +87,9 @@ glm::ivec3 GlobalToLocalVoxel(const glm::ivec3& global_voxel_pos) noexcept
 glm::ivec3 LocalToGlobalVoxel(const glm::ivec3& local_voxel_pos, const glm::ivec3& chunk_coord) noexcept
 {
     return glm::ivec3(
-        (local_voxel_pos.x - 1) + chunk_coord.x * CHUNK_SIZE,
+        local_voxel_pos.x + chunk_coord.x * CHUNK_SIZE,
         local_voxel_pos.y,
-        (local_voxel_pos.z - 1) + chunk_coord.z * CHUNK_SIZE
+        local_voxel_pos.z + chunk_coord.z * CHUNK_SIZE
     );
 }
 
