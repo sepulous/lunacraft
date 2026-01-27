@@ -65,7 +65,7 @@ glm::ivec3 Chunk::GetCoords()
     return _coords;
 }
 
-BlockArray &Chunk::GetBlocks()
+BlockID *Chunk::GetBlocks()
 {
     return _blocks;
 }
@@ -124,9 +124,9 @@ void Chunk::SetCoords(glm::ivec3 coords)
     _coords = coords;
 }
 
-void Chunk::SetBlocks(BlockArray &blocks)
+void Chunk::SetBlocks(BlockID *blocks)
 {
-    _blocks = std::move(blocks);
+    _blocks = blocks;
 }
 
 void Chunk::SetOpaqueVertices(std::vector<BlockVertex> &opaque_vertices)

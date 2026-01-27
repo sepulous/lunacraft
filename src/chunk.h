@@ -11,8 +11,6 @@
 #include "block.h"
 #include "constants.h"
 
-typedef std::array<BlockID, BLOCKS_IN_CHUNK> BlockArray; // TODO: Get rid of this. It's stupid.
-
 class Lightmap
 {
     private:
@@ -39,7 +37,7 @@ class Chunk
 {
     private:
         glm::ivec3 _coords;
-        BlockArray _blocks;
+        BlockID *_blocks;
         Lightmap _lightmap;
         std::vector<BlockVertex> _opaque_vertices;
         GLuint _opaque_vao;
@@ -66,8 +64,8 @@ class Chunk
 
         glm::ivec3 GetCoords();
         void SetCoords(glm::ivec3 coords);
-        BlockArray &GetBlocks();
-        void SetBlocks(BlockArray &blocks);
+        BlockID *GetBlocks();
+        void SetBlocks(BlockID *blocks);
         void SetOpaqueVertices(std::vector<BlockVertex> &opaque_vertices);
         void SetTransparentVertices(std::vector<BlockVertex> &transparent_vertices);
 

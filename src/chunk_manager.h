@@ -19,7 +19,7 @@ struct ChunkTask
 struct ChunkResult
 {
     glm::ivec3 coords;
-    BlockArray blocks;
+    BlockID *blocks;
     std::vector<BlockVertex> opaque_vertices;
     std::vector<BlockVertex> transparent_vertices;
 };

@@ -163,7 +163,7 @@ static void _ChunkWorker(std::stop_token stoken, int moon_id, MoonSettings moon_
         if (!task_queue.Pop(task, stoken))
             continue;
 
-        BlockArray blocks;
+        BlockID *blocks = (BlockID *)malloc(BLOCKS_IN_CHUNK * sizeof(BlockID));
         Lightmap lightmap;
         std::vector<BlockVertex> opaque_vertices;
         std::vector<BlockVertex> transparent_vertices;
@@ -179,20 +179,20 @@ static void _ChunkWorker(std::stop_token stoken, int moon_id, MoonSettings moon_
         if (std::filesystem::exists(chunk_file_path))
         {
             std::ifstream chunk_file(chunk_file_path, std::ios::binary);
-            chunk_file.read(reinterpret_cast<char *>(blocks.data()), BLOCKS_IN_CHUNK * sizeof(BlockID));
+            chunk_file.read(reinterpret_cast<char *>(blocks), BLOCKS_IN_CHUNK * sizeof(BlockID));
             chunk_file.close();
         }
         else
         {
-            GenerateChunk(blocks.data(), task.coords.x, task.coords.z, moon_settings.seed);
+            GenerateChunk(blocks, task.coords.x, task.coords.z, moon_settings.seed);
 
             std::ofstream chunk_file(chunk_file_path, std::ios::binary);
-            chunk_file.write(reinterpret_cast<char *>(blocks.data()), BLOCKS_IN_CHUNK * sizeof(BlockID));
+            chunk_file.write(reinterpret_cast<char *>(blocks), BLOCKS_IN_CHUNK * sizeof(BlockID));
             chunk_file.close();
         }
 
-        BuildLightmap(blocks.data(), lightmap);
-        BuildChunkVertices(blocks.data(), task.coords, opaque_vertices, transparent_vertices, lightmap);
+        BuildLightmap(blocks, lightmap);
+        BuildChunkVertices(blocks, task.coords, opaque_vertices, transparent_vertices, lightmap);
 
         result_queue.Push({task.coords, blocks, std::move(opaque_vertices), std::move(transparent_vertices)});
     }
