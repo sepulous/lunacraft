@@ -10,6 +10,9 @@
 
 #include "block.h"
 #include "constants.h"
+#include "chunk_worker_pool.h"
+
+// TODO: We know how many vertices there will be: 6 * (# of quads). So before we push to the vertex vectors, let's reserve enough space.
 
 class Lightmap
 {
@@ -28,51 +31,54 @@ class Lightmap
 
 enum class ChunkState
 {
-    MISSING,
-    QUEUED,
-    UPLOADED
+    CREATED, // Chunk object was just created
+    LOADING_BLOCKS, // Loading/generating block data
+    INTERNAL_LIGHT, // Initial light map fill based on internal data
+    EXTERNAL_LIGHT, // Incorporation of neighbor chunks' light maps
+    BUILDING_VERTICES, // Meshing and building vertex data
+    READY_TO_UPLOAD, // Vertices are ready to be uploaded to the GPU (must be done on main thread)
+    RENDERABLE // Chunk is ready to render
 };
 
 class Chunk
 {
-    private:
-        glm::ivec3 _coords;
-        BlockID *_blocks;
-        Lightmap _lightmap;
-        std::vector<BlockVertex> _opaque_vertices;
-        GLuint _opaque_vao;
-        GLuint _opaque_vbo;
-        std::vector<BlockVertex> _transparent_vertices;
-        GLuint _transparent_vao;
-        GLuint _transparent_vbo;
+public:
+    Chunk(const glm::ivec3 &coords, ChunkWorkerPool *chunk_worker_pool);
+    ~Chunk();
 
-    public:
-        ChunkState state = ChunkState::MISSING;
+    Chunk(const Chunk&) = delete;
+    Chunk& operator=(const Chunk&) = delete;
 
-        Chunk();
-        Chunk(glm::ivec3 coords);
+    Chunk(Chunk&&) = delete;
+    Chunk& operator=(Chunk&&) = delete;
 
-        ~Chunk();
+    ChunkState GetState();
+    glm::ivec3 GetCoords();
+    BlockID *GetBlocks();
+    Lightmap &GetLightMap();
+    void InitialLoad();
+    void RebuildLightMapAndVertices();
+    void UploadVertices();
+    void RenderOpaques();
+    void RenderTransparents();
 
-        // Copy
-        Chunk(const Chunk&) = delete;
-        Chunk& operator=(const Chunk&) = delete;
+private:
+    void SetState(ChunkState state);
+    void LoadBlocks();
+    void BuildLightMapInternal();
+    void BuildLightMapExternal();
+    void BuildVertices();
 
-        // Move
-        Chunk(Chunk&& other) noexcept;
-        Chunk& operator=(Chunk&& other) noexcept;
-
-        glm::ivec3 GetCoords();
-        void SetCoords(glm::ivec3 coords);
-        BlockID *GetBlocks();
-        void SetBlocks(BlockID *blocks);
-        void SetOpaqueVertices(std::vector<BlockVertex> &opaque_vertices);
-        void SetTransparentVertices(std::vector<BlockVertex> &transparent_vertices);
-
-        void BufferVertices();
-        void RenderOpaques();
-        void RenderTransparents();
+private:
+    std::atomic<ChunkState> _state{ChunkState::CREATED};
+    ChunkWorkerPool *_chunk_worker_pool;
+    glm::ivec3 _coords;
+    BlockID *_blocks;
+    Lightmap _light_map;
+    std::vector<BlockVertex> _opaque_vertices;
+    GLuint _opaque_vao;
+    GLuint _opaque_vbo;
+    std::vector<BlockVertex> _transparent_vertices;
+    GLuint _transparent_vao;
+    GLuint _transparent_vbo;
 };
-
-void BuildLightmap(BlockID *blocks, Lightmap &lightmap);
-void BuildChunkVertices(BlockID *blocks, glm::ivec3 chunk_coords, std::vector<BlockVertex> &opaque_vertices, std::vector<BlockVertex> &transparent_vertices, const Lightmap &light_map);

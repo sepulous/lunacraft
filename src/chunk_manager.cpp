@@ -10,11 +10,9 @@
 #include <stb_image/stb_image.h>
 
 #include "chunk_manager.h"
-#include "chunk_gen.h"
+#include "chunk_generation.h"
 #include "helpers.h"
 #include "storage.h"
-
-static void _ChunkWorker(std::stop_token, int, MoonSettings, BlockingQueue<ChunkTask>&, BlockingQueue<ChunkResult>&);
 
 void ChunkManager::Init(int moon_id, MoonSettings moon_settings)
 {
@@ -42,11 +40,6 @@ void ChunkManager::Init(int moon_id, MoonSettings moon_settings)
     std::filesystem::path chunk_dir = moon_dir / "chunks";
     if (!std::filesystem::exists(chunk_dir))
         std::filesystem::create_directory(chunk_dir);
-
-    // Start workers
-    int num_workers = glm::max(1u, std::thread::hardware_concurrency() - 2);
-    for (int i = 0; i < num_workers; i++)
-        _workers.emplace_back(_ChunkWorker, moon_id, moon_settings, std::ref(_task_queue), std::ref(_result_queue));
 }
 
 ChunkManager::~ChunkManager()
@@ -57,11 +50,23 @@ ChunkManager::~ChunkManager()
 void ChunkManager::QueueNewChunk(glm::ivec3 chunk_coords)
 {
     uint64_t chunk_id = ChunkCoordsToID(chunk_coords);
-    Chunk &chunk = _chunks[chunk_id];
-    if (chunk.state == ChunkState::MISSING)
+    auto [it, is_new_chunk] = _chunks.try_emplace(chunk_id, chunk_coords, &_worker_pool);
+    if (is_new_chunk)
     {
-        chunk.state = ChunkState::QUEUED;
-        _task_queue.Push({ chunk_coords });
+        Chunk &chunk = it->second;
+        chunk.InitialLoad();
+    }
+}
+
+void ChunkManager::BufferReadyChunks()
+{
+    for (auto it = _chunks.begin(); it != _chunks.end(); ++it)
+    {
+        if (it->second.GetState() == ChunkState::READY_TO_UPLOAD)
+        {
+            it->second.UploadVertices(); // Sets chunk state to RENDERABLE
+            _loaded_chunk_count++;
+        }
     }
 }
 
@@ -75,7 +80,7 @@ void ChunkManager::RenderChunks(Plane frustum[6])
 
     for (auto it = _chunks.begin(); it != _chunks.end(); ++it)
     {
-        if (it->second.state == ChunkState::UPLOADED)
+        if (it->second.GetState() == ChunkState::RENDERABLE)
         {
             glm::ivec3 chunk_coords = it->second.GetCoords();
             float x0 = chunk_coords.x * CHUNK_SIZE;
@@ -103,31 +108,12 @@ void ChunkManager::RenderChunks(Plane frustum[6])
     }
 }
 
-void ChunkManager::BufferReadyChunks()
-{
-    ChunkResult result;
-    while (_result_queue.TryPop(result))
-    {
-        uint64_t chunk_id = ChunkCoordsToID(result.coords);
-        Chunk &chunk = _chunks[chunk_id];
-
-        chunk.SetCoords(result.coords);
-        chunk.SetBlocks(result.blocks);
-        chunk.SetOpaqueVertices(result.opaque_vertices);
-        chunk.SetTransparentVertices(result.transparent_vertices);
-        chunk.BufferVertices();
-
-        chunk.state = ChunkState::UPLOADED;
-        _loaded_chunk_count++;
-    }
-}
-
 void ChunkManager::RemoveDistantChunks(glm::ivec3 player_chunk, int render_distance)
 {
     for (auto it = _chunks.begin(); it != _chunks.end(); )
     {
         glm::ivec3 coords = it->second.GetCoords();
-        bool not_being_processed = it->second.state == ChunkState::UPLOADED;
+        bool not_being_processed = it->second.GetState() == ChunkState::RENDERABLE;
         bool distant = coords.x < player_chunk.x - render_distance
                     || coords.x > player_chunk.x + render_distance
                     || coords.z < player_chunk.z - render_distance
@@ -153,47 +139,4 @@ std::unordered_map<uint64_t, Chunk> &ChunkManager::GetChunks()
 int ChunkManager::GetLoadedChunkCount()
 {
     return _loaded_chunk_count;
-}
-
-static void _ChunkWorker(std::stop_token stoken, int moon_id, MoonSettings moon_settings, BlockingQueue<ChunkTask> &task_queue, BlockingQueue<ChunkResult> &result_queue)
-{
-    while (!stoken.stop_requested())
-    {
-        ChunkTask task;
-        if (!task_queue.Pop(task, stoken))
-            continue;
-
-        BlockID *blocks = (BlockID *)malloc(BLOCKS_IN_CHUNK * sizeof(BlockID));
-        Lightmap lightmap;
-        std::vector<BlockVertex> opaque_vertices;
-        std::vector<BlockVertex> transparent_vertices;
-        opaque_vertices.reserve(8192);
-        transparent_vertices.reserve(128);
-
-        // TODO: Let's rethink the need to create this data here. I'd like to make BuildLightmaps and BuildChunkVertices methods of Chunk, but
-        //       I have to be able to work with a chunk object to do that, and I shyed away from that for some reason.
-
-        // Load blocks
-        uint64_t chunk_id = ChunkCoordsToID(task.coords);
-        std::filesystem::path chunk_file_path = Storage::MOON_DIR / (std::string("moon") + std::to_string(moon_id)) / "chunks" / (std::to_string(chunk_id) + ".chunk");
-        if (std::filesystem::exists(chunk_file_path))
-        {
-            std::ifstream chunk_file(chunk_file_path, std::ios::binary);
-            chunk_file.read(reinterpret_cast<char *>(blocks), BLOCKS_IN_CHUNK * sizeof(BlockID));
-            chunk_file.close();
-        }
-        else
-        {
-            GenerateChunk(blocks, task.coords.x, task.coords.z, moon_settings.seed);
-
-            std::ofstream chunk_file(chunk_file_path, std::ios::binary);
-            chunk_file.write(reinterpret_cast<char *>(blocks), BLOCKS_IN_CHUNK * sizeof(BlockID));
-            chunk_file.close();
-        }
-
-        BuildLightmap(blocks, lightmap);
-        BuildChunkVertices(blocks, task.coords, opaque_vertices, transparent_vertices, lightmap);
-
-        result_queue.Push({task.coords, blocks, std::move(opaque_vertices), std::move(transparent_vertices)});
-    }
 }

@@ -1,28 +1,13 @@
 #pragma once
 
 #include <unordered_map>
-#include <vector>
-#include <thread>
 
 #include <glm/glm.hpp>
 
 #include "chunk.h"
-#include "blocking_queue.h"
 #include "moon_settings.h"
 #include "helpers.h"
-
-struct ChunkTask
-{
-    glm::ivec3 coords;
-};
-
-struct ChunkResult
-{
-    glm::ivec3 coords;
-    BlockID *blocks;
-    std::vector<BlockVertex> opaque_vertices;
-    std::vector<BlockVertex> transparent_vertices;
-};
+#include "chunk_worker_pool.h"
 
 class ChunkManager
 {
@@ -31,9 +16,7 @@ class ChunkManager
         int _loaded_chunk_count = 0;
         GLuint _texture_atlas;
         std::unordered_map<uint64_t, Chunk> _chunks;
-        BlockingQueue<ChunkTask> _task_queue;
-        BlockingQueue<ChunkResult> _result_queue;
-        std::vector<std::jthread> _workers; // These should be destroyed before the queues
+        ChunkWorkerPool _worker_pool;
 
     public:
         ChunkManager() = default;

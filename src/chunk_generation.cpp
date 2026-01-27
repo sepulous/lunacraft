@@ -1,19 +1,25 @@
-#pragma once
 
 #include <vector>
 #include <cstdlib>
-#include <cstdint>
 
 #include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
 
 #include "chunk.h"
-#include "block.h"
 #include "constants.h"
 #include "simplex_noise.h"
 #include "helpers.h"
 #include "rng.h"
+#include "chunk_generation.h"
+
+struct TreeBlock
+{
+    BlockID block;
+    int local_x;
+    int local_y;
+    int local_z;
+
+    TreeBlock(BlockID block, int local_x, int local_y, int local_z) : block(block), local_x(local_x), local_y(local_y), local_z(local_z) {}
+};
 
 std::vector<std::vector<glm::vec3>> CRYSTAL_PLANT_SHAPES = {
     {
@@ -71,16 +77,6 @@ std::vector<std::vector<glm::vec3>> CRYSTAL_PLANT_SHAPES = {
         glm::vec3(2, 2, 0), glm::vec3(0, 3, 1), glm::vec3(0, 3, 2), glm::vec3(0, 3, 3), glm::vec3(1, 3, 3), glm::vec3(0, 4, 3),
         glm::vec3(-1, 3, 3), glm::vec3(-2, 3, 3)
     }
-};
-
-struct TreeBlock
-{
-    BlockID block;
-    int local_x;
-    int local_y;
-    int local_z;
-
-    TreeBlock(BlockID block, int local_x, int local_y, int local_z) : block(block), local_x(local_x), local_y(local_y), local_z(local_z) {}
 };
 
 std::vector<std::vector<TreeBlock>> GREEN_LIGHT_TREE_SHAPES = {

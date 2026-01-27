@@ -52,6 +52,9 @@ add_executable(Lunacraft
     src/sound_system.cpp
     src/input.cpp
     src/viewport.cpp
+    src/chunk_generation.cpp
+    src/chunk_worker_pool.cpp
+    src/simplex_noise.cpp
 )
 
 # Include directories
