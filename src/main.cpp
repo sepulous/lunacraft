@@ -23,6 +23,7 @@
 #include "constants.h"
 #include "helpers.h"
 #include "moon.h"
+#include "rng.h"
 
 enum class GameState {MAIN_MENU, IN_GAME};
 
@@ -112,7 +113,7 @@ int main()
     double last_frame_time = 0;
     float last_debug_update_time = 0;
     float last_sound_update_time = 0;
-    float next_music_time = glfwGetTime() + RandomRange(8 * 60, 12 * 60 + 1); // Every 8-12 minutes
+    float next_music_time = glfwGetTime() + RNG{}.Range(8 * 60, 12 * 60); // Every 8-12 minutes
     while (!glfwWindowShouldClose(window))
     {
         double current_time = glfwGetTime();
@@ -261,7 +262,8 @@ int main()
             // Play random song periodically
             if (current_time >= next_music_time)
             {
-                int song = RandomRange(0, 4);
+                RNG rng;
+                int song = rng.Range(0, 3);
                 if (song == 0)
                     SoundSystem::Play(SoundSystem::Sound::SONG_2);
                 else if (song == 1)
@@ -271,7 +273,7 @@ int main()
                 else
                     SoundSystem::Play(SoundSystem::Sound::SONG_5);
 
-                next_music_time = current_time + RandomRange(8 * 60, 12 * 60 + 1); // Every 8-12 minutes
+                next_music_time = current_time + rng.Range(8 * 60, 12 * 60); // Every 8-12 minutes
             }
 
             // Update debug menu

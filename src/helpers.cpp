@@ -126,9 +126,3 @@ uint64_t SplitMix64(uint64_t& x)
     z = (z ^ (z >> 27ULL)) * 0x94D049BB133111EBULL;
     return z ^ (z >> 31ULL);
 }
-
-int RandomRange(int min_inclusive, int max_exclusive)
-{
-    int range = max_exclusive - min_inclusive - 1;
-    return (int)((float)std::rand() * range / RAND_MAX) + min_inclusive;
-}

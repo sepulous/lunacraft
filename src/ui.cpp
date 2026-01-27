@@ -5,7 +5,6 @@
 #include <filesystem>
 #include <sstream>
 #include <algorithm>
-#include <random>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -20,6 +19,7 @@
 #include "shader.h"
 #include "options.h"
 #include "viewport.h"
+#include "rng.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_STATIC
@@ -542,9 +542,7 @@ UIMoonSettingsMenu::UIMoonSettingsMenu()
         uint64_t seed;
         if (trimmed_seed.str().empty())
         {
-            std::mt19937_64 rng(std::random_device{}());
-            std::uniform_int_distribution<uint64_t> dist(0, std::numeric_limits<uint64_t>::max());
-            seed = dist(rng);
+            seed = RNG{}.Get<uint64_t>();
         }
         else
         {

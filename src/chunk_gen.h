@@ -13,6 +13,7 @@
 #include "constants.h"
 #include "simplex_noise.h"
 #include "helpers.h"
+#include "rng.h"
 
 std::vector<std::vector<glm::vec3>> CRYSTAL_PLANT_SHAPES = {
     {
@@ -1016,36 +1017,36 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
     {
         for (int z = 0; z < CHUNK_SIZE + 2; z++)
         {
-            int rock_height_limit   = height_maps[ROCK_OFFSET   + z + (CHUNK_SIZE + 2) * x];
-            int gravel_height_limit = height_maps[GRAVEL_OFFSET + z + (CHUNK_SIZE + 2) * x];
-            int dirt_height_limit   = height_maps[DIRT_OFFSET   + z + (CHUNK_SIZE + 2) * x];
-            int sand_height_limit   = height_maps[SAND_OFFSET   + z + (CHUNK_SIZE + 2) * x];
+            int rock_height   = height_maps[ROCK_OFFSET   + z + (CHUNK_SIZE + 2) * x];
+            int gravel_height = height_maps[GRAVEL_OFFSET + z + (CHUNK_SIZE + 2) * x];
+            int dirt_height   = height_maps[DIRT_OFFSET   + z + (CHUNK_SIZE + 2) * x];
+            int sand_height   = height_maps[SAND_OFFSET   + z + (CHUNK_SIZE + 2) * x];
             int y = 0;
 
             // Base rock
-            while (y < 50 + rock_height_limit)
+            while (y < 50 + rock_height)
             {
                 chunk[chunk_index++] = BlockID::rock;
                 y++;
             }
 
             // Base gravel
-            while (y < 50 + rock_height_limit + gravel_height_limit)
+            while (y < 50 + rock_height + gravel_height)
             {
                 chunk[chunk_index++] = BlockID::gravel;
                 y++;
             }
 
             // Base dirt
-            while (y < 50 + rock_height_limit + gravel_height_limit + dirt_height_limit)
+            while (y < 50 + rock_height + gravel_height + dirt_height)
             {
                 chunk[chunk_index++] = BlockID::dirt;
                 y++;
             }
 
-            if (50 + rock_height_limit + gravel_height_limit + dirt_height_limit < GROUND_LEVEL) // Below ground level; fill rest in with sand/water
+            if (50 + rock_height + gravel_height + dirt_height < GROUND_LEVEL) // Below ground level; fill rest in with sand/water
             {
-                int sand_limit = glm::min(GROUND_LEVEL, 50 + rock_height_limit + gravel_height_limit + dirt_height_limit + sand_height_limit);
+                int sand_limit = glm::min(GROUND_LEVEL, 50 + rock_height + gravel_height + dirt_height + sand_height);
                 while (y < sand_limit)
                 {
                     chunk[chunk_index++] = BlockID::sand;
@@ -1072,19 +1073,18 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
         }
     }
 
-    // Ensure the same seed puts the same structures in the same places
-    uint32_t structure_seed = GetStructureSeed(seed, chunk_x, chunk_z);
-    std::srand(structure_seed);
+    // Seed RNG so structure placement is deterministic
+    uint64_t structure_seed = seed  ^ (chunk_x * 73856093) ^ (chunk_z * 19349663);
+    RNG rng{structure_seed};
 
     //
     // Ores
     //
-    //int oreSpawnChance = RandomRange(0, 10);
-    int ore_spawn_chance = RandomRange(0, 10);
+    int ore_spawn_chance = rng.Range(0, 9);
     if (ore_spawn_chance <= 3)
     {
-        int seed_block_x = RandomRange(5, CHUNK_SIZE - 6);
-        int seed_block_z = RandomRange(5, CHUNK_SIZE - 6);
+        int seed_block_x = rng.Range(5, CHUNK_SIZE - 7);
+        int seed_block_z = rng.Range(5, CHUNK_SIZE - 7);
         int seed_block_y = -1;
         for (int y = 63; y < WORLD_HEIGHT_LIMIT; y++)
         {
@@ -1096,38 +1096,38 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
             }
         }
 
-        int ore = RandomRange(1, 101);
+        int ore = rng.Range(1, 100);
         int vein_size;
         BlockID ore_id;
         if (ore <= 36) // 36%
         {
             ore_id = BlockID::magnetite;
-            vein_size = RandomRange(2, 7);
+            vein_size = rng.Range(2, 6);
         }
         else if (ore <= 60) // 24%
         {
             ore_id = BlockID::aluminum_ore;
-            vein_size = RandomRange(2, 7);
+            vein_size = rng.Range(2, 6);
         }
         else if (ore <= 78) // 18%
         {
             ore_id = BlockID::titanium_ore;
-            vein_size = RandomRange(2, 7);
+            vein_size = rng.Range(2, 6);
         }
         else if (ore <= 91) // 13%
         {
             ore_id = BlockID::gold_ore;
-            vein_size = RandomRange(1, 5);
+            vein_size = rng.Range(1, 4);
         }
         else if (ore <= 98) // 7%
         {
             ore_id = BlockID::notchium_ore;
-            vein_size = RandomRange(1, 5);
+            vein_size = rng.Range(1, 4);
         }
         else // 2%
         {
             ore_id = BlockID::blue_crystal;
-            vein_size = RandomRange(1, 5);
+            vein_size = rng.Range(1, 4);
         }
 
         int current_block_x = seed_block_x;
@@ -1137,7 +1137,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
         chunk[chunk_index] = ore_id;
         for (int count = 0; count < vein_size; count++)
         {
-            int next_direction = RandomRange(1, 6);
+            int next_direction = rng.Range(1, 5);
             if (next_direction == 1) // Forward
             {
                 current_block_z++;
@@ -1168,7 +1168,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
     //
     // Astronaut lairs
     //
-    bool spawn_astronaut_lair = RandomRange(0, 100) == 69; // 1% chance, each chunk
+    bool spawn_astronaut_lair = rng.Range(0, 99) == 69; // 1% chance, each chunk
     const int lair_depth = 26;
     if (spawn_astronaut_lair)
     {
@@ -1266,7 +1266,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
         chunk[chunk_index] = BlockID::polymer;
 
         // Extra front shaft(s)
-        if (RandomRange(0, 4) == 0)
+        if (rng.Range(0, 3) == 0)
         {
             for (int dz = 0; dz < 10; dz++)
             {
@@ -1310,7 +1310,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
             chunk[chunk_index] = BlockID::polymer;
 
             // Extra vertical shaft?
-            if (RandomRange(0, 4) == 0)
+            if (rng.Range(0, 3) == 0)
             {
                 for (int dz = -1; dz <= 1; dz++)
                 {
@@ -1339,7 +1339,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
             }
 
             // Extra horizontal shaft (left)?
-            if (RandomRange(0, 4) == 0)
+            if (rng.Range(0, 3) == 0)
             {
                 for (int dz = -1; dz <= 1; dz++)
                 {
@@ -1368,7 +1368,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
             }
 
             // Extra horizontal shaft (right)?
-            if (RandomRange(0, 4) == 0)
+            if (rng.Range(0, 3) == 0)
             {
                 for (int dz = -1; dz <= 1; dz++)
                 {
@@ -1398,7 +1398,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
         }
 
         // Extra back shaft(s)
-        if (RandomRange(0, 4) == 0)
+        if (rng.Range(0, 3) == 0)
         {
             for (int dz = 0; dz < 10; dz++)
             {
@@ -1442,7 +1442,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
             chunk[chunk_index] = BlockID::polymer;
 
             // Extra vertical shaft?
-            if (RandomRange(0, 4) == 0)
+            if (rng.Range(0, 3) == 0)
             {
                 for (int dz = -1; dz <= 1; dz++)
                 {
@@ -1471,7 +1471,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
             }
 
             // Extra horizontal shaft (left)?
-            if (RandomRange(0, 4) == 0)
+            if (rng.Range(0, 3) == 0)
             {
                 for (int dz = -1; dz <= 1; dz++)
                 {
@@ -1500,7 +1500,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
             }
 
             // Extra horizontal shaft (right)?
-            if (RandomRange(0, 4) == 0)
+            if (rng.Range(0, 3) == 0)
             {
                 for (int dz = -1; dz <= 1; dz++)
                 {
@@ -1530,7 +1530,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
         }
 
         // Extra right shaft(s)
-        if (RandomRange(0, 4) == 0)
+        if (rng.Range(0, 3) == 0)
         {
             for (int dx = 0; dx < 10; dx++)
             {
@@ -1574,7 +1574,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
             chunk[chunk_index] = BlockID::polymer;
 
             // Extra vertical shaft?
-            if (RandomRange(0, 4) == 0)
+            if (rng.Range(0, 3) == 0)
             {
                 for (int dz = -1; dz <= 1; dz++)
                 {
@@ -1603,7 +1603,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
             }
 
             // Extra horizontal shaft (left)?
-            if (RandomRange(0, 4) == 0)
+            if (rng.Range(0, 3) == 0)
             {
                 for (int dx = -1; dx <= 1; dx++)
                 {
@@ -1632,7 +1632,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
             }
 
             // Extra horizontal shaft (right)?
-            if (RandomRange(0, 4) == 0)
+            if (rng.Range(0, 3) == 0)
             {
                 for (int dx = -1; dx <= 1; dx++)
                 {
@@ -1662,7 +1662,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
         }
 
         // Extra left shaft(s)
-        if (RandomRange(0, 4) == 0)
+        if (rng.Range(0, 3) == 0)
         {
             for (int dx = 0; dx < 10; dx++)
             {
@@ -1706,7 +1706,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
             chunk[chunk_index] = BlockID::polymer;
 
             // Extra vertical shaft?
-            if (RandomRange(0, 4) == 0)
+            if (rng.Range(0, 3) == 0)
             {
                 for (int dz = -1; dz <= 1; dz++)
                 {
@@ -1735,7 +1735,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
             }
 
             // Extra horizontal shaft (left)?
-            if (RandomRange(0, 4) == 0)
+            if (rng.Range(0, 3) == 0)
             {
                 for (int dx = -1; dx <= 1; dx++)
                 {
@@ -1764,7 +1764,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
             }
 
             // Extra horizontal shaft (right)?
-            if (RandomRange(0, 4) == 0)
+            if (rng.Range(0, 3) == 0)
             {
                 for (int dx = -1; dx <= 1; dx++)
                 {
@@ -1797,10 +1797,10 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
     //
     // Crystal plants
     //
-    int spawn_crystal_plant = RandomRange(0, 40);
+    int spawn_crystal_plant = rng.Range(0, 39);
     if (spawn_crystal_plant == 0)
     {
-        int crystal_plant_type = RandomRange(0, 5);
+        int crystal_plant_type = rng.Range(0, 4);
         BlockID crystal;
         if (crystal_plant_type == 0)
             crystal = BlockID::blue_crystal;
@@ -1809,13 +1809,13 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
         else
             crystal = BlockID::boron_crystal;
 
-        int crystal_plant_orientation = RandomRange(1, 5);
-        int crystal_plant_shape = RandomRange(0, CRYSTAL_PLANT_SHAPES.size());
+        int crystal_plant_orientation = rng.Range(1, 4);
+        int crystal_plant_shape = rng.Range(0, CRYSTAL_PLANT_SHAPES.size() - 1);
         auto shape_offsets = CRYSTAL_PLANT_SHAPES[crystal_plant_shape];
 
         int padding_needed = shape_offsets[0].x;
-        int base_block_x = RandomRange(1 + padding_needed, CHUNK_SIZE - padding_needed);
-        int base_block_z = RandomRange(1 + padding_needed, CHUNK_SIZE - padding_needed);
+        int base_block_x = rng.Range(1 + padding_needed, CHUNK_SIZE - padding_needed - 1);
+        int base_block_z = rng.Range(1 + padding_needed, CHUNK_SIZE - padding_needed - 1);
         int base_block_y;
         for (int y = 63; y < WORLD_HEIGHT_LIMIT; y++)
         {
@@ -1847,33 +1847,33 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
     //
     // Trees
     //
-    int num_trees = RandomRange(1, 4);
+    int num_trees = rng.Range(1, 3);
     for (int i = 0; i < num_trees; i++)
     {
-        int tree_type = RandomRange(0, 10);
-        int tree_orientation = RandomRange(1, 5);
+        int tree_type = rng.Range(0, 9);
+        int tree_orientation = rng.Range(1, 4);
 
         int tree_shape;
         std::vector<TreeBlock> tree_data;
         if (tree_type < 5) // Green light tree
         {
-            tree_shape = RandomRange(0, GREEN_LIGHT_TREE_SHAPES.size());
+            tree_shape = rng.Range(0, GREEN_LIGHT_TREE_SHAPES.size() - 1);
             tree_data = GREEN_LIGHT_TREE_SHAPES[tree_shape];
         }
         else if (tree_type < 8) // Color wood tree
         {
-            tree_shape = RandomRange(0, COLOR_WOOD_TREE_SHAPES.size());
+            tree_shape = rng.Range(0, COLOR_WOOD_TREE_SHAPES.size() - 1);
             tree_data = COLOR_WOOD_TREE_SHAPES[tree_shape];
         }
         else // Spiral light tree
         {
-            tree_shape = RandomRange(0, SPIRAL_LIGHT_TREE_SHAPES.size());
+            tree_shape = rng.Range(0, SPIRAL_LIGHT_TREE_SHAPES.size() - 1);
             tree_data = SPIRAL_LIGHT_TREE_SHAPES[tree_shape];
         }
 
         int padding_needed = tree_data[0].local_x;
-        int base_block_x = RandomRange(1 + padding_needed, CHUNK_SIZE - padding_needed);
-        int base_block_z = RandomRange(1 + padding_needed, CHUNK_SIZE - padding_needed);
+        int base_block_x = rng.Range(1 + padding_needed, CHUNK_SIZE - padding_needed - 1);
+        int base_block_z = rng.Range(1 + padding_needed, CHUNK_SIZE - padding_needed - 1);
         int base_block_y;
         for (int y = 63; y < WORLD_HEIGHT_LIMIT; y++)
         {

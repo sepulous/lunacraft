@@ -11,6 +11,7 @@
 #include "helpers.h"
 #include "constants.h"
 #include "shader.h"
+#include "rng.h"
 
 Moon *Moon::_current_moon;
 
@@ -39,8 +40,10 @@ Moon::Moon(int moon_id, MoonSettings moon_settings)
     // Choose random fog color (this code was reverse engineered
     // from an unknown version of the original Lunacraft)
 
-    int _case = std::rand() % 6;
-    float _rand = (float)(std::rand() % 1'000'000) / 1'000'000.0f;
+    RNG rng;
+
+    int _case = rng.Range(0, 5);
+    float _rand = rng.Range(0.0f, 1.0f);
     float comp1 = (1.0 - _rand * 0.85) * 0.9;
     float comp2 = (1.0 - (1.0 - _rand) * 0.85) * 0.9;
 
