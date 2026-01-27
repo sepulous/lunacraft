@@ -26,15 +26,15 @@ class Lightmap
         void SetSkyLevel(glm::ivec3 coords, uint8_t level);
         uint8_t GetBlockLevel(glm::ivec3 coords) const;
         void SetBlockLevel(glm::ivec3 coords, uint8_t level);
-        uint8_t GetTotalLightLevel(glm::ivec3 coords) const;
 };
 
 enum class ChunkState
 {
     CREATED, // Chunk object was just created
     LOADING_BLOCKS, // Loading/generating block data
-    INTERNAL_LIGHT, // Initial light map fill based on internal data
-    EXTERNAL_LIGHT, // Incorporation of neighbor chunks' light maps
+    LIGHT_INTERNAL, // Initial light map fill based on internal data
+    INTERNAL_DONE, // Chunk has internal data but has not incorporated neighbor chunk data yet (border chunks rest on this until they are ready to be rendered)
+    LIGHT_EXTERNAL, // Incorporation of neighbor chunks' light maps
     BUILDING_VERTICES, // Meshing and building vertex data
     READY_TO_UPLOAD, // Vertices are ready to be uploaded to the GPU (must be done on main thread)
     RENDERABLE // Chunk is ready to render
@@ -43,7 +43,7 @@ enum class ChunkState
 class Chunk
 {
 public:
-    Chunk(const glm::ivec3 &coords, ChunkWorkerPool *chunk_worker_pool);
+    Chunk(const glm::ivec3 &coords, bool is_border_chunk, ChunkWorkerPool *chunk_worker_pool);
     ~Chunk();
 
     Chunk(const Chunk&) = delete;
@@ -53,11 +53,15 @@ public:
     Chunk& operator=(Chunk&&) = delete;
 
     ChunkState GetState();
+    void SetIsBorderChunk(bool status);
+    bool IsBorderChunk();
     glm::ivec3 GetCoords();
     BlockID *GetBlocks();
     Lightmap &GetLightMap();
-    void InitialLoad();
-    void RebuildLightMapAndVertices();
+
+    void Build();
+    void BuildExternal();
+    void Rebuild();
     void UploadVertices();
     void RenderOpaques();
     void RenderTransparents();
@@ -71,6 +75,7 @@ private:
 
 private:
     std::atomic<ChunkState> _state{ChunkState::CREATED};
+    bool _is_border_chunk;
     ChunkWorkerPool *_chunk_worker_pool;
     glm::ivec3 _coords;
     BlockID *_blocks;

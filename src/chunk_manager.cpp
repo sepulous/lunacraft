@@ -50,11 +50,11 @@ ChunkManager::~ChunkManager()
 void ChunkManager::QueueNewChunk(glm::ivec3 chunk_coords)
 {
     uint64_t chunk_id = ChunkCoordsToID(chunk_coords);
-    auto [it, is_new_chunk] = _chunks.try_emplace(chunk_id, chunk_coords, &_worker_pool);
+    auto [it, is_new_chunk] = _chunks.try_emplace(chunk_id, chunk_coords, false, &_worker_pool);
     if (is_new_chunk)
     {
         Chunk &chunk = it->second;
-        chunk.InitialLoad();
+        chunk.Build();
     }
 }
 

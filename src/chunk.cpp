@@ -22,8 +22,9 @@
 //
 
 // Chunk objects must be created on the main thread, due to OpenGL calls in this constructor
-Chunk::Chunk(const glm::ivec3 &coords, ChunkWorkerPool *chunk_worker_pool)
+Chunk::Chunk(const glm::ivec3 &coords, bool is_border_chunk, ChunkWorkerPool *chunk_worker_pool)
 {
+    _is_border_chunk = is_border_chunk;
     _coords = coords;
     _blocks = (BlockID *)malloc(BLOCKS_IN_CHUNK * sizeof(BlockID));
     _chunk_worker_pool = chunk_worker_pool;
@@ -75,6 +76,16 @@ ChunkState Chunk::GetState()
     return _state.load(std::memory_order::acquire);
 }
 
+void Chunk::SetIsBorderChunk(bool status)
+{
+    _is_border_chunk = status;
+}
+
+bool Chunk::IsBorderChunk()
+{
+    return _is_border_chunk;
+}
+
 glm::ivec3 Chunk::GetCoords()
 {
     return _coords;
@@ -90,17 +101,43 @@ Lightmap &Chunk::GetLightMap()
     return _light_map;
 }
 
-// Loads block data, builds light maps, and then builds vertices
-void Chunk::InitialLoad()
+//
+// The behavior of this function depends on whether the chunk is a border chunk.
+//
+// For a non-border chunk, everything is fully built, and it ends in the state READY_TO_UPLOAD.
+//
+// For a border chunk, only the block data and internal light map is built, and it ends in the
+// state INTERNAL_DONE. If a border chunk is to be rendered, BuildExternal() should be called
+// before UploadVertices().
+//
+void Chunk::Build()
 {
     _chunk_worker_pool->SubmitJob([this]() { LoadBlocks(); });
 }
 
-void Chunk::RebuildLightMapAndVertices()
+//
+// Fully rebuilds light map and vertices (for non-border chunks).
+//
+// This should not be called on a border chunk, because it would only recalculate the internal light map,
+// which doesn't change anyway.
+//
+void Chunk::Rebuild()
 {
     _chunk_worker_pool->SubmitJob([this]() { BuildLightMapInternal(); });
 }
 
+// Builds all data that depends on neighbor chunk data, ending in the state READY_TO_UPLOAD.
+void Chunk::BuildExternal()
+{
+    _chunk_worker_pool->SubmitJob([this]() { BuildLightMapExternal(); });
+}
+
+//
+// Upload chunk's vertex data to the GPU.
+//
+// This must be called before rendering the chunk, and after it has been fully built.
+// See Chunk::Build for more information.
+//
 void Chunk::UploadVertices()
 {
     glBindBuffer(GL_ARRAY_BUFFER, _opaque_vbo);
@@ -112,12 +149,22 @@ void Chunk::UploadVertices()
     SetState(ChunkState::RENDERABLE);
 }
 
+//
+// Render chunk's opaque vertices.
+//
+// This should be called after Chunk::UploadVertices and before Chunk::RenderTransparents.
+//
 void Chunk::RenderOpaques()
 {
     glBindVertexArray(_opaque_vao);
     glDrawArrays(GL_TRIANGLES, 0, _opaque_vertices.size());
 }
 
+//
+// Render chunk's transparent vertices.
+//
+// This should be called after Chunk::UploadVertices and Chunk::RenderOpaques.
+//
 void Chunk::RenderTransparents()
 {
     glBindVertexArray(_transparent_vao);
@@ -160,7 +207,7 @@ void Chunk::LoadBlocks()
 void Chunk::BuildLightMapInternal()
 {
     // Update state
-    SetState(ChunkState::INTERNAL_LIGHT);
+    SetState(ChunkState::LIGHT_INTERNAL);
 
     std::vector<glm::ivec3> to_expand;
     std::vector<glm::ivec3> lights;
@@ -283,13 +330,19 @@ void Chunk::BuildLightMapInternal()
         }
     }
 
-    // Start next task
-    _chunk_worker_pool->SubmitJob([this]() { BuildLightMapExternal(); });
+    if (!IsBorderChunk())
+    {
+        _chunk_worker_pool->SubmitJob([this]() { BuildLightMapExternal(); });
+    }
+    else
+    {
+        SetState(ChunkState::INTERNAL_DONE);
+    }
 }
 
 void Chunk::BuildLightMapExternal()
 {
-    SetState(ChunkState::EXTERNAL_LIGHT);
+    SetState(ChunkState::LIGHT_EXTERNAL);
 
     // Use neighbor light data...
 
@@ -516,9 +569,4 @@ void Lightmap::SetBlockLevel(glm::ivec3 coords, uint8_t block_level)
 {
     uint8_t entry = _map[GetChunkIndex(coords.x, coords.y, coords.z)];
     _map[GetChunkIndex(coords.x, coords.y, coords.z)] = (entry & 0xF0) | block_level;
-}
-
-uint8_t Lightmap::GetTotalLightLevel(glm::ivec3 coords) const
-{
-    return glm::max(GetSkyLevel(coords), GetBlockLevel(coords));
 }

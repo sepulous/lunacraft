@@ -344,7 +344,7 @@ int main()
 
             auto viewport_dimensions = Viewport::GetDimensions();
             glm::mat4 projection = glm::perspective(glm::radians(45.0), (double)viewport_dimensions.x / (double)viewport_dimensions.y, 0.1, 500.0); // This only really needs to be recomputed when the viewport changes
-            
+
             moon->Render(projection);
             ui_game.Render();
         }
