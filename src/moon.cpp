@@ -185,14 +185,10 @@ void Moon::Update(double delta_time, int old_render_distance)
     glm::ivec3 current_player_chunk = VoxelToChunk(GetNearestVoxel(_player->GetPosition()));
     int current_render_distance = OptionsManager::GetOptions().render_distance;
     if (current_player_chunk != old_player_chunk || old_render_distance != current_render_distance)
-    {
-        _chunk_manager.RemoveDistantChunks(current_player_chunk, current_render_distance);
-        for (int dx = -current_render_distance; dx <= current_render_distance; dx++)
-            for (int dz = -current_render_distance; dz <= current_render_distance; dz++)
-                _chunk_manager.QueueNewChunk({current_player_chunk.x + dx, 0, current_player_chunk.z + dz});
-    }
+        _chunk_manager.MoveChunkPatch(current_player_chunk, current_render_distance);
 
-    _chunk_manager.BufferReadyChunks();
+    // Upload any new chunks that are ready to the GPU
+    _chunk_manager.UploadReadyChunks();
 }
 
 void Moon::Render(glm::mat4 projection)

@@ -47,18 +47,7 @@ ChunkManager::~ChunkManager()
     glDeleteTextures(1, &_texture_atlas);
 }
 
-void ChunkManager::QueueNewChunk(glm::ivec3 chunk_coords)
-{
-    uint64_t chunk_id = ChunkCoordsToID(chunk_coords);
-    auto [it, is_new_chunk] = _chunks.try_emplace(chunk_id, chunk_coords, false, &_worker_pool);
-    if (is_new_chunk)
-    {
-        Chunk &chunk = it->second;
-        chunk.Build();
-    }
-}
-
-void ChunkManager::BufferReadyChunks()
+void ChunkManager::UploadReadyChunks()
 {
     for (auto it = _chunks.begin(); it != _chunks.end(); ++it)
     {
@@ -80,9 +69,10 @@ void ChunkManager::RenderChunks(Plane frustum[6])
 
     for (auto it = _chunks.begin(); it != _chunks.end(); ++it)
     {
-        if (it->second.GetState() == ChunkState::RENDERABLE)
+        Chunk &chunk = it->second;
+        if (!chunk.IsBorderChunk() && chunk.GetState() == ChunkState::RENDERABLE) // Chunks that become border chunks are RENDERABLE, but shouldn't be rendered
         {
-            glm::ivec3 chunk_coords = it->second.GetCoords();
+            glm::ivec3 chunk_coords = chunk.GetCoords();
             float x0 = chunk_coords.x * CHUNK_SIZE;
             float y0 = 0;
             float z0 = chunk_coords.z * CHUNK_SIZE;
@@ -95,8 +85,8 @@ void ChunkManager::RenderChunks(Plane frustum[6])
 
             if (ChunkInFrustum(frustum, min, max))
             {
-                it->second.RenderOpaques();
-                visible_chunks.push_back(&it->second);
+                chunk.RenderOpaques();
+                visible_chunks.push_back(&chunk);
             }
         }
     }
@@ -108,18 +98,37 @@ void ChunkManager::RenderChunks(Plane frustum[6])
     }
 }
 
-void ChunkManager::RemoveDistantChunks(glm::ivec3 player_chunk, int render_distance)
+void ChunkManager::CreateInitialPatch(glm::ivec3 player_chunk, int render_distance)
 {
+    for (int x = player_chunk.x - render_distance - 1; x <= player_chunk.x + render_distance + 1; x++)
+    {
+        for (int z = player_chunk.z - render_distance - 1; z <= player_chunk.z + render_distance + 1; z++)
+        {
+            bool is_border_chunk = x == player_chunk.x - render_distance - 1
+                                || x == player_chunk.x + render_distance + 1
+                                || z == player_chunk.z + render_distance + 1
+                                || z == player_chunk.z - render_distance - 1;
+
+            glm::ivec3 chunk_coords{x, 0, z};
+            uint64_t chunk_id = ChunkCoordsToID(chunk_coords);
+            auto [it, success] = _chunks.try_emplace(chunk_id, chunk_coords, is_border_chunk, &_worker_pool);
+            it->second.Build();
+        }
+    }
+}
+
+void ChunkManager::MoveChunkPatch(glm::ivec3 player_chunk, int render_distance)
+{
+    // Remove all chunks outside the patch + border
     for (auto it = _chunks.begin(); it != _chunks.end(); )
     {
         glm::ivec3 coords = it->second.GetCoords();
-        bool not_being_processed = it->second.GetState() == ChunkState::RENDERABLE;
-        bool distant = coords.x < player_chunk.x - render_distance
-                    || coords.x > player_chunk.x + render_distance
-                    || coords.z < player_chunk.z - render_distance
-                    || coords.z > player_chunk.z + render_distance;
+        bool outside_patch = coords.x < player_chunk.x - render_distance - 1
+                          || coords.x > player_chunk.x + render_distance + 1
+                          || coords.z < player_chunk.z - render_distance - 1
+                          || coords.z > player_chunk.z + render_distance + 1;
 
-        if (not_being_processed && distant)
+        if (outside_patch)
         {
             it = _chunks.erase(it);
             _loaded_chunk_count--;
@@ -127,6 +136,51 @@ void ChunkManager::RemoveDistantChunks(glm::ivec3 player_chunk, int render_dista
         else
         {
             ++it;
+        }
+    }
+
+    // Update patch border
+    for (int x = player_chunk.x - render_distance - 1; x <= player_chunk.x + render_distance + 1; x++)
+    {
+        for (int z = player_chunk.z - render_distance - 1; z <= player_chunk.z + render_distance + 1; z++)
+        {
+            bool is_border_chunk = x == player_chunk.x - render_distance - 1
+                                || x == player_chunk.x + render_distance + 1
+                                || z == player_chunk.z + render_distance + 1
+                                || z == player_chunk.z - render_distance - 1;
+
+            if (is_border_chunk)
+            {
+                uint64_t chunk_id = ChunkCoordsToID({x, 0, z});
+                if (_chunks.contains(chunk_id)) // Update previously-non-border chunks that are now on the border
+                {
+                    Chunk &chunk = _chunks.at(chunk_id);
+                    if (!chunk.IsBorderChunk())
+                        chunk.SetIsBorderChunk(true);
+                }
+                else // Create new border chunk
+                {
+                    auto [it, success] = _chunks.try_emplace(chunk_id, glm::ivec3{x, 0, z}, true, &_worker_pool);
+                    it->second.Build(); // Is a border chunk, so BuildExternal() must be called later
+                }
+            }
+        }
+    }
+
+    // Add new chunks (update border chunks that now fall within the patch)
+    for (int x = player_chunk.x - render_distance; x <= player_chunk.x + render_distance; x++)
+    {
+        for (int z = player_chunk.z - render_distance; z <= player_chunk.z + render_distance; z++)
+        {
+            uint64_t chunk_id = ChunkCoordsToID({x, 0, z});
+            Chunk &chunk = _chunks.at(chunk_id);
+            if (chunk.IsBorderChunk())
+            {
+                chunk.SetIsBorderChunk(false);
+                chunk.BuildExternal();
+            }
+
+            // NOTE: There may be another case: there's no border chunk to convert, so we really have to create a new non-border chunk
         }
     }
 }

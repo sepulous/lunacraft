@@ -22,10 +22,10 @@ class ChunkManager
         ChunkManager() = default;
         ~ChunkManager();
         void Init(int moon_id, MoonSettings moon_settings);
-        void QueueNewChunk(glm::ivec3 chunk_coords);
+        void CreateInitialPatch(glm::ivec3 player_chunk, int render_distance);
+        void MoveChunkPatch(glm::ivec3 player_chunk, int render_distance);
+        void UploadReadyChunks();
         void RenderChunks(Plane frustum[6]);
-        void BufferReadyChunks();
-        void RemoveDistantChunks(glm::ivec3 player_chunk, int render_distance);
         std::unordered_map<uint64_t, Chunk> &GetChunks();
         int GetLoadedChunkCount();
 };
