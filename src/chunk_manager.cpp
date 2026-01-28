@@ -111,7 +111,7 @@ void ChunkManager::CreateInitialPatch(glm::ivec3 player_chunk, int render_distan
 
             glm::ivec3 chunk_coords{x, 0, z};
             uint64_t chunk_id = ChunkCoordsToID(chunk_coords);
-            auto [it, success] = _chunks.try_emplace(chunk_id, chunk_coords, is_border_chunk, &_worker_pool);
+            auto [it, success] = _chunks.try_emplace(chunk_id, chunk_coords, is_border_chunk, this);
             it->second.Build();
         }
     }
@@ -160,7 +160,7 @@ void ChunkManager::MoveChunkPatch(glm::ivec3 player_chunk, int render_distance)
                 }
                 else // Create new border chunk
                 {
-                    auto [it, success] = _chunks.try_emplace(chunk_id, glm::ivec3{x, 0, z}, true, &_worker_pool);
+                    auto [it, success] = _chunks.try_emplace(chunk_id, glm::ivec3{x, 0, z}, true, this);
                     it->second.Build(); // Is a border chunk, so BuildExternal() must be called later
                 }
             }
@@ -188,6 +188,35 @@ void ChunkManager::MoveChunkPatch(glm::ivec3 player_chunk, int render_distance)
 std::unordered_map<uint64_t, Chunk> &ChunkManager::GetChunks()
 {
     return _chunks;
+}
+
+ChunkWorkerPool &ChunkManager::GetWorkerPool()
+{
+    return _worker_pool;
+}
+
+std::array<Chunk *, 4> ChunkManager::GetNeighbors(glm::ivec3 chunk_coords)
+{
+    std::array<Chunk *, 4> neighbors;
+    uint64_t chunk_id;
+
+    // Front
+    chunk_id = ChunkCoordsToID({chunk_coords.x, 0, chunk_coords.z + 1});
+    neighbors[0] = &_chunks.at(chunk_id);
+
+    // Right
+    chunk_id = ChunkCoordsToID({chunk_coords.x + 1, 0, chunk_coords.z});
+    neighbors[1] = &_chunks.at(chunk_id);
+
+    // Back
+    chunk_id = ChunkCoordsToID({chunk_coords.x, 0, chunk_coords.z - 1});
+    neighbors[2] = &_chunks.at(chunk_id);
+
+    // Left
+    chunk_id = ChunkCoordsToID({chunk_coords.x - 1, 0, chunk_coords.z});
+    neighbors[3] = &_chunks.at(chunk_id);
+
+    return neighbors;
 }
 
 int ChunkManager::GetLoadedChunkCount()

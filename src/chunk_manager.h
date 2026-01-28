@@ -4,10 +4,12 @@
 
 #include <glm/glm.hpp>
 
-#include "chunk.h"
+#include <glad/glad.h>
+
 #include "moon_settings.h"
 #include "helpers.h"
 #include "chunk_worker_pool.h"
+#include "chunk.h"
 
 class ChunkManager
 {
@@ -27,5 +29,7 @@ class ChunkManager
         void UploadReadyChunks();
         void RenderChunks(Plane frustum[6]);
         std::unordered_map<uint64_t, Chunk> &GetChunks();
+        ChunkWorkerPool &GetWorkerPool();
+        std::array<Chunk *, 4> GetNeighbors(glm::ivec3 chunk_coords);
         int GetLoadedChunkCount();
 };

@@ -12,6 +12,8 @@
 #include "constants.h"
 #include "chunk_worker_pool.h"
 
+class ChunkManager;
+
 // TODO: We know how many vertices there will be: 6 * (# of quads). So before we push to the vertex vectors, let's reserve enough space.
 
 class Lightmap
@@ -43,14 +45,14 @@ enum class ChunkState
 class Chunk
 {
 public:
-    Chunk(const glm::ivec3 &coords, bool is_border_chunk, ChunkWorkerPool *chunk_worker_pool);
+    Chunk(const glm::ivec3 &coords, bool is_border_chunk, ChunkManager *chunk_manager);
     ~Chunk();
 
     Chunk(const Chunk&) = delete;
-    Chunk& operator=(const Chunk&) = delete;
+    Chunk &operator=(const Chunk&) = delete;
 
     Chunk(Chunk&&) = delete;
-    Chunk& operator=(Chunk&&) = delete;
+    Chunk &operator=(Chunk&&) = delete;
 
     ChunkState GetState();
     void SetIsBorderChunk(bool status);
@@ -74,9 +76,9 @@ private:
     void BuildVertices();
 
 private:
+    ChunkManager *_chunk_manager;
     std::atomic<ChunkState> _state{ChunkState::CREATED};
     bool _is_border_chunk;
-    ChunkWorkerPool *_chunk_worker_pool;
     glm::ivec3 _coords;
     BlockID *_blocks;
     Lightmap _light_map;

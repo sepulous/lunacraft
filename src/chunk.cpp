@@ -22,12 +22,12 @@
 //
 
 // Chunk objects must be created on the main thread, due to OpenGL calls in this constructor
-Chunk::Chunk(const glm::ivec3 &coords, bool is_border_chunk, ChunkWorkerPool *chunk_worker_pool)
+Chunk::Chunk(const glm::ivec3 &coords, bool is_border_chunk, ChunkManager *chunk_manager)
 {
     _is_border_chunk = is_border_chunk;
     _coords = coords;
     _blocks = (BlockID *)malloc(BLOCKS_IN_CHUNK * sizeof(BlockID));
-    _chunk_worker_pool = chunk_worker_pool;
+    _chunk_manager = chunk_manager;
 
     // Opaques
     glGenVertexArrays(1, &_opaque_vao);
@@ -112,7 +112,7 @@ Lightmap &Chunk::GetLightMap()
 //
 void Chunk::Build()
 {
-    _chunk_worker_pool->SubmitJob([this]() { LoadBlocks(); });
+    _chunk_manager->GetWorkerPool().SubmitJob([this]() { LoadBlocks(); });
 }
 
 //
@@ -123,13 +123,13 @@ void Chunk::Build()
 //
 void Chunk::Rebuild()
 {
-    _chunk_worker_pool->SubmitJob([this]() { BuildLightMapInternal(); });
+    _chunk_manager->GetWorkerPool().SubmitJob([this]() { BuildLightMapInternal(); });
 }
 
 // Builds all data that depends on neighbor chunk data, ending in the state READY_TO_UPLOAD.
 void Chunk::BuildExternal()
 {
-    _chunk_worker_pool->SubmitJob([this]() { BuildLightMapExternal(); });
+    _chunk_manager->GetWorkerPool().SubmitJob([this]() { BuildLightMapExternal(); });
 }
 
 //
@@ -201,7 +201,7 @@ void Chunk::LoadBlocks()
     }
 
     // Start next task
-    _chunk_worker_pool->SubmitJob([this]() { BuildLightMapInternal(); });
+    _chunk_manager->GetWorkerPool().SubmitJob([this]() { BuildLightMapInternal(); });
 }
 
 void Chunk::BuildLightMapInternal()
@@ -332,7 +332,7 @@ void Chunk::BuildLightMapInternal()
 
     if (!IsBorderChunk())
     {
-        _chunk_worker_pool->SubmitJob([this]() { BuildLightMapExternal(); });
+        _chunk_manager->GetWorkerPool().SubmitJob([this]() { BuildLightMapExternal(); });
     }
     else
     {
@@ -346,7 +346,7 @@ void Chunk::BuildLightMapExternal()
 
     // Use neighbor light data...
 
-    _chunk_worker_pool->SubmitJob([this]() { BuildVertices(); });
+    _chunk_manager->GetWorkerPool().SubmitJob([this]() { BuildVertices(); });
 }
 
 void Chunk::BuildVertices()
@@ -432,7 +432,10 @@ void Chunk::BuildVertices()
         tile_origins_built = true;
     }
 
-    std::vector<BlockQuad> quads = GreedyMesh(_blocks);
+    std::vector<BlockQuad> quads = GreedyMesh(_blocks, _chunk_manager->GetNeighbors(_coords));
+
+    // Don't know which quads are opaque/transparent, but we can gather statistics to decide
+    // how to reserve the vertex vectors
 
     for (const BlockQuad &quad : quads)
     {
@@ -448,11 +451,11 @@ void Chunk::BuildVertices()
         // Determine global base vertex position
         glm::vec3 base_pos;
         if (normal.x != 0)
-            base_pos = {quad.base_coords.x - normal.x*0.5f + CHUNK_SIZE * _coords.x, quad.base_coords.y - 0.5f, quad.base_coords.z - 0.5f + CHUNK_SIZE * _coords.z};
+            base_pos = {quad.base_coords.x - normal.x*0.5f, quad.base_coords.y - 0.5f, quad.base_coords.z - 0.5f};
         else if (normal.y != 0)
-            base_pos = {quad.base_coords.x - 0.5f + CHUNK_SIZE * _coords.x, quad.base_coords.y - normal.y*0.5f, quad.base_coords.z - 0.5f + CHUNK_SIZE * _coords.z};
+            base_pos = {quad.base_coords.x - 0.5f, quad.base_coords.y - normal.y*0.5f, quad.base_coords.z - 0.5f};
         else
-            base_pos = {quad.base_coords.x - 0.5f + CHUNK_SIZE * _coords.x, quad.base_coords.y - 0.5f, quad.base_coords.z - normal.z*0.5f + CHUNK_SIZE * _coords.z};
+            base_pos = {quad.base_coords.x - 0.5f, quad.base_coords.y - 0.5f, quad.base_coords.z - normal.z*0.5f};
 
         // Determine texture tiling repeats
         int quad_width = glm::length(quad.du);
@@ -478,14 +481,14 @@ void Chunk::BuildVertices()
 
         
         uint8_t _sky_light, _block_light;
-        if (IsBorderBlock(quad.base_coords))
+        if (IsBorderBlock(GlobalToLocalVoxel(quad.base_coords)))
         {
             _sky_light = 15;
             _block_light = 0;
         }
         else
         {
-            glm::ivec3 adjacent = quad.base_coords - glm::ivec3(normal); // Block in front of the one this quad is based at
+            glm::ivec3 adjacent = GlobalToLocalVoxel(quad.base_coords) - glm::ivec3(normal); // Block in front of the one this quad is based at
             _sky_light = _light_map.GetSkyLevel(adjacent);
             _block_light = _light_map.GetBlockLevel(adjacent);
         }

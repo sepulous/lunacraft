@@ -12,7 +12,7 @@
 struct BlockQuad
 {
     BlockID block;
-    glm::ivec3 base_coords;
+    glm::ivec3 base_coords; // Global voxel position
     glm::vec3 du;
     glm::vec3 dv;
     bool back_face;
@@ -29,7 +29,7 @@ struct BlockQuad
     a 1x1 quad, and extend its height until a different mask value is reached. We then extend this new quad's width as far as possible to get the final quad.
     Finally, all mask positions covered by the final quad are marked as non-renderable, and we continue iterating through this column.
 */
-std::vector<BlockQuad> GreedyMesh(BlockID *blocks)
+std::vector<BlockQuad> GreedyMesh(BlockID *blocks, std::array<Chunk *, 4> neighbors)
 {
     struct MaskEntry
     {
@@ -45,6 +45,11 @@ std::vector<BlockQuad> GreedyMesh(BlockID *blocks)
 
     std::vector<BlockQuad> quads;
     quads.reserve(1500); // 1500 = empirically determined maximum (with padding). Depends on generation and meshing algorithms.
+
+    Chunk *front_neighbor = neighbors[0];
+    Chunk *right_neighbor = neighbors[1];
+    Chunk *back_neighbor = neighbors[2];
+    Chunk *left_neighbor = neighbors[3];
 
     //
     // X axis
@@ -63,23 +68,46 @@ std::vector<BlockQuad> GreedyMesh(BlockID *blocks)
             {
                 if (block_x == 0)
                 {
-                    BlockID block = (BlockID)blocks[GetChunkIndex(block_x, block_y, block_z)];
-                    mask.emplace_back(block, glm::ivec3{block_x, block_y, block_z}, true);
+                    BlockID neighbor_block = (BlockID)left_neighbor->GetBlocks()[GetChunkIndex(CHUNK_SIZE - 1, block_y, block_z)];
+                    BlockID current_block = (BlockID)blocks[GetChunkIndex(0, block_y, block_z)];
+
+                    glm::ivec3 neighbor_chunk_pos = left_neighbor->GetCoords();
+                    glm::ivec3 current_chunk_pos = {neighbor_chunk_pos.x + 1, 0, neighbor_chunk_pos.z};
+
+                    if (ShouldRenderFace(current_block, neighbor_block) && !ShouldRenderFace(neighbor_block, current_block))
+                        mask.emplace_back(current_block, LocalToGlobalVoxel({0, block_y, block_z}, current_chunk_pos), true);
+                    else if (ShouldRenderFace(neighbor_block, current_block) && !ShouldRenderFace(current_block, neighbor_block))
+                        mask.emplace_back(neighbor_block, LocalToGlobalVoxel({CHUNK_SIZE - 1, block_y, block_z}, neighbor_chunk_pos), false);
+                    else
+                        mask.emplace_back(BlockID::air, glm::ivec3{0, 0, 0}, false); // Don't render
                 }
                 else if (block_x == CHUNK_SIZE)
                 {
-                    BlockID block = (BlockID)blocks[GetChunkIndex(CHUNK_SIZE - 1, block_y, block_z)];
-                    mask.emplace_back(block, glm::ivec3{CHUNK_SIZE - 1, block_y, block_z}, false);
+                    BlockID neighbor_block = (BlockID)right_neighbor->GetBlocks()[GetChunkIndex(0, block_y, block_z)];
+                    BlockID current_block = (BlockID)blocks[GetChunkIndex(CHUNK_SIZE - 1, block_y, block_z)];
+
+                    glm::ivec3 neighbor_chunk_pos = right_neighbor->GetCoords();
+                    glm::ivec3 current_chunk_pos = {neighbor_chunk_pos.x - 1, 0, neighbor_chunk_pos.z};
+
+                    if (ShouldRenderFace(current_block, neighbor_block) && !ShouldRenderFace(neighbor_block, current_block))
+                        mask.emplace_back(current_block, LocalToGlobalVoxel({CHUNK_SIZE - 1, block_y, block_z}, current_chunk_pos), true);
+                    else if (ShouldRenderFace(neighbor_block, current_block) && !ShouldRenderFace(current_block, neighbor_block))
+                        mask.emplace_back(neighbor_block, LocalToGlobalVoxel({0, block_y, block_z}, neighbor_chunk_pos), false);
+                    else
+                        mask.emplace_back(BlockID::air, glm::ivec3{0, 0, 0}, false); // Don't render
                 }
                 else
                 {
                     BlockID current_block = (BlockID)blocks[GetChunkIndex(block_x - 1, block_y, block_z)];
                     BlockID next_block = (BlockID)blocks[GetChunkIndex(block_x, block_y, block_z)];
 
+                    glm::ivec3 neighbor_chunk_pos = right_neighbor->GetCoords();
+                    glm::ivec3 current_chunk_pos = {neighbor_chunk_pos.x - 1, 0, neighbor_chunk_pos.z};
+
                     if (ShouldRenderFace(current_block, next_block) && !ShouldRenderFace(next_block, current_block))
-                        mask.emplace_back(current_block, glm::ivec3{block_x - 1, block_y, block_z}, false);
+                        mask.emplace_back(current_block, LocalToGlobalVoxel({block_x - 1, block_y, block_z}, current_chunk_pos), false);
                     else if (ShouldRenderFace(next_block, current_block) && !ShouldRenderFace(current_block, next_block))
-                        mask.emplace_back(next_block, glm::ivec3{block_x, block_y, block_z}, true);
+                        mask.emplace_back(next_block, LocalToGlobalVoxel({block_x, block_y, block_z}, current_chunk_pos), true);
                     else
                         mask.emplace_back(BlockID::air, glm::ivec3{0, 0, 0}, false); // Don't render
                 }
@@ -163,23 +191,46 @@ std::vector<BlockQuad> GreedyMesh(BlockID *blocks)
             {
                 if (block_z == 0)
                 {
-                    BlockID block = (BlockID)blocks[GetChunkIndex(block_x, block_y, block_z)];
-                    mask.emplace_back(block, glm::ivec3{block_x, block_y, block_z}, true);
+                    BlockID neighbor_block = (BlockID)back_neighbor->GetBlocks()[GetChunkIndex(block_x, block_y, CHUNK_SIZE - 1)];
+                    BlockID current_block = (BlockID)blocks[GetChunkIndex(block_x, block_y, 0)];
+
+                    glm::ivec3 neighbor_chunk_pos = back_neighbor->GetCoords();
+                    glm::ivec3 current_chunk_pos = {neighbor_chunk_pos.x, 0, neighbor_chunk_pos.z + 1};
+
+                    if (ShouldRenderFace(current_block, neighbor_block) && !ShouldRenderFace(neighbor_block, current_block))
+                        mask.emplace_back(current_block, LocalToGlobalVoxel({block_x, block_y, 0}, current_chunk_pos), true);
+                    else if (ShouldRenderFace(neighbor_block, current_block) && !ShouldRenderFace(current_block, neighbor_block))
+                        mask.emplace_back(neighbor_block, LocalToGlobalVoxel({block_x, block_y, CHUNK_SIZE - 1}, neighbor_chunk_pos), false);
+                    else
+                        mask.emplace_back(BlockID::air, glm::ivec3{0, 0, 0}, false); // Don't render
                 }
                 else if (block_z == CHUNK_SIZE)
                 {
-                    BlockID block = (BlockID)blocks[GetChunkIndex(block_x, block_y, CHUNK_SIZE - 1)];
-                    mask.emplace_back(block, glm::ivec3{block_x, block_y, CHUNK_SIZE - 1}, false);
+                    BlockID neighbor_block = (BlockID)front_neighbor->GetBlocks()[GetChunkIndex(block_x, block_y, 0)];
+                    BlockID current_block = (BlockID)blocks[GetChunkIndex(block_x, block_y, CHUNK_SIZE - 1)];
+
+                    glm::ivec3 neighbor_chunk_pos = front_neighbor->GetCoords();
+                    glm::ivec3 current_chunk_pos = {neighbor_chunk_pos.x, 0, neighbor_chunk_pos.z - 1};
+
+                    if (ShouldRenderFace(current_block, neighbor_block) && !ShouldRenderFace(neighbor_block, current_block))
+                        mask.emplace_back(current_block, LocalToGlobalVoxel({block_x, block_y, CHUNK_SIZE - 1}, current_chunk_pos), true);
+                    else if (ShouldRenderFace(neighbor_block, current_block) && !ShouldRenderFace(current_block, neighbor_block))
+                        mask.emplace_back(neighbor_block, LocalToGlobalVoxel({block_x, block_y, 0}, neighbor_chunk_pos), false);
+                    else
+                        mask.emplace_back(BlockID::air, glm::ivec3{0, 0, 0}, false); // Don't render
                 }
                 else
                 {
                     BlockID current_block = (BlockID)blocks[GetChunkIndex(block_x, block_y, block_z - 1)];
                     BlockID next_block = (BlockID)blocks[GetChunkIndex(block_x, block_y, block_z)];
 
+                    glm::ivec3 neighbor_chunk_pos = right_neighbor->GetCoords();
+                    glm::ivec3 current_chunk_pos = {neighbor_chunk_pos.x - 1, 0, neighbor_chunk_pos.z};
+
                     if (ShouldRenderFace(current_block, next_block) && !ShouldRenderFace(next_block, current_block))
-                        mask.emplace_back(current_block, glm::ivec3{block_x, block_y, block_z - 1}, false);
+                        mask.emplace_back(current_block, LocalToGlobalVoxel({block_x, block_y, block_z - 1}, current_chunk_pos), false);
                     else if (ShouldRenderFace(next_block, current_block) && !ShouldRenderFace(current_block, next_block))
-                        mask.emplace_back(next_block, glm::ivec3{block_x, block_y, block_z}, true);
+                        mask.emplace_back(next_block, LocalToGlobalVoxel({block_x, block_y, block_z}, current_chunk_pos), true);
                     else
                         mask.emplace_back(BlockID::air, glm::ivec3{0, 0, 0}, false); // Don't render
                 }
@@ -267,10 +318,13 @@ std::vector<BlockQuad> GreedyMesh(BlockID *blocks)
                     BlockID current_block = (BlockID)blocks[GetChunkIndex(block_x, block_y, block_z)];  // These blocks are on opposite sides of the plane
                     BlockID next_block = (BlockID)blocks[GetChunkIndex(block_x, block_y + 1, block_z)]; //
 
+                    glm::ivec3 neighbor_chunk_pos = right_neighbor->GetCoords();
+                    glm::ivec3 current_chunk_pos = {neighbor_chunk_pos.x - 1, 0, neighbor_chunk_pos.z};
+
                     if (ShouldRenderFace(current_block, next_block) && !ShouldRenderFace(next_block, current_block))
-                        mask.emplace_back(current_block, glm::ivec3{block_x, block_y, block_z}, false);
+                        mask.emplace_back(current_block, LocalToGlobalVoxel({block_x, block_y, block_z}, current_chunk_pos), false);
                     else if (ShouldRenderFace(next_block, current_block) && !ShouldRenderFace(current_block, next_block))
-                        mask.emplace_back(next_block, glm::ivec3{block_x, block_y + 1, block_z}, true);
+                        mask.emplace_back(next_block, LocalToGlobalVoxel({block_x, block_y + 1, block_z}, current_chunk_pos), true);
                     else
                         mask.emplace_back(BlockID::air, glm::ivec3{0, 0, 0}, false); // Don't render
                 }
