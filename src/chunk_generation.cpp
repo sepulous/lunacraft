@@ -1810,8 +1810,8 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
         auto shape_offsets = CRYSTAL_PLANT_SHAPES[crystal_plant_shape];
 
         int padding_needed = shape_offsets[0].x;
-        int base_block_x = rng.Range(padding_needed, CHUNK_SIZE - padding_needed);
-        int base_block_z = rng.Range(padding_needed, CHUNK_SIZE - padding_needed);
+        int base_block_x = rng.Range(padding_needed, (CHUNK_SIZE - 1) - padding_needed);
+        int base_block_z = rng.Range(padding_needed, (CHUNK_SIZE - 1) - padding_needed);
         int base_block_y;
         for (int y = 63; y < WORLD_HEIGHT_LIMIT; y++)
         {
@@ -1868,8 +1868,8 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
         }
 
         int padding_needed = tree_data[0].local_x;
-        int base_block_x = rng.Range(padding_needed, CHUNK_SIZE - padding_needed);
-        int base_block_z = rng.Range(padding_needed, CHUNK_SIZE - padding_needed);
+        int base_block_x = rng.Range(padding_needed, (CHUNK_SIZE - 1) - padding_needed);
+        int base_block_z = rng.Range(padding_needed, (CHUNK_SIZE - 1) - padding_needed);
         int base_block_y;
         for (int y = 63; y < WORLD_HEIGHT_LIMIT; y++)
         {
