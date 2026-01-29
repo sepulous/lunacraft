@@ -16,6 +16,23 @@
 #include "options.h"
 #include "moon.h"
 
+ChunkManager::ChunkManager()
+{
+    _block_memory_head.blocks = (BlockID *)malloc(BLOCKS_IN_CHUNK * sizeof(BlockID));
+}
+
+ChunkManager::~ChunkManager()
+{
+    glDeleteTextures(1, &_texture_atlas);
+
+    BlockMemoryNode *node = &_block_memory_head;
+    do
+    {
+        free(node->blocks);
+        node = node->next;
+    } while (node != nullptr);
+}
+
 void ChunkManager::Init(int moon_id, MoonSettings moon_settings)
 {
     // Load texture atlas
@@ -40,11 +57,6 @@ void ChunkManager::Init(int moon_id, MoonSettings moon_settings)
     std::filesystem::path chunk_dir = moon_dir / "chunks";
     if (!std::filesystem::exists(chunk_dir))
         std::filesystem::create_directory(chunk_dir);
-}
-
-ChunkManager::~ChunkManager()
-{
-    glDeleteTextures(1, &_texture_atlas);
 }
 
 void ChunkManager::UploadReadyChunks()
@@ -130,6 +142,41 @@ void ChunkManager::CreateInitialPatch()
     uint64_t chunk_id = ChunkCoordsToID(player_chunk);
     auto [it, success] = _chunks.try_emplace(chunk_id, std::make_shared<Chunk>(player_chunk, false, this));
     it->second->Build();
+}
+
+//
+// Chunks call this to request memory to store their block data, instead of
+// managing such memory themselves. This allows the memory to be reused.
+//
+BlockID *ChunkManager::AllocateBlockMemory()
+{
+    // Start with head node
+    BlockMemoryNode *node = &_block_memory_head;
+
+    // Find first node that is not in use
+    while (node->in_use && node->next != nullptr) { node = node->next; }
+
+    if (node->in_use && node->next == nullptr) // If no such node exists, create a new one
+    {
+        //
+        // We could double the number of free nodes instead of only creating one at a time.
+        //
+        // As it stands, initially this system is no better than having chunks allocate block
+        // memory each time they're created. However, once the maximum number of possible nodes
+        // is hit (for a given render distance), block data never needs to be allocated again,
+        // and we have exactly as many nodes as we need.
+        //
+
+        BlockID *new_blocks = (BlockID *)malloc(BLOCKS_IN_CHUNK * sizeof(BlockID));
+        BlockMemoryNode *new_node = new BlockMemoryNode{.next = nullptr, .blocks = new_blocks, .in_use = true};
+        node->next = new_node;
+        return new_blocks;
+    }
+    else // Otherwise, use existing node
+    {
+        node->in_use = true;
+        return node->blocks;
+    }
 }
 
 std::shared_ptr<Chunk> ChunkManager::GetOrCreateChunk(glm::ivec3 chunk_coords)

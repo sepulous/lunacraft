@@ -68,7 +68,7 @@ class Chunk
 {
 public:
     Chunk(glm::ivec3 coords, bool is_border_chunk, ChunkManager *chunk_manager);
-    ~Chunk();
+    ~Chunk() = default;
 
     Chunk(const Chunk&) = delete;
     Chunk &operator=(const Chunk&) = delete;

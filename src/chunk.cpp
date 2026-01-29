@@ -68,13 +68,8 @@ Chunk::Chunk(glm::ivec3 coords, bool is_border_chunk, ChunkManager *chunk_manage
 {
     _is_border_chunk = is_border_chunk;
     _coords = coords;
-    _blocks = (BlockID *)malloc(BLOCKS_IN_CHUNK * sizeof(BlockID));
+    _blocks = chunk_manager->AllocateBlockMemory();
     _chunk_manager = chunk_manager;
-}
-
-Chunk::~Chunk()
-{
-    free(_blocks);
 }
 
 //
