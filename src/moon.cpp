@@ -180,12 +180,20 @@ void Moon::Update(double delta_time, int old_render_distance)
 
     // Non-physics updates
     _entity_manager.Update();
+
+    // Update lighting
+    int light_phase = ((int)(_world_time + (3 * SECONDS_PER_LIGHT_PHASE)) / SECONDS_PER_LIGHT_PHASE) % LIGHT_PHASES; // The offset initializes moon on Phase 3
+    if (light_phase != _current_light_phase)
+    {
+        _current_light_phase = light_phase;
+        _chunk_manager.RebuildChunks();
+    }
     
     // Load new chunks around player (and unload old ones)
     glm::ivec3 current_player_chunk = VoxelToChunk(GetNearestVoxel(_player->GetPosition()));
     int current_render_distance = OptionsManager::GetOptions().render_distance;
     if (current_player_chunk != old_player_chunk || old_render_distance != current_render_distance)
-        _chunk_manager.MoveChunkPatch(current_player_chunk, current_render_distance);
+        _chunk_manager.AdjustChunkPatch();
 
     // Upload any new chunks that are ready to the GPU
     _chunk_manager.UploadReadyChunks();
