@@ -77,7 +77,14 @@ Chunk::~Chunk()
     free(_blocks);
 }
 
-// Must only be called from the main thread!
+//
+// Creates OpenGL data for the chunk.
+//
+// Must be called from the main thread!
+//
+// Normally I would do this in the constructor (RAII), but chunks can be created off the
+// main thread, and only the main thread can make OpenGL calls.
+//
 void Chunk::GLCreate()
 {
     // Opaques
@@ -115,7 +122,15 @@ void Chunk::GLCreate()
     _has_gl_data = true;
 }
 
-// Must only be called from the main thread!
+//
+// Frees OpenGL data for the chunk.
+//
+// Must be called from the main thread!
+//
+// Normally I would do this in the destructor (RAII), and that would be fine since only the
+// main thread is allowed to delete chunk objects, but I prefer to be explicit about this.
+// Plus, it matches Chunk::GLCreate.
+//
 void Chunk::GLDestroy()
 {
     glDeleteVertexArrays(1, &_opaque_vao);
