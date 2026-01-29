@@ -999,6 +999,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
     //
     // Generate terrain
     //
+
     const int ROCK_OFFSET   = 0;
     const int GRAVEL_OFFSET = 1 * CHUNK_SIZE * CHUNK_SIZE;
     const int DIRT_OFFSET   = 2 * CHUNK_SIZE * CHUNK_SIZE;
@@ -1008,6 +1009,11 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
     GenerateHeightMap(&height_maps[DIRT_OFFSET], chunk_x, chunk_z, seed, 3, 0.2, 0.6, 3, 1.5f);
     GenerateHeightMap(&height_maps[SAND_OFFSET], chunk_x, chunk_z, seed, 2, 0.2, 0.8, 2, 1.5f);
 
+    // For cleanup step after initial generation
+    std::vector<glm::ivec3> topsoil_coords;
+    topsoil_coords.reserve(CHUNK_SIZE * CHUNK_SIZE);
+
+    // Initial generation
     int chunk_index = 0;
     for (int x = 0; x < CHUNK_SIZE; x++)
     {
@@ -1058,6 +1064,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
             else // Above ground level; finish terrain by placing topsoil
             {
                 chunk[chunk_index++] = BlockID::topsoil;
+                topsoil_coords.emplace_back(x, y, z);
                 y++;
             }
 
@@ -1066,6 +1073,42 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
                 chunk[chunk_index++] = BlockID::air;
                 y++;
             }
+        }
+    }
+
+    // Topsoil cleanup
+    for (auto &coord : topsoil_coords)
+    {
+        glm::ivec3 neighbors[] = {
+            {coord.x - 1, coord.y, coord.z},
+            {coord.x + 1, coord.y, coord.z},
+            {coord.x,     coord.y, coord.z - 1},
+            {coord.x,     coord.y, coord.z + 1},
+            {coord.x - 1, coord.y, coord.z - 1},
+            {coord.x - 1, coord.y, coord.z + 1},
+            {coord.x + 1, coord.y, coord.z - 1},
+            {coord.x + 1, coord.y, coord.z + 1},
+        };
+
+        size_t non_air_neighbors = 0;
+        bool become_sand = false;
+
+        for (auto &neighbor : neighbors)
+        {
+            if (neighbor.x < 0 || neighbor.x >= CHUNK_SIZE || neighbor.z < 0 || neighbor.z >= CHUNK_SIZE)
+                continue;
+
+            if (chunk[GetChunkIndex(neighbor.x, neighbor.y, neighbor.z)] != BlockID::air)
+                non_air_neighbors++;
+
+            if (chunk[GetChunkIndex(neighbor.x, neighbor.y - 1, neighbor.z)] == BlockID::sand)
+                become_sand = true;
+        }
+
+        if (non_air_neighbors < 3)
+        {
+            chunk[GetChunkIndex(coord.x, coord.y, coord.z)] = BlockID::air;
+            chunk[GetChunkIndex(coord.x, coord.y - 1, coord.z)] = become_sand ? BlockID::sand : BlockID::topsoil;
         }
     }
 
