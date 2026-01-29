@@ -11,6 +11,11 @@ int GetChunkIndex(int x, int y, int z) noexcept
     return y + (WORLD_HEIGHT_LIMIT * z) + (WORLD_HEIGHT_LIMIT * CHUNK_SIZE * x);
 }
 
+int GetChunkIndex(const glm::ivec3 &block_coords) noexcept
+{
+    return block_coords.y + (WORLD_HEIGHT_LIMIT * block_coords.z) + (WORLD_HEIGHT_LIMIT * CHUNK_SIZE * block_coords.x);
+}
+
 bool BlockIsOpaque(BlockID block) noexcept
 {
     return !(block == BlockID::air || block == BlockID::water || block == BlockID::sulphur_crystal || block == BlockID::boron_crystal || block == BlockID::blue_crystal || block == BlockID::glass);

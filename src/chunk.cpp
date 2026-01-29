@@ -174,7 +174,7 @@ BlockID *Chunk::GetBlocks()
     return _blocks;
 }
 
-Lightmap &Chunk::GetLightmap()
+const Lightmap &Chunk::GetLightmap() const
 {
     return _lightmap;
 }
@@ -421,7 +421,232 @@ void Chunk::BuildLightmapExternal()
 {
     SetState(ChunkState::LIGHT_EXTERNAL);
 
-    // Use neighbor light data...
+    std::vector<std::shared_ptr<Chunk>> neighbors
+    {
+        _chunk_manager->GetOrCreateChunk({_coords.x - 1, 0, _coords.z}),
+        _chunk_manager->GetOrCreateChunk({_coords.x + 1, 0, _coords.z}),
+        _chunk_manager->GetOrCreateChunk({_coords.x,     0, _coords.z - 1}),
+        _chunk_manager->GetOrCreateChunk({_coords.x,     0, _coords.z + 1}),
+        _chunk_manager->GetOrCreateChunk({_coords.x - 1, 0, _coords.z - 1}),
+        _chunk_manager->GetOrCreateChunk({_coords.x - 1, 0, _coords.z + 1}),
+        _chunk_manager->GetOrCreateChunk({_coords.x + 1, 0, _coords.z - 1}),
+        _chunk_manager->GetOrCreateChunk({_coords.x + 1, 0, _coords.z + 1})
+    };
+
+    // Reschedule if any neighbors aren't ready
+    for (auto &neighbor : neighbors)
+    {
+        if (neighbor->GetState() <= ChunkState::LIGHT_INTERNAL)
+        {
+            _chunk_manager->GetWorkerPool().SubmitJob([this]() { BuildLightmapExternal(); });
+            return;
+        }
+    }
+
+    std::vector<glm::ivec3> to_expand;
+
+    //
+    // Initial fill
+    //
+    for (auto &neighbor : neighbors)
+    {
+        auto neighbor_chunk_coords = neighbor->GetCoords();
+        auto neighbor_chunk_displacement = neighbor_chunk_coords - _coords;
+        if (glm::abs(neighbor_chunk_displacement.x) + glm::abs(neighbor_chunk_displacement.z) == 1) // Directly adjacent neighbor
+        {
+            glm::ivec3 my_block_coords;
+            glm::ivec3 neighbor_block_coords;
+            const Lightmap &neighbor_lightmap = neighbor->GetLightmap();
+
+            for (int xz = 0; xz < CHUNK_SIZE; xz++)
+            {
+                for (int y = 0; y < WORLD_HEIGHT_LIMIT; y++)
+                {
+                    // Get coordinates for block pair
+                    if (neighbor_chunk_coords.z == _coords.z + 1) // Front neighbor
+                    {
+                        my_block_coords = {xz, y, CHUNK_SIZE - 1};
+                        neighbor_block_coords = {xz, y, 0};
+                    }
+                    else if (neighbor_chunk_coords.x == _coords.x + 1) // Right neighbor
+                    {
+                        my_block_coords = {CHUNK_SIZE - 1, y, xz};
+                        neighbor_block_coords = {0, y, xz};
+                    }
+                    else if (neighbor_chunk_coords.z == _coords.z - 1) // Back neighbor
+                    {
+                        my_block_coords = {xz, y, 0};
+                        neighbor_block_coords = {xz, y, CHUNK_SIZE - 1};
+                    }
+                    else // Left neighbor
+                    {
+                        my_block_coords = {0, y, xz};
+                        neighbor_block_coords = {CHUNK_SIZE - 1, y, xz};
+                    }
+
+                    BlockID my_block = _blocks[GetChunkIndex(my_block_coords)];
+                    if (!BlockIsOpaque(my_block))
+                    {
+                        BlockID neighbor_block = neighbor->GetBlocks()[GetChunkIndex(neighbor_block_coords)];
+
+                        // Sky light
+                        uint8_t neighbor_sky_light = neighbor_lightmap.GetSkyLevel(neighbor_block_coords);
+                        if (neighbor_sky_light > 0)
+                        {
+                            uint8_t propagated = neighbor_sky_light - 1;
+                            if (propagated > _lightmap.GetSkyLevel(my_block_coords))
+                            {
+                                _lightmap.SetSkyLevel(propagated, my_block_coords);
+                                to_expand.push_back(my_block_coords);
+                            }
+                        }
+
+                        // Block light
+                        if (neighbor_block == BlockID::light)
+                        {
+                            _lightmap.SetBlockLevel(15, my_block_coords);
+                            to_expand.push_back(my_block_coords);
+                        }
+                        else
+                        {
+                            uint8_t neighbor_block_light = neighbor_lightmap.GetBlockLevel(neighbor_block_coords);
+                            if (neighbor_block_light > 0 && !BlockIsOpaque(my_block))
+                            {
+                                uint8_t propagated = neighbor_block_light - 1;
+                                if (propagated > _lightmap.GetBlockLevel(my_block_coords))
+                                {
+                                    _lightmap.SetBlockLevel(propagated, my_block_coords);
+                                    to_expand.push_back(my_block_coords);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        else // Corner neighbor
+        {
+            glm::ivec3 my_block_coords;
+            glm::ivec3 neighbor_block_coords;
+            const Lightmap &neighbor_lightmap = neighbor->GetLightmap();
+
+            for (int y = 0; y < WORLD_HEIGHT_LIMIT; y++)
+            {
+                // Get coordinates for block pair
+                if (neighbor_chunk_coords.z == _coords.z + 1) // Front left neighbor
+                {
+                    my_block_coords = {0, y, CHUNK_SIZE - 1};
+                    neighbor_block_coords = {CHUNK_SIZE - 1, y, 0};
+                }
+                else if (neighbor_chunk_coords.x == _coords.x + 1) // Front right neighbor
+                {
+                    my_block_coords = {CHUNK_SIZE - 1, y, CHUNK_SIZE - 1};
+                    neighbor_block_coords = {0, y, 0};
+                }
+                else if (neighbor_chunk_coords.z == _coords.z - 1) // Back right neighbor
+                {
+                    my_block_coords = {CHUNK_SIZE - 1, y, 0};
+                    neighbor_block_coords = {0, y, CHUNK_SIZE - 1};
+                }
+                else // Back left neighbor
+                {
+                    my_block_coords = {0, y, 0};
+                    neighbor_block_coords = {CHUNK_SIZE - 1, y, CHUNK_SIZE - 1};
+                }
+
+                BlockID my_block = _blocks[GetChunkIndex(my_block_coords)];
+                if (!BlockIsOpaque(my_block))
+                {
+                    BlockID neighbor_block = neighbor->GetBlocks()[GetChunkIndex(neighbor_block_coords)];
+
+                    // Sky light
+                    uint8_t neighbor_sky_light = neighbor_lightmap.GetSkyLevel(neighbor_block_coords);
+                    if (neighbor_sky_light > 1)
+                    {
+                        uint8_t propagated = neighbor_sky_light - 2;
+                        if (propagated > _lightmap.GetSkyLevel(my_block_coords))
+                        {
+                            _lightmap.SetSkyLevel(propagated, my_block_coords);
+                            to_expand.push_back(my_block_coords);
+                        }
+                    }
+
+                    // Block light
+                    if (neighbor_block == BlockID::light)
+                    {
+                        _lightmap.SetBlockLevel(13, my_block_coords);
+                        to_expand.push_back(my_block_coords);
+                    }
+                    else
+                    {
+                        uint8_t neighbor_block_light = neighbor_lightmap.GetBlockLevel(neighbor_block_coords);
+                        if (neighbor_block_light > 1 && !BlockIsOpaque(my_block))
+                        {
+                            uint8_t propagated = neighbor_block_light - 2;
+                            if (propagated > _lightmap.GetBlockLevel(my_block_coords))
+                            {
+                                _lightmap.SetBlockLevel(propagated, my_block_coords);
+                                to_expand.push_back(my_block_coords);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    //
+    // Expansion
+    //
+    while (to_expand.size() > 0)
+    {
+        glm::ivec3 coords = to_expand.back();
+        uint8_t sky_light = _lightmap.GetSkyLevel(coords);
+        uint8_t block_light = _lightmap.GetBlockLevel(coords);
+        to_expand.pop_back();
+
+        glm::ivec3 neighbors[] = {
+            {coords.x - 1, coords.y, coords.z},
+            {coords.x + 1, coords.y, coords.z},
+            {coords.x, coords.y - 1, coords.z},
+            {coords.x, coords.y + 1, coords.z},
+            {coords.x, coords.y, coords.z - 1},
+            {coords.x, coords.y, coords.z + 1},
+        };
+
+        for (const glm::ivec3 &neighbor_coords : neighbors)
+        {
+            if (!BlockIsInChunk(neighbor_coords))
+                continue;
+
+            BlockID neighbor_block = _blocks[GetChunkIndex(neighbor_coords.x, neighbor_coords.y, neighbor_coords.z)];
+
+            if (!BlockIsOpaque(neighbor_block))
+            {
+                // Sky light
+                if (neighbor_coords.y <= coords.y && sky_light > 0)
+                {
+                    uint8_t sky_light_propagated = sky_light - 1;
+                    if (sky_light_propagated > _lightmap.GetSkyLevel(neighbor_coords))
+                    {
+                        _lightmap.SetSkyLevel(sky_light_propagated, neighbor_coords);
+                        to_expand.push_back(neighbor_coords);
+                    }
+                }
+
+                // Block light
+                if (block_light > 0)
+                {
+                    uint8_t block_light_propagated = block_light - 1;
+                    if (block_light_propagated > _lightmap.GetBlockLevel(neighbor_coords))
+                    {
+                        _lightmap.SetBlockLevel(block_light_propagated, neighbor_coords);
+                        to_expand.push_back(neighbor_coords);
+                    }
+                }
+            }
+        }
+    }
 
     _chunk_manager->GetWorkerPool().SubmitJob([this]() { BuildVertices(); });
 }
@@ -516,9 +741,9 @@ void Chunk::BuildVertices()
     neighbors[3] = _chunk_manager->GetOrCreateChunk({_coords.x - 1, 0, _coords.z}); // Left
 
     // Reschedule if any neighbors aren't ready
-    for (auto neighbor : neighbors)
+    for (auto &neighbor : neighbors)
     {
-        if (neighbor->GetState() <= ChunkState::LOADING_BLOCKS)
+        if (neighbor->GetState() <= ChunkState::LIGHT_INTERNAL)
         {
             _chunk_manager->GetWorkerPool().SubmitJob([this]() { BuildVertices(); });
             return;
@@ -554,33 +779,46 @@ void Chunk::BuildVertices()
         //
         // Lighting
         //
+        // These calculations were reverse engineered from an unknown version of
+        // the original game (definitely at least v1.91).
+        //
+
+        // TODO: ambient_light depends on sin_world_time, which is continuous, so each chunk
+        //       will have a slightly different value. we should calculate a discrete phase instead.
 
         glm::vec3 light;
 
-        double world_time = Moon::GetCurrentMoon()->GetWorldTime();
-        double sin_world_time = glm::sin((world_time + 3*SECONDS_PER_LIGHT_PHASE) * (2 * 3.14159 / (LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE)));
+        float world_time = Moon::GetCurrentMoon()->GetWorldTime();
+        float sin_world_time = glm::sin((world_time + 3*SECONDS_PER_LIGHT_PHASE) * (2 * 3.14159 / (LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE)));
         glm::vec3 sunlight_direction = Moon::GetCurrentMoon()->GetSunlightDirection();
-        double ambient_light = 0.5 * sin_world_time;
+        float ambient_light = 0.5 * sin_world_time;
         if (ambient_light < 0)
             ambient_light *= -0.5;
-        double sunlight_factor = ambient_light + 0.5;
+        float sunlight_factor = ambient_light + 0.5;
 
-        double dot = glm::dot(sunlight_direction, normal);
+        float dot = glm::dot(sunlight_direction, normal);
         if (dot < 0)
             dot = 0;
 
-        
         uint8_t _sky_light, _block_light;
-        if (IsBorderBlock(GlobalToLocalVoxel(quad.base_coords)))
+        glm::ivec3 light_sample_voxel_coords = quad.base_coords - glm::ivec3(normal);
+        glm::ivec3 light_sample_chunk_coords = VoxelToChunk(light_sample_voxel_coords);
+        if (light_sample_chunk_coords == _coords)
         {
-            _sky_light = 15;
-            _block_light = 0;
+            _sky_light = _lightmap.GetSkyLevel(GlobalToLocalVoxel(light_sample_voxel_coords));
+            _block_light = _lightmap.GetBlockLevel(GlobalToLocalVoxel(light_sample_voxel_coords));
         }
         else
         {
-            glm::ivec3 adjacent = GlobalToLocalVoxel(quad.base_coords) - glm::ivec3(normal); // Block in front of the one this quad is based at
-            _sky_light = _lightmap.GetSkyLevel(adjacent);
-            _block_light = _lightmap.GetBlockLevel(adjacent);
+            for (auto &neighbor : neighbors)
+            {
+                if (neighbor->GetCoords() == light_sample_chunk_coords)
+                {
+                    _sky_light = neighbor->GetLightmap().GetSkyLevel(GlobalToLocalVoxel(light_sample_voxel_coords));
+                    _block_light = neighbor->GetLightmap().GetBlockLevel(GlobalToLocalVoxel(light_sample_voxel_coords));
+                    break;
+                }
+            }
         }
         float sky_light = (float)_sky_light * (100.0f / 15.0f);      // Apparently Charlie's light values were in [0, 100]. Mine are in [0, 15], 
         float block_light = (float)_block_light * (100.0f / 15.0f);  // so let's scale to [0, 100] so his code works as-is
@@ -598,14 +836,8 @@ void Chunk::BuildVertices()
         }
         else
         {
-            float red_green = block_light / 100.0f + scaled_sky_light * sunlight_factor * 0.01f;
-            if (red_green > 1.0f)
-                red_green = 1.0f;
-
-            float blue = block_light / 100.0f + scaled_sky_light * 0.01f;
-            if (blue > 1.0f)
-                blue = 1.0f;
-
+            float red_green = glm::clamp(block_light / 100.0f + scaled_sky_light * sunlight_factor * 0.01f, 0.0f, 1.0f);
+            float blue = glm::clamp(block_light / 100.0f + scaled_sky_light * 0.01f, 0.0f, 1.0f);
             light = {red_green, red_green, blue};
         }
 

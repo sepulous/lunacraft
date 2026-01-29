@@ -9,6 +9,7 @@ struct Plane
 };
 
 int GetChunkIndex(int x, int y, int z) noexcept;
+int GetChunkIndex(const glm::ivec3 &block_coords) noexcept;
 bool BlockIsOpaque(BlockID block) noexcept;
 bool IsBorderBlock(const glm::ivec3 &block_coords) noexcept;
 bool BlockIsInChunk(const glm::ivec3 &block_coords) noexcept;

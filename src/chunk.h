@@ -87,7 +87,7 @@ public:
     bool HasGLData();
     glm::ivec3 GetCoords();
     BlockID *GetBlocks();
-    Lightmap &GetLightmap();
+    const Lightmap &GetLightmap() const;
 
     void Build();
     void BuildExternal();
