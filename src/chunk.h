@@ -16,6 +16,28 @@ class ChunkManager;
 
 // TODO: We know how many vertices there will be: 6 * (# of quads). So before we push to the vertex vectors, let's reserve enough space.
 
+//
+// We need to be able to update chunk vertices while rendering, so the vertex data is double-buffered.
+//
+// SwapBuffers() must be called after building chunk data.
+//
+class ChunkVertices
+{
+public:
+    void SwapBuffers();
+    void AddOpaqueVertex(BlockVertex &vertex);
+    void AddTransparentVertex(BlockVertex &vertex);
+    BlockVertex *GetOpaqueData();
+    size_t GetOpaqueCount();
+    BlockVertex *GetTransparentData();
+    size_t GetTransparentCount();
+
+private:
+    uint8_t _read_buffer = 0;
+    std::vector<BlockVertex> _opaque_buffers[2];
+    std::vector<BlockVertex> _transparent_buffers[2];
+};
+
 class Lightmap
 {
     private:
@@ -25,9 +47,9 @@ class Lightmap
         Lightmap() = default;
         ~Lightmap() = default;
         uint8_t GetSkyLevel(glm::ivec3 coords) const;
-        void SetSkyLevel(glm::ivec3 coords, uint8_t level);
+        void SetSkyLevel(uint8_t level, glm::ivec3 coords);
         uint8_t GetBlockLevel(glm::ivec3 coords) const;
-        void SetBlockLevel(glm::ivec3 coords, uint8_t level);
+        void SetBlockLevel(uint8_t level, glm::ivec3 coords);
 };
 
 enum class ChunkState
@@ -45,7 +67,7 @@ enum class ChunkState
 class Chunk
 {
 public:
-    Chunk(const glm::ivec3 &coords, bool is_border_chunk, ChunkManager *chunk_manager);
+    Chunk(glm::ivec3 coords, bool is_border_chunk, ChunkManager *chunk_manager);
     ~Chunk();
 
     Chunk(const Chunk&) = delete;
@@ -54,12 +76,18 @@ public:
     Chunk(Chunk&&) = delete;
     Chunk &operator=(Chunk&&) = delete;
 
+    void GLCreate();
+    void GLDestroy();
+
     ChunkState GetState();
     void SetIsBorderChunk(bool status);
     bool IsBorderChunk();
+    void SetHasUploadedVertices(bool status);
+    bool HasUploadedVertices();
+    bool HasGLData();
     glm::ivec3 GetCoords();
     BlockID *GetBlocks();
-    Lightmap &GetLightMap();
+    Lightmap &GetLightmap();
 
     void Build();
     void BuildExternal();
@@ -71,21 +99,24 @@ public:
 private:
     void SetState(ChunkState state);
     void LoadBlocks();
-    void BuildLightMapInternal();
-    void BuildLightMapExternal();
+    void BuildLightmapInternal();
+    void BuildLightmapExternal();
     void BuildVertices();
 
 private:
     ChunkManager *_chunk_manager;
     std::atomic<ChunkState> _state{ChunkState::CREATED};
+    bool _has_gl_data = false;
+    bool _has_uploaded_vertices = false;
     bool _is_border_chunk;
     glm::ivec3 _coords;
     BlockID *_blocks;
-    Lightmap _light_map;
-    std::vector<BlockVertex> _opaque_vertices;
+    Lightmap _lightmap;
+    ChunkVertices _vertices;
+    //std::vector<BlockVertex> _opaque_vertices;
     GLuint _opaque_vao;
     GLuint _opaque_vbo;
-    std::vector<BlockVertex> _transparent_vertices;
+    //std::vector<BlockVertex> _transparent_vertices;
     GLuint _transparent_vao;
     GLuint _transparent_vbo;
 };

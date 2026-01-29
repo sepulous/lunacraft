@@ -5,10 +5,11 @@
 #include <glm/glm.hpp>
 
 #include "moon_settings.h"
-#include "chunk_manager.h"
 #include "entity_manager.h"
 #include "skybox.h"
 #include "player.h"
+
+class ChunkManager;
 
 class Moon
 {
@@ -18,6 +19,7 @@ class Moon
     private:
         int _id = 0;
         int _initial_chunk_count = 0;
+        int _current_light_phase = 3;
         double _world_time = 0;
         double _accumulator = 0;
         glm::vec4 _base_fog_color; // This doesn't change for a given moon. Use GetFogColor() to get the correct color.

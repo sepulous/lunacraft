@@ -18,17 +18,68 @@
 #include "chunk_generation.h"
 
 //
+// Chunk Vertices
+//
+
+void ChunkVertices::SwapBuffers()
+{
+    _read_buffer ^= 1;
+
+    // Clear new write buffers
+    _opaque_buffers[_read_buffer ^ 1].clear();
+    _transparent_buffers[_read_buffer ^ 1].clear();
+}
+
+void ChunkVertices::AddOpaqueVertex(BlockVertex &vertex)
+{
+    _opaque_buffers[_read_buffer ^ 1].push_back(vertex);
+}
+
+void ChunkVertices::AddTransparentVertex(BlockVertex &vertex)
+{
+    _transparent_buffers[_read_buffer ^ 1].push_back(vertex);
+}
+
+BlockVertex *ChunkVertices::GetOpaqueData()
+{
+    return _opaque_buffers[_read_buffer].data();
+}
+
+size_t ChunkVertices::GetOpaqueCount()
+{
+    return _opaque_buffers[_read_buffer].size();
+}
+
+BlockVertex *ChunkVertices::GetTransparentData()
+{
+    return _transparent_buffers[_read_buffer].data();
+}
+
+size_t ChunkVertices::GetTransparentCount()
+{
+    return _transparent_buffers[_read_buffer].size();
+}
+
+//
 // Chunk
 //
 
-// Chunk objects must be created on the main thread, due to OpenGL calls in this constructor
-Chunk::Chunk(const glm::ivec3 &coords, bool is_border_chunk, ChunkManager *chunk_manager)
+Chunk::Chunk(glm::ivec3 coords, bool is_border_chunk, ChunkManager *chunk_manager)
 {
     _is_border_chunk = is_border_chunk;
     _coords = coords;
     _blocks = (BlockID *)malloc(BLOCKS_IN_CHUNK * sizeof(BlockID));
     _chunk_manager = chunk_manager;
+}
 
+Chunk::~Chunk()
+{
+    free(_blocks);
+}
+
+// Must only be called from the main thread!
+void Chunk::GLCreate()
+{
     // Opaques
     glGenVertexArrays(1, &_opaque_vao);
     glBindVertexArray(_opaque_vao);
@@ -60,15 +111,17 @@ Chunk::Chunk(const glm::ivec3 &coords, bool is_border_chunk, ChunkManager *chunk
     glEnableVertexAttribArray(2);
     glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 13 * sizeof(float), (void*)(10 * sizeof(float)));
     glEnableVertexAttribArray(3);
+
+    _has_gl_data = true;
 }
 
-Chunk::~Chunk()
+// Must only be called from the main thread!
+void Chunk::GLDestroy()
 {
     glDeleteVertexArrays(1, &_opaque_vao);
     glDeleteVertexArrays(1, &_transparent_vao);
     glDeleteBuffers(1, &_opaque_vbo);
     glDeleteBuffers(1, &_transparent_vbo);
-    free(_blocks);
 }
 
 ChunkState Chunk::GetState()
@@ -86,6 +139,21 @@ bool Chunk::IsBorderChunk()
     return _is_border_chunk;
 }
 
+void Chunk::SetHasUploadedVertices(bool status)
+{
+    _has_uploaded_vertices = status;
+}
+
+bool Chunk::HasUploadedVertices()
+{
+    return _has_uploaded_vertices;
+}
+
+bool Chunk::HasGLData()
+{
+    return _has_gl_data;
+}
+
 glm::ivec3 Chunk::GetCoords()
 {
     return _coords;
@@ -96,9 +164,9 @@ BlockID *Chunk::GetBlocks()
     return _blocks;
 }
 
-Lightmap &Chunk::GetLightMap()
+Lightmap &Chunk::GetLightmap()
 {
-    return _light_map;
+    return _lightmap;
 }
 
 //
@@ -123,17 +191,19 @@ void Chunk::Build()
 //
 void Chunk::Rebuild()
 {
-    _chunk_manager->GetWorkerPool().SubmitJob([this]() { BuildLightMapInternal(); });
+    _chunk_manager->GetWorkerPool().SubmitJob([this]() { BuildLightmapInternal(); });
 }
 
 // Builds all data that depends on neighbor chunk data, ending in the state READY_TO_UPLOAD.
 void Chunk::BuildExternal()
 {
-    _chunk_manager->GetWorkerPool().SubmitJob([this]() { BuildLightMapExternal(); });
+    _chunk_manager->GetWorkerPool().SubmitJob([this]() { BuildLightmapExternal(); });
 }
 
 //
 // Upload chunk's vertex data to the GPU.
+//
+// Chunk::GLInit must be called before this.
 //
 // This must be called before rendering the chunk, and after it has been fully built.
 // See Chunk::Build for more information.
@@ -141,10 +211,12 @@ void Chunk::BuildExternal()
 void Chunk::UploadVertices()
 {
     glBindBuffer(GL_ARRAY_BUFFER, _opaque_vbo);
-    glBufferData(GL_ARRAY_BUFFER, _opaque_vertices.size() * sizeof(BlockVertex), _opaque_vertices.data(), GL_DYNAMIC_DRAW);
+    // glBufferData(GL_ARRAY_BUFFER, _opaque_vertices.size() * sizeof(BlockVertex), _opaque_vertices.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, _vertices.GetOpaqueCount() * sizeof(BlockVertex), _vertices.GetOpaqueData(), GL_DYNAMIC_DRAW);
     
     glBindBuffer(GL_ARRAY_BUFFER, _transparent_vbo);
-    glBufferData(GL_ARRAY_BUFFER, _transparent_vertices.size() * sizeof(BlockVertex), _transparent_vertices.data(), GL_DYNAMIC_DRAW);
+    // glBufferData(GL_ARRAY_BUFFER, _transparent_vertices.size() * sizeof(BlockVertex), _transparent_vertices.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, _vertices.GetTransparentCount() * sizeof(BlockVertex), _vertices.GetTransparentData(), GL_DYNAMIC_DRAW);
 
     SetState(ChunkState::RENDERABLE);
 }
@@ -157,7 +229,8 @@ void Chunk::UploadVertices()
 void Chunk::RenderOpaques()
 {
     glBindVertexArray(_opaque_vao);
-    glDrawArrays(GL_TRIANGLES, 0, _opaque_vertices.size());
+    // glDrawArrays(GL_TRIANGLES, 0, _opaque_vertices.size());
+    glDrawArrays(GL_TRIANGLES, 0, _vertices.GetOpaqueCount());
 }
 
 //
@@ -168,7 +241,8 @@ void Chunk::RenderOpaques()
 void Chunk::RenderTransparents()
 {
     glBindVertexArray(_transparent_vao);
-    glDrawArrays(GL_TRIANGLES, 0, _transparent_vertices.size());
+    // glDrawArrays(GL_TRIANGLES, 0, _transparent_vertices.size());
+    glDrawArrays(GL_TRIANGLES, 0, _vertices.GetTransparentCount());
 }
 
 void Chunk::SetState(ChunkState state)
@@ -201,10 +275,10 @@ void Chunk::LoadBlocks()
     }
 
     // Start next task
-    _chunk_manager->GetWorkerPool().SubmitJob([this]() { BuildLightMapInternal(); });
+    _chunk_manager->GetWorkerPool().SubmitJob([this]() { BuildLightmapInternal(); });
 }
 
-void Chunk::BuildLightMapInternal()
+void Chunk::BuildLightmapInternal()
 {
     // Update state
     SetState(ChunkState::LIGHT_INTERNAL);
@@ -224,8 +298,8 @@ void Chunk::BuildLightMapInternal()
                 if (BlockIsOpaque(block))
                     skylight_level = 0;
 
-                _light_map.SetSkyLevel({x, y, z}, skylight_level);
-                _light_map.SetBlockLevel({x, y, z}, 0);
+                _lightmap.SetSkyLevel(skylight_level, {x, y, z});
+                _lightmap.SetBlockLevel(0, {x, y, z});
 
                 if (skylight_level == 15)
                     to_expand.emplace_back(x, y, z);
@@ -240,14 +314,13 @@ void Chunk::BuildLightMapInternal()
     while (to_expand.size() > 0)
     {
         glm::ivec3 coords = to_expand.back();
-        uint8_t skylight_level = _light_map.GetSkyLevel(coords);
+        uint8_t skylight_level = _lightmap.GetSkyLevel(coords);
         to_expand.pop_back();
 
         glm::ivec3 neighbors[] = {
             {coords.x - 1, coords.y, coords.z},
             {coords.x + 1, coords.y, coords.z},
             {coords.x, coords.y - 1, coords.z},
-            {coords.x, coords.y + 1, coords.z},
             {coords.x, coords.y, coords.z - 1},
             {coords.x, coords.y, coords.z + 1},
         };
@@ -261,9 +334,9 @@ void Chunk::BuildLightMapInternal()
             if (!BlockIsOpaque(neighbor_block))
             {
                 uint8_t skylight_propagated = skylight_level - 1;
-                if (skylight_propagated > _light_map.GetSkyLevel(neighbor_coords))
+                if (skylight_propagated > _lightmap.GetSkyLevel(neighbor_coords))
                 {
-                    _light_map.SetSkyLevel(neighbor_coords, skylight_propagated);
+                    _lightmap.SetSkyLevel(skylight_propagated, neighbor_coords);
                     to_expand.push_back(neighbor_coords);
                 }
             }
@@ -290,7 +363,7 @@ void Chunk::BuildLightMapInternal()
             BlockID neighbor_block = _blocks[GetChunkIndex(neighbor_coords.x, neighbor_coords.y, neighbor_coords.z)];
             if (!BlockIsOpaque(neighbor_block))
             {
-                _light_map.SetBlockLevel(neighbor_coords, 15);
+                _lightmap.SetBlockLevel(15, neighbor_coords);
                 to_expand.emplace_back(neighbor_coords.x, neighbor_coords.y, neighbor_coords.z);
             }
         }
@@ -300,7 +373,7 @@ void Chunk::BuildLightMapInternal()
     while (to_expand.size() > 0)
     {
         glm::ivec3 coords = to_expand.back();
-        uint8_t blocklight_level = _light_map.GetBlockLevel(coords);
+        uint8_t blocklight_level = _lightmap.GetBlockLevel(coords);
         to_expand.pop_back();
 
         glm::ivec3 neighbors[] = {
@@ -321,26 +394,26 @@ void Chunk::BuildLightMapInternal()
             if (!BlockIsOpaque(neighbor_block))
             {
                 uint8_t blocklight_propagated = blocklight_level - 1;
-                if (blocklight_propagated > _light_map.GetBlockLevel(neighbor_coords))
+                if (blocklight_propagated > _lightmap.GetBlockLevel(neighbor_coords))
                 {
-                    _light_map.SetBlockLevel(neighbor_coords, blocklight_propagated);
+                    _lightmap.SetBlockLevel(blocklight_propagated, neighbor_coords);
                     to_expand.push_back(neighbor_coords);
                 }
             }
         }
     }
 
-    if (!IsBorderChunk())
-    {
-        _chunk_manager->GetWorkerPool().SubmitJob([this]() { BuildLightMapExternal(); });
-    }
-    else
+    if (IsBorderChunk())
     {
         SetState(ChunkState::INTERNAL_DONE);
     }
+    else
+    {
+        _chunk_manager->GetWorkerPool().SubmitJob([this]() { BuildLightmapExternal(); });
+    }
 }
 
-void Chunk::BuildLightMapExternal()
+void Chunk::BuildLightmapExternal()
 {
     SetState(ChunkState::LIGHT_EXTERNAL);
 
@@ -432,10 +505,20 @@ void Chunk::BuildVertices()
         tile_origins_built = true;
     }
 
-    std::vector<BlockQuad> quads = GreedyMesh(_blocks, _chunk_manager->GetNeighbors(_coords));
+    std::array<std::shared_ptr<Chunk>, 4> neighbors;
+    neighbors[0] = _chunk_manager->GetOrCreateChunk({_coords.x, 0, _coords.z + 1}); // Front
+    neighbors[1] = _chunk_manager->GetOrCreateChunk({_coords.x + 1, 0, _coords.z}); // Right
+    neighbors[2] = _chunk_manager->GetOrCreateChunk({_coords.x, 0, _coords.z - 1}); // Back
+    neighbors[3] = _chunk_manager->GetOrCreateChunk({_coords.x - 1, 0, _coords.z}); // Left
 
-    // Don't know which quads are opaque/transparent, but we can gather statistics to decide
-    // how to reserve the vertex vectors
+    // Wait until all neighbors are done loading their blocks. This busy-waiting sucks, but will have to do for now.
+    for (int i = 0; i < 4; i++)
+    {
+        if (neighbors[i]->GetState() <= ChunkState::LOADING_BLOCKS)
+            i = -1;
+    }
+
+    std::vector<BlockQuad> quads = GreedyMesh(_blocks, neighbors);
 
     for (const BlockQuad &quad : quads)
     {
@@ -489,8 +572,8 @@ void Chunk::BuildVertices()
         else
         {
             glm::ivec3 adjacent = GlobalToLocalVoxel(quad.base_coords) - glm::ivec3(normal); // Block in front of the one this quad is based at
-            _sky_light = _light_map.GetSkyLevel(adjacent);
-            _block_light = _light_map.GetBlockLevel(adjacent);
+            _sky_light = _lightmap.GetSkyLevel(adjacent);
+            _block_light = _lightmap.GetBlockLevel(adjacent);
         }
         float sky_light = (float)_sky_light * (100.0f / 15.0f);      // Apparently Charlie's light values were in [0, 100]. Mine are in [0, 15], 
         float block_light = (float)_block_light * (100.0f / 15.0f);  // so let's scale to [0, 100] so his code works as-is
@@ -520,26 +603,55 @@ void Chunk::BuildVertices()
         }
 
         // Push vertices
-        auto &vertices = BlockIsOpaque(quad.block) ? _opaque_vertices : _transparent_vertices;
+        BlockVertex vert_1{base_pos,                     glm::vec4{0,          0,           tile_origin}, normal, light};
+        BlockVertex vert_2{base_pos + quad.dv,           glm::vec4{0,          quad_height, tile_origin}, normal, light};
+        BlockVertex vert_3{base_pos + quad.dv + quad.du, glm::vec4{quad_width, quad_height, tile_origin}, normal, light};
+        BlockVertex vert_4{base_pos + quad.du,           glm::vec4{quad_width, 0,           tile_origin}, normal, light};
         if (!quad.back_face)
         {
-            vertices.emplace_back(base_pos,                     glm::vec4{0,          0,           tile_origin}, normal, light);
-            vertices.emplace_back(base_pos + quad.dv,           glm::vec4{0,          quad_height, tile_origin}, normal, light);
-            vertices.emplace_back(base_pos + quad.dv + quad.du, glm::vec4{quad_width, quad_height, tile_origin}, normal, light);
-            vertices.emplace_back(base_pos + quad.dv + quad.du, glm::vec4{quad_width, quad_height, tile_origin}, normal, light);
-            vertices.emplace_back(base_pos + quad.du,           glm::vec4{quad_width, 0,           tile_origin}, normal, light);
-            vertices.emplace_back(base_pos,                     glm::vec4{0,          0,           tile_origin}, normal, light);
+            if (BlockIsOpaque(quad.block))
+            {
+                _vertices.AddOpaqueVertex(vert_1);
+                _vertices.AddOpaqueVertex(vert_2);
+                _vertices.AddOpaqueVertex(vert_3);
+                _vertices.AddOpaqueVertex(vert_3);
+                _vertices.AddOpaqueVertex(vert_4);
+                _vertices.AddOpaqueVertex(vert_1);
+            }
+            else
+            {
+                _vertices.AddTransparentVertex(vert_1);
+                _vertices.AddTransparentVertex(vert_2);
+                _vertices.AddTransparentVertex(vert_3);
+                _vertices.AddTransparentVertex(vert_3);
+                _vertices.AddTransparentVertex(vert_4);
+                _vertices.AddTransparentVertex(vert_1);
+            }
         }
         else
         {
-            vertices.emplace_back(base_pos,                     glm::vec4{0,          0,           tile_origin}, normal, light);
-            vertices.emplace_back(base_pos + quad.du,           glm::vec4{quad_width, 0,           tile_origin}, normal, light);
-            vertices.emplace_back(base_pos + quad.dv + quad.du, glm::vec4{quad_width, quad_height, tile_origin}, normal, light);
-            vertices.emplace_back(base_pos + quad.dv + quad.du, glm::vec4{quad_width, quad_height, tile_origin}, normal, light);
-            vertices.emplace_back(base_pos + quad.dv,           glm::vec4{0,          quad_height, tile_origin}, normal, light);
-            vertices.emplace_back(base_pos,                     glm::vec4{0,          0,           tile_origin}, normal, light);
+            if (BlockIsOpaque(quad.block))
+            {
+                _vertices.AddOpaqueVertex(vert_1);
+                _vertices.AddOpaqueVertex(vert_4);
+                _vertices.AddOpaqueVertex(vert_3);
+                _vertices.AddOpaqueVertex(vert_3);
+                _vertices.AddOpaqueVertex(vert_2);
+                _vertices.AddOpaqueVertex(vert_1);
+            }
+            else
+            {
+                _vertices.AddTransparentVertex(vert_1);
+                _vertices.AddTransparentVertex(vert_4);
+                _vertices.AddTransparentVertex(vert_3);
+                _vertices.AddTransparentVertex(vert_3);
+                _vertices.AddTransparentVertex(vert_2);
+                _vertices.AddTransparentVertex(vert_1);
+            }
         }
     }
+
+    _vertices.SwapBuffers();
 
     SetState(ChunkState::READY_TO_UPLOAD);
 }
@@ -555,7 +667,7 @@ uint8_t Lightmap::GetSkyLevel(glm::ivec3 coords) const
 }
 
 // Level must be in the range [0, 15]
-void Lightmap::SetSkyLevel(glm::ivec3 coords, uint8_t sky_level)
+void Lightmap::SetSkyLevel(uint8_t sky_level, glm::ivec3 coords)
 {
     uint8_t entry = _map[GetChunkIndex(coords.x, coords.y, coords.z)];
     _map[GetChunkIndex(coords.x, coords.y, coords.z)] = (entry & 0x0F) | (sky_level << 4);
@@ -568,7 +680,7 @@ uint8_t Lightmap::GetBlockLevel(glm::ivec3 coords) const
 }
 
 // Level must be in the range [0, 15]
-void Lightmap::SetBlockLevel(glm::ivec3 coords, uint8_t block_level)
+void Lightmap::SetBlockLevel(uint8_t block_level, glm::ivec3 coords)
 {
     uint8_t entry = _map[GetChunkIndex(coords.x, coords.y, coords.z)];
     _map[GetChunkIndex(coords.x, coords.y, coords.z)] = (entry & 0xF0) | block_level;

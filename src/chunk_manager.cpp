@@ -13,11 +13,11 @@
 #include "chunk_generation.h"
 #include "helpers.h"
 #include "storage.h"
+#include "options.h"
+#include "moon.h"
 
 void ChunkManager::Init(int moon_id, MoonSettings moon_settings)
 {
-    _moon_id = moon_id;
-
     // Load texture atlas
     int width, height, nrChannels;
     stbi_set_flip_vertically_on_load(true);
@@ -49,11 +49,17 @@ ChunkManager::~ChunkManager()
 
 void ChunkManager::UploadReadyChunks()
 {
+    std::unique_lock<std::mutex> lock(_chunks_mutex);
+
     for (auto it = _chunks.begin(); it != _chunks.end(); ++it)
     {
-        if (it->second.GetState() == ChunkState::READY_TO_UPLOAD)
+        Chunk *chunk = it->second.get();
+        if (!chunk->IsBorderChunk() && chunk->GetState() == ChunkState::READY_TO_UPLOAD) // Shouldn't waste GPU memory with border chunks. Most are never rendered.
         {
-            it->second.UploadVertices(); // Sets chunk state to RENDERABLE
+            if (!chunk->HasGLData())
+                chunk->GLCreate();
+            chunk->UploadVertices();
+            chunk->SetHasUploadedVertices(true);
             _loaded_chunk_count++;
         }
     }
@@ -65,14 +71,16 @@ void ChunkManager::RenderChunks(Plane frustum[6])
     glBindTexture(GL_TEXTURE_2D, _texture_atlas);
     glDepthFunc(GL_LESS);
 
+    std::unique_lock<std::mutex> lock(_chunks_mutex);
+
     std::vector<Chunk *> visible_chunks;
 
     for (auto it = _chunks.begin(); it != _chunks.end(); ++it)
     {
-        Chunk &chunk = it->second;
-        if (!chunk.IsBorderChunk() && chunk.GetState() == ChunkState::RENDERABLE) // Chunks that become border chunks are RENDERABLE, but shouldn't be rendered
+        Chunk *chunk = it->second.get();
+        if (chunk->HasUploadedVertices() && !chunk->IsBorderChunk()) // Border chunks should never be rendered, and patch chunks aren't necessarily ready
         {
-            glm::ivec3 chunk_coords = chunk.GetCoords();
+            glm::ivec3 chunk_coords = chunk->GetCoords();
             float x0 = chunk_coords.x * CHUNK_SIZE;
             float y0 = 0;
             float z0 = chunk_coords.z * CHUNK_SIZE;
@@ -85,8 +93,8 @@ void ChunkManager::RenderChunks(Plane frustum[6])
 
             if (ChunkInFrustum(frustum, min, max))
             {
-                chunk.RenderOpaques();
-                visible_chunks.push_back(&chunk);
+                chunk->RenderOpaques();
+                visible_chunks.push_back(chunk);
             }
         }
     }
@@ -98,39 +106,87 @@ void ChunkManager::RenderChunks(Plane frustum[6])
     }
 }
 
-void ChunkManager::CreateInitialPatch(glm::ivec3 player_chunk, int render_distance)
+void ChunkManager::RebuildChunks()
 {
-    for (int x = player_chunk.x - render_distance - 1; x <= player_chunk.x + render_distance + 1; x++)
-    {
-        for (int z = player_chunk.z - render_distance - 1; z <= player_chunk.z + render_distance + 1; z++)
-        {
-            bool is_border_chunk = x == player_chunk.x - render_distance - 1
-                                || x == player_chunk.x + render_distance + 1
-                                || z == player_chunk.z + render_distance + 1
-                                || z == player_chunk.z - render_distance - 1;
+    std::unique_lock<std::mutex> lock(_chunks_mutex);
 
-            glm::ivec3 chunk_coords{x, 0, z};
-            uint64_t chunk_id = ChunkCoordsToID(chunk_coords);
-            auto [it, success] = _chunks.try_emplace(chunk_id, chunk_coords, is_border_chunk, this);
-            it->second.Build();
-        }
+    for (auto it = _chunks.begin(); it != _chunks.end(); ++it)
+    {
+        Chunk *chunk = it->second.get();
+        if (!chunk->IsBorderChunk())
+            chunk->Rebuild();
     }
 }
 
-void ChunkManager::MoveChunkPatch(glm::ivec3 player_chunk, int render_distance)
+//
+// Create initial chunk patch around player spawn.
+//
+// This only needs to build the chunk the player spawns in, because required
+// neighbors are recursively loaded in.
+//
+void ChunkManager::CreateInitialPatch()
 {
+    auto player_chunk = VoxelToChunk(GetNearestVoxel(Moon::GetCurrentMoon()->GetPlayer()->GetPosition()));
+    uint64_t chunk_id = ChunkCoordsToID(player_chunk);
+    auto [it, success] = _chunks.try_emplace(chunk_id, std::make_shared<Chunk>(player_chunk, false, this));
+    it->second->Build();
+}
+
+std::shared_ptr<Chunk> ChunkManager::GetOrCreateChunk(glm::ivec3 chunk_coords)
+{
+    std::unique_lock<std::mutex> lock(_chunks_mutex);
+
+    uint64_t chunk_id = ChunkCoordsToID(chunk_coords);
+    if (_chunks.contains(chunk_id))
+    {
+        return _chunks.at(chunk_id);
+    }
+    else
+    {
+        auto player_chunk = VoxelToChunk(GetNearestVoxel(Moon::GetCurrentMoon()->GetPlayer()->GetPosition()));
+        auto render_distance = OptionsManager::GetOptions().render_distance;
+        bool is_border_chunk = chunk_coords.x == player_chunk.x - render_distance - 1
+                            || chunk_coords.x == player_chunk.x + render_distance + 1
+                            || chunk_coords.z == player_chunk.z - render_distance - 1
+                            || chunk_coords.z == player_chunk.z + render_distance + 1;
+
+        auto [it, success] = _chunks.try_emplace(chunk_id, std::make_shared<Chunk>(chunk_coords, is_border_chunk, this));
+        it->second->Build();
+        return it->second;
+    }
+}
+
+void ChunkManager::AdjustChunkPatch()
+{
+    std::unique_lock<std::mutex> lock(_chunks_mutex);
+
+    auto player_chunk = VoxelToChunk(GetNearestVoxel(Moon::GetCurrentMoon()->GetPlayer()->GetPosition()));
+    auto render_distance = OptionsManager::GetOptions().render_distance;
+
     // Remove all chunks outside the patch + border
     for (auto it = _chunks.begin(); it != _chunks.end(); )
     {
-        glm::ivec3 coords = it->second.GetCoords();
-        bool outside_patch = coords.x < player_chunk.x - render_distance - 1
+        auto chunk = it->second;
+
+        glm::ivec3 coords = chunk->GetCoords();
+        bool outside_border = coords.x < player_chunk.x - render_distance - 1
                           || coords.x > player_chunk.x + render_distance + 1
                           || coords.z < player_chunk.z - render_distance - 1
                           || coords.z > player_chunk.z + render_distance + 1;
 
-        if (outside_patch)
+        auto chunk_state = chunk->GetState();
+        bool can_be_deleted = chunk.use_count() == 1 && (chunk_state == ChunkState::INTERNAL_DONE || chunk_state >= ChunkState::READY_TO_UPLOAD);
+
+        //
+        // The ChunkManager ultimately owns the chunks, so it should be the last thing to delete its shared pointer.
+        // When there are no more owners, the chunk data is freed, so this must not happen unless the chunk is
+        // in an idle state (not accessing its own data).
+        //
+
+        if (outside_border && can_be_deleted)
         {
-            it = _chunks.erase(it);
+            chunk->GLDestroy(); // Deletes OpenGL data
+            it = _chunks.erase(it); // Frees CPU data
             _loaded_chunk_count--;
         }
         else
@@ -139,53 +195,39 @@ void ChunkManager::MoveChunkPatch(glm::ivec3 player_chunk, int render_distance)
         }
     }
 
-    // Update patch border
+    // Update patch + border
     for (int x = player_chunk.x - render_distance - 1; x <= player_chunk.x + render_distance + 1; x++)
     {
         for (int z = player_chunk.z - render_distance - 1; z <= player_chunk.z + render_distance + 1; z++)
         {
-            bool is_border_chunk = x == player_chunk.x - render_distance - 1
+            uint64_t chunk_id = ChunkCoordsToID({x, 0, z});
+            bool on_new_border = x == player_chunk.x - render_distance - 1
                                 || x == player_chunk.x + render_distance + 1
                                 || z == player_chunk.z + render_distance + 1
                                 || z == player_chunk.z - render_distance - 1;
 
-            if (is_border_chunk)
+            auto [it, success] = _chunks.try_emplace(chunk_id, std::make_shared<Chunk>(glm::ivec3{x, 0, z}, on_new_border, this));
+            auto chunk = it->second;
+            if (on_new_border)
             {
-                uint64_t chunk_id = ChunkCoordsToID({x, 0, z});
-                if (_chunks.contains(chunk_id)) // Update previously-non-border chunks that are now on the border
+                if (success) // New border chunk
+                    chunk->Build();
+                else // Convert existing 
+                    chunk->SetIsBorderChunk(true);
+            }
+            else
+            {
+                if (!success && chunk->IsBorderChunk())
                 {
-                    Chunk &chunk = _chunks.at(chunk_id);
-                    if (!chunk.IsBorderChunk())
-                        chunk.SetIsBorderChunk(true);
-                }
-                else // Create new border chunk
-                {
-                    auto [it, success] = _chunks.try_emplace(chunk_id, glm::ivec3{x, 0, z}, true, this);
-                    it->second.Build(); // Is a border chunk, so BuildExternal() must be called later
+                    chunk->SetIsBorderChunk(false); // Convert to non-border chunk
+                    chunk->BuildExternal(); // Finish building
                 }
             }
-        }
-    }
-
-    // Add new chunks (update border chunks that now fall within the patch)
-    for (int x = player_chunk.x - render_distance; x <= player_chunk.x + render_distance; x++)
-    {
-        for (int z = player_chunk.z - render_distance; z <= player_chunk.z + render_distance; z++)
-        {
-            uint64_t chunk_id = ChunkCoordsToID({x, 0, z});
-            Chunk &chunk = _chunks.at(chunk_id);
-            if (chunk.IsBorderChunk())
-            {
-                chunk.SetIsBorderChunk(false);
-                chunk.BuildExternal();
-            }
-
-            // NOTE: There may be another case: there's no border chunk to convert, so we really have to create a new non-border chunk
         }
     }
 }
 
-std::unordered_map<uint64_t, Chunk> &ChunkManager::GetChunks()
+std::unordered_map<uint64_t, std::shared_ptr<Chunk>> &ChunkManager::GetChunks()
 {
     return _chunks;
 }
@@ -193,30 +235,6 @@ std::unordered_map<uint64_t, Chunk> &ChunkManager::GetChunks()
 ChunkWorkerPool &ChunkManager::GetWorkerPool()
 {
     return _worker_pool;
-}
-
-std::array<Chunk *, 4> ChunkManager::GetNeighbors(glm::ivec3 chunk_coords)
-{
-    std::array<Chunk *, 4> neighbors;
-    uint64_t chunk_id;
-
-    // Front
-    chunk_id = ChunkCoordsToID({chunk_coords.x, 0, chunk_coords.z + 1});
-    neighbors[0] = &_chunks.at(chunk_id);
-
-    // Right
-    chunk_id = ChunkCoordsToID({chunk_coords.x + 1, 0, chunk_coords.z});
-    neighbors[1] = &_chunks.at(chunk_id);
-
-    // Back
-    chunk_id = ChunkCoordsToID({chunk_coords.x, 0, chunk_coords.z - 1});
-    neighbors[2] = &_chunks.at(chunk_id);
-
-    // Left
-    chunk_id = ChunkCoordsToID({chunk_coords.x - 1, 0, chunk_coords.z});
-    neighbors[3] = &_chunks.at(chunk_id);
-
-    return neighbors;
 }
 
 int ChunkManager::GetLoadedChunkCount()

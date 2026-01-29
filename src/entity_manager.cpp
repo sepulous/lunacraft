@@ -56,7 +56,7 @@ void EntityManager::RunPhysics(int steps, float interp)
                     if (it != chunks.end())
                     {
                         glm::ivec3 local_block_pos = GlobalToLocalVoxel({x, y, z});
-                        if ((BlockID)it->second.GetBlocks()[GetChunkIndex(local_block_pos.x, local_block_pos.y, local_block_pos.z)] != BlockID::air)
+                        if ((BlockID)it->second->GetBlocks()[GetChunkIndex(local_block_pos.x, local_block_pos.y, local_block_pos.z)] != BlockID::air)
                             return true;
                     }
                 }

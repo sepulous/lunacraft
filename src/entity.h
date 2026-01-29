@@ -16,6 +16,7 @@ class Entity
         bool _is_grounded = false;
 
     public:
+        virtual ~Entity() = default;
         virtual void Update() = 0;
         virtual void FixedUpdate() = 0;
 

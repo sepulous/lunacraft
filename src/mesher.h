@@ -29,7 +29,7 @@ struct BlockQuad
     a 1x1 quad, and extend its height until a different mask value is reached. We then extend this new quad's width as far as possible to get the final quad.
     Finally, all mask positions covered by the final quad are marked as non-renderable, and we continue iterating through this column.
 */
-std::vector<BlockQuad> GreedyMesh(BlockID *blocks, std::array<Chunk *, 4> neighbors)
+std::vector<BlockQuad> GreedyMesh(BlockID *blocks, std::array<std::shared_ptr<Chunk>, 4> neighbors)
 {
     struct MaskEntry
     {
@@ -46,10 +46,10 @@ std::vector<BlockQuad> GreedyMesh(BlockID *blocks, std::array<Chunk *, 4> neighb
     std::vector<BlockQuad> quads;
     quads.reserve(1500); // 1500 = empirically determined maximum (with padding). Depends on generation and meshing algorithms.
 
-    Chunk *front_neighbor = neighbors[0];
-    Chunk *right_neighbor = neighbors[1];
-    Chunk *back_neighbor = neighbors[2];
-    Chunk *left_neighbor = neighbors[3];
+    std::shared_ptr<Chunk> front_neighbor = neighbors[0];
+    std::shared_ptr<Chunk> right_neighbor = neighbors[1];
+    std::shared_ptr<Chunk> back_neighbor = neighbors[2];
+    std::shared_ptr<Chunk> left_neighbor = neighbors[3];
 
     //
     // X axis

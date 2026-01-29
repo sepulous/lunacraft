@@ -390,10 +390,7 @@ void LoadMoon(int moon_id, MoonSettings moon_settings)
     }
     
     // Load initial chunks around player
-    ChunkManager &chunk_manager = moon->GetChunkManager();
-    int render_distance = OptionsManager::GetOptions().render_distance;
-    glm::ivec3 player_chunk_coords = VoxelToChunk({player->GetPosition().x, player->GetPosition().y, player->GetPosition().z});
-    chunk_manager.CreateInitialPatch(player_chunk_coords, render_distance);
+    moon->GetChunkManager().CreateInitialPatch();
 }
 
 void SetFullscreen(GLFWwindow *window, bool fullscreen)
