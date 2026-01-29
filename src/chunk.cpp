@@ -515,11 +515,14 @@ void Chunk::BuildVertices()
     neighbors[2] = _chunk_manager->GetOrCreateChunk({_coords.x, 0, _coords.z - 1}); // Back
     neighbors[3] = _chunk_manager->GetOrCreateChunk({_coords.x - 1, 0, _coords.z}); // Left
 
-    // Wait until all neighbors are done loading their blocks. This busy-waiting sucks, but will have to do for now.
-    for (int i = 0; i < 4; i++)
+    // Reschedule if any neighbors aren't ready
+    for (auto neighbor : neighbors)
     {
-        if (neighbors[i]->GetState() <= ChunkState::LOADING_BLOCKS)
-            i = -1;
+        if (neighbor->GetState() <= ChunkState::LOADING_BLOCKS)
+        {
+            _chunk_manager->GetWorkerPool().SubmitJob([this]() { BuildVertices(); });
+            return;
+        }
     }
 
     std::vector<BlockQuad> quads = GreedyMesh(_blocks, neighbors);
