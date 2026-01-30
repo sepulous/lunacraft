@@ -783,18 +783,16 @@ void Chunk::BuildVertices()
         // the original game (definitely at least v1.91).
         //
 
-        // TODO: ambient_light depends on sin_world_time, which is continuous, so each chunk
-        //       will have a slightly different value. we should calculate a discrete phase instead.
-
         glm::vec3 light;
 
         float world_time = Moon::GetCurrentMoon()->GetWorldTime();
-        float sin_world_time = glm::sin((world_time + 3*SECONDS_PER_LIGHT_PHASE) * (2 * 3.14159 / (LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE)));
+        float snapped_world_time = (((int)world_time % 330) / 30) * 30; // Snap world time to beginning of phase so all chunks in the same phase agree on ambient_light
+        float sin_world_time = glm::sin((snapped_world_time + 3*SECONDS_PER_LIGHT_PHASE) * (2 * 3.14159f / (LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE)));
         glm::vec3 sunlight_direction = Moon::GetCurrentMoon()->GetSunlightDirection();
-        float ambient_light = 0.5 * sin_world_time;
+        float ambient_light = 0.5f * sin_world_time;
         if (ambient_light < 0)
-            ambient_light *= -0.5;
-        float sunlight_factor = ambient_light + 0.5;
+            ambient_light *= -0.5f;
+        float sunlight_factor = ambient_light + 0.5f;
 
         float dot = glm::dot(sunlight_direction, normal);
         if (dot < 0)
