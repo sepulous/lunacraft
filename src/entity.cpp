@@ -46,16 +46,6 @@ glm::vec3 Entity::GetVelocity() noexcept
     return _velocity;
 }
 
-void Entity::SetInputDirection(const glm::vec3& input_direction) noexcept
-{
-    _input_direction = input_direction;
-}
-
-glm::vec3 Entity::GetInputDirection() noexcept
-{
-    return _input_direction;
-}
-
 void Entity::SetJumping(bool value) noexcept
 {
     _is_jumping = value;

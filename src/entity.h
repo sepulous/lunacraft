@@ -10,7 +10,6 @@ class Entity
         glm::vec3 _next_position;
         glm::vec3 _position;
         glm::vec3 _velocity;
-        glm::vec3 _input_direction;
         float _move_speed = 8.0f;
         bool _is_jumping = false;
         bool _is_grounded = false;
@@ -33,9 +32,6 @@ class Entity
 
         void SetVelocity(const glm::vec3& velocity) noexcept;
         glm::vec3 GetVelocity() noexcept;
-
-        void SetInputDirection(const glm::vec3& input_direction) noexcept;
-        glm::vec3 GetInputDirection() noexcept;
 
         void SetJumping(bool value) noexcept;
         bool IsJumping() noexcept;

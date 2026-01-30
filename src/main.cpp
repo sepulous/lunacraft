@@ -230,25 +230,6 @@ int main()
                 }
             }
 
-            if (!ui_pause_menu.IsActive())
-            {
-                Player *player = moon->GetPlayer();
-
-                glm::vec3 player_input_direction = glm::vec3(0);
-                if (Input::IsKeyHeld(GLFW_KEY_W))
-                    player_input_direction += player->GetForward();
-                if (Input::IsKeyHeld(GLFW_KEY_S))
-                    player_input_direction -= player->GetForward();
-                if (Input::IsKeyHeld(GLFW_KEY_A))
-                    player_input_direction -= player->GetRight();
-                if (Input::IsKeyHeld(GLFW_KEY_D))
-                    player_input_direction += player->GetRight();
-                if (Input::IsKeyHeld(GLFW_KEY_SPACE) && player->IsGrounded())
-                    player->SetJumping(true);
-
-                player->SetInputDirection(player_input_direction);
-            }
-
             if (Input::IsKeyPressed(GLFW_KEY_F3))
             {
                 Options options = OptionsManager::GetOptions();
@@ -319,13 +300,11 @@ int main()
             }
             else
             {
+                ui_debug_menu.SetActive(OptionsManager::GetOptions().show_debug_info);
                 moon->GetPlayer()->UpdateCamera();
+                moon->GetPlayer()->SetCameraSensitivity(0.05f * OptionsManager::GetOptions().sensitivity);
+                moon->Update(delta_time, old_render_distance);
             }
-
-            moon->GetPlayer()->SetCameraSensitivity(0.05f * OptionsManager::GetOptions().sensitivity);
-            ui_debug_menu.SetActive(OptionsManager::GetOptions().show_debug_info);
-
-            moon->Update(delta_time, old_render_distance);
 
             //
             // Rendering
@@ -375,8 +354,8 @@ void LoadMoon(int moon_id, MoonSettings moon_settings)
         player_data_file.close();
 
         player->SetPosition(player_data.position);
-        player->SetPrevPosition(player_data.position);
-        player->SetNextPosition(player_data.position);
+        // player->SetPrevPosition(player_data.position);
+        // player->SetNextPosition(player_data.position);
         player->SetHealth(player_data.health);
         player->SetSuitStatus(player_data.suit_status);
         player->SetCameraRotation({player_data.camera_rotation.x, player_data.camera_rotation.y});

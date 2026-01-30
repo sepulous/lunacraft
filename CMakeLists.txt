@@ -44,17 +44,18 @@ add_executable(Lunacraft
     src/options.cpp
     src/skybox.cpp
     src/helpers.cpp
-    src/chunk.cpp
-    src/moon.cpp
-    src/entity.cpp
-    src/chunk_manager.cpp
-    src/entity_manager.cpp
     src/sound_system.cpp
     src/input.cpp
     src/viewport.cpp
+    src/moon.cpp
+    src/chunk.cpp
+    src/chunk_manager.cpp
     src/chunk_generation.cpp
     src/chunk_worker_pool.cpp
     src/simplex_noise.cpp
+    src/entity_manager.cpp
+    src/entity.cpp
+    src/player.cpp
 )
 
 # Include directories
