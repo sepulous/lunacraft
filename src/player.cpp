@@ -40,15 +40,41 @@ void Player::Update()
 
 void Player::FixedUpdate()
 {
-    _velocity.x = _move_speed * _input_direction.x;
-    _velocity.z = _move_speed * _input_direction.z;
+    //
+    // Horizontal movement
+    // ==============================================================================
+    //
+    // To simulate natural movement, I have a linear drag force acting on the player:
+    //
+    //         dv/dt = αI - βv    where I is the normalized input direction
+    //
+    // Since α/β is the terminal speed of the player when only moving along one axis,
+    // we must have this ratio equal to the maximum speed we choose.
+    //
+    // The friction and maximum speed depend on whether the player is on ice.
+    //
 
+    float max_move_speed = IsOnIce() ? 10.0f : 8.0f;
+    float friction = IsOnIce() ? 4.0f : 10.0f;
+    float alpha = friction * 8.0f;
+    float beta = alpha / max_move_speed;
+
+    _velocity.x += (alpha * _input_direction.x - beta * _velocity.x) * FIXED_DELTA_TIME;
+    if (glm::abs(_velocity.x) < 0.01f)
+        _velocity.x = 0;
+
+    _velocity.z += (alpha * _input_direction.z - beta * _velocity.z) * FIXED_DELTA_TIME;
+    if (glm::abs(_velocity.z) < 0.01f)
+        _velocity.z = 0;
+
+    // Jump
     if (_is_jumping && _is_grounded)
     {
         _velocity.y = 6.0f;
         _is_jumping = false;
     }
 
+    // Play land sound when landing
     if (!_was_grounded && _is_grounded)
     {
         if (_fall_time >= 2.0f)

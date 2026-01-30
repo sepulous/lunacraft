@@ -10,7 +10,7 @@ class Entity
         glm::vec3 _next_position;
         glm::vec3 _position;
         glm::vec3 _velocity;
-        float _move_speed = 8.0f;
+        bool _is_on_ice = false;
         bool _is_jumping = false;
         bool _is_grounded = false;
 
@@ -32,6 +32,9 @@ class Entity
 
         void SetVelocity(const glm::vec3& velocity) noexcept;
         glm::vec3 GetVelocity() noexcept;
+
+        void SetIsOnIce(bool on_ice) noexcept;
+        bool IsOnIce() noexcept;
 
         void SetJumping(bool value) noexcept;
         bool IsJumping() noexcept;

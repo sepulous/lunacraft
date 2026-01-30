@@ -102,7 +102,16 @@ void EntityManager::RunPhysics(int steps, float interp)
             if (TestAABBWorld(entity->GetAABB()))
             {
                 if (entity->GetVelocity().y <= 0)
+                {
                     entity->SetGrounded(true);
+
+                    // Decide whether on ice
+                    auto entity_voxel_g = GetNearestVoxel(entity->GetPosition());
+                    auto entity_voxel_l = GlobalToLocalVoxel(entity_voxel_g);
+                    auto entity_chunk = _chunk_manager->GetOrCreateChunk(VoxelToChunk(entity_voxel_g));
+                    BlockID foot_block = entity_chunk->GetBlocks()[GetChunkIndex(entity_voxel_l - glm::ivec3{0, 1, 0})]; // Can go out of bounds...
+                    entity->SetIsOnIce(foot_block == BlockID::water);
+                }
                 next_position.y = entity->GetPosition().y; // Don't actually move
                 entity->GetAABB().center.y = entity->GetPosition().y;
                 entity->SetVelocity({entity->GetVelocity().x, 0, entity->GetVelocity().z});

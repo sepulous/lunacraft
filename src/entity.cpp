@@ -46,6 +46,16 @@ glm::vec3 Entity::GetVelocity() noexcept
     return _velocity;
 }
 
+void Entity::SetIsOnIce(bool on_ice) noexcept
+{
+    _is_on_ice = on_ice;
+}
+
+bool Entity::IsOnIce() noexcept
+{
+    return _is_on_ice;
+}
+
 void Entity::SetJumping(bool value) noexcept
 {
     _is_jumping = value;
