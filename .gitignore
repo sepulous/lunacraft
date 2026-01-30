@@ -3,3 +3,5 @@ build/
 NOTES.txt
 Lunacraft
 .ignore/
+moons/
+options.dat
