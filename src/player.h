@@ -20,7 +20,6 @@ class Player : public Entity
         glm::vec3 _input_direction;
         int _health = 100;
         int _suit_status = 100;
-        bool _on_ice = false;
         bool _was_grounded = false;
         float _fall_time = 0;
 
