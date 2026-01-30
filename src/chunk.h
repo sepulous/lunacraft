@@ -29,11 +29,17 @@ public:
     void AddTransparentVertex(BlockVertex &vertex);
     BlockVertex *GetOpaqueData();
     size_t GetOpaqueCount();
+    size_t GetReservedOpaqueCount();
+    void SetReservedOpaqueCount(size_t count);
     BlockVertex *GetTransparentData();
     size_t GetTransparentCount();
+    size_t GetReservedTransparentCount();
+    void SetReservedTransparentCount(size_t count);
 
 private:
     uint8_t _read_buffer = 0;
+    size_t _reserved_opaque_count = 0;      // So chunks know whether to reallocate
+    size_t _reserved_transparent_count = 0; // GPU memory
     std::vector<BlockVertex> _opaque_buffers[2];
     std::vector<BlockVertex> _transparent_buffers[2];
 };
@@ -82,7 +88,6 @@ public:
     ChunkState GetState();
     void SetIsBorderChunk(bool status);
     bool IsBorderChunk();
-    void SetHasUploadedVertices(bool status);
     bool HasUploadedVertices();
     bool HasGLData();
     glm::ivec3 GetCoords();
@@ -113,10 +118,8 @@ private:
     BlockID *_blocks;
     Lightmap _lightmap;
     ChunkVertices _vertices;
-    //std::vector<BlockVertex> _opaque_vertices;
     GLuint _opaque_vao;
     GLuint _opaque_vbo;
-    //std::vector<BlockVertex> _transparent_vertices;
     GLuint _transparent_vao;
     GLuint _transparent_vbo;
 };

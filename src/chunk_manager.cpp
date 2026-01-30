@@ -71,7 +71,6 @@ void ChunkManager::UploadReadyChunks()
             if (!chunk->HasGLData())
                 chunk->GLCreate();
             chunk->UploadVertices();
-            chunk->SetHasUploadedVertices(true);
             _loaded_chunk_count++;
         }
     }

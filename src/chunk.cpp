@@ -50,6 +50,16 @@ size_t ChunkVertices::GetOpaqueCount()
     return _opaque_buffers[_read_buffer].size();
 }
 
+size_t ChunkVertices::GetReservedOpaqueCount()
+{
+    return _reserved_opaque_count;
+}
+
+void ChunkVertices::SetReservedOpaqueCount(size_t count)
+{
+    _reserved_opaque_count = count;
+}
+
 BlockVertex *ChunkVertices::GetTransparentData()
 {
     return _transparent_buffers[_read_buffer].data();
@@ -58,6 +68,16 @@ BlockVertex *ChunkVertices::GetTransparentData()
 size_t ChunkVertices::GetTransparentCount()
 {
     return _transparent_buffers[_read_buffer].size();
+}
+
+size_t ChunkVertices::GetReservedTransparentCount()
+{
+    return _reserved_transparent_count;
+}
+
+void ChunkVertices::SetReservedTransparentCount(size_t count)
+{
+    _reserved_transparent_count = count;
 }
 
 //
@@ -149,11 +169,6 @@ bool Chunk::IsBorderChunk()
     return _is_border_chunk;
 }
 
-void Chunk::SetHasUploadedVertices(bool status)
-{
-    _has_uploaded_vertices = status;
-}
-
 bool Chunk::HasUploadedVertices()
 {
     return _has_uploaded_vertices;
@@ -220,13 +235,31 @@ void Chunk::BuildExternal()
 //
 void Chunk::UploadVertices()
 {
+    // Opaques
     glBindBuffer(GL_ARRAY_BUFFER, _opaque_vbo);
-    // glBufferData(GL_ARRAY_BUFFER, _opaque_vertices.size() * sizeof(BlockVertex), _opaque_vertices.data(), GL_DYNAMIC_DRAW);
-    glBufferData(GL_ARRAY_BUFFER, _vertices.GetOpaqueCount() * sizeof(BlockVertex), _vertices.GetOpaqueData(), GL_DYNAMIC_DRAW);
-    
+    if (_vertices.GetOpaqueCount() <= _vertices.GetReservedOpaqueCount())
+    {
+        glBufferSubData(GL_ARRAY_BUFFER, 0, _vertices.GetOpaqueCount() * sizeof(BlockVertex), _vertices.GetOpaqueData());
+    }
+    else
+    {
+        glBufferData(GL_ARRAY_BUFFER, _vertices.GetOpaqueCount() * sizeof(BlockVertex), _vertices.GetOpaqueData(), GL_DYNAMIC_DRAW);
+        _vertices.SetReservedOpaqueCount(_vertices.GetOpaqueCount());
+    }
+
+    // Transparents
     glBindBuffer(GL_ARRAY_BUFFER, _transparent_vbo);
-    // glBufferData(GL_ARRAY_BUFFER, _transparent_vertices.size() * sizeof(BlockVertex), _transparent_vertices.data(), GL_DYNAMIC_DRAW);
-    glBufferData(GL_ARRAY_BUFFER, _vertices.GetTransparentCount() * sizeof(BlockVertex), _vertices.GetTransparentData(), GL_DYNAMIC_DRAW);
+    if (_vertices.GetTransparentCount() <= _vertices.GetReservedTransparentCount())
+    {
+        glBufferSubData(GL_ARRAY_BUFFER, 0, _vertices.GetTransparentCount() * sizeof(BlockVertex), _vertices.GetTransparentData());
+    }
+    else
+    {
+        glBufferData(GL_ARRAY_BUFFER, _vertices.GetTransparentCount() * sizeof(BlockVertex), _vertices.GetTransparentData(), GL_DYNAMIC_DRAW);
+        _vertices.SetReservedTransparentCount(_vertices.GetTransparentCount());
+    }
+
+    _has_uploaded_vertices = true;
 
     SetState(ChunkState::RENDERABLE);
 }
