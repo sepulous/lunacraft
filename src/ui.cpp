@@ -2007,19 +2007,18 @@ void UISlider::Update()
 
     if (_held) // Still held; drag slider
     {
-        _value = glm::clamp(
-            (((float)mouse_pos.x - _position.x) / _size.x) * (_value_max - _value_min) + _value_min,
-            _value_min,
-            _value_max
-        );
+        _value += 0.01f * Input::GetMouseDelta().x;
+        _value = glm::clamp(_value, _value_min, _value_max);
         if (_discrete)
             _value = glm::round(_value);
+
         float f = (_value - _value_min) / (_value_max - _value_min);
         float handle_pos_x = _position.x + f*_size.x - 20;
         _slider_level_middle.SetSize({handle_pos_x - _position.x + 20, _size.y}, false);
         _slider_handle.SetPosition({handle_pos_x, _position.y - 16});
         _slider_handle_held.SetPosition({handle_pos_x, _position.y - 16});
         _slider_value_text.SetPosition({handle_pos_x + 30, _position.y + 30});
+        
         if (_discrete)
         {
             _slider_value_text.SetText(std::to_string((int)_value));
