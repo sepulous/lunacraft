@@ -1993,6 +1993,8 @@ void UISlider::Update()
     glm::vec2 handle_size = _slider_handle.GetSize();
     bool mouse_on_slider = mouse_pos.x >= _position.x - 20 && mouse_pos.x <= _position.x + _size.x + 20 && mouse_pos.y >= handle_pos.y && mouse_pos.y <= handle_pos.y + handle_size.y;
 
+    _hovered = mouse_pos.x >= handle_pos.x && mouse_pos.x <= handle_pos.x + handle_size.x && mouse_pos.y >= handle_pos.y && mouse_pos.y <= handle_pos.y + handle_size.y;
+
     if (_clicked)
         _clicked = Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_LEFT);
     else
@@ -2037,15 +2039,14 @@ void UISlider::Render()
     _slider_bg_right.Render();
     _slider_level_left.Render();
     _slider_level_middle.Render();
+
     if (_held)
-    {
         _slider_handle_held.Render();
-        _slider_value_text.Render();
-    }
     else
-    {
         _slider_handle.Render();
-    }
+
+    if (_hovered)
+        _slider_value_text.Render();
 }
 
 //

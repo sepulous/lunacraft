@@ -142,6 +142,7 @@ class UISlider
     private:
         bool _discrete = false;
         bool _clicked = false; // Necessary to drag only one slider
+        bool _hovered = false;
         bool _held = false;
         float _value = 0.5f;
         float _value_min = 0.0f;
