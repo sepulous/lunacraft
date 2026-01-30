@@ -354,8 +354,8 @@ void LoadMoon(int moon_id, MoonSettings moon_settings)
         player_data_file.close();
 
         player->SetPosition(player_data.position);
-        // player->SetPrevPosition(player_data.position);
-        // player->SetNextPosition(player_data.position);
+        player->SetPrevPosition(player_data.position);
+        player->SetNextPosition(player_data.position);
         player->SetHealth(player_data.health);
         player->SetSuitStatus(player_data.suit_status);
         player->SetCameraRotation({player_data.camera_rotation.x, player_data.camera_rotation.y});
