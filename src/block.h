@@ -6,7 +6,7 @@
 
 #include "constants.h"
 
-enum class BlockID : uint16_t
+enum class BlockID : uint8_t
 {
     air,
     aluminum,
