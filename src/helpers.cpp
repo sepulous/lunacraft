@@ -1,5 +1,7 @@
 
 #include <cstdlib>
+#include <fstream>
+#include <vector>
 
 #include "helpers.h"
 #include "constants.h"
@@ -145,4 +147,77 @@ uint64_t SplitMix64(uint64_t& x)
     z = (z ^ (z >> 30ULL)) * 0xBF58476D1CE4E5B9ULL;
     z = (z ^ (z >> 27ULL)) * 0x94D049BB133111EBULL;
     return z ^ (z >> 31ULL);
+}
+
+//
+// Chunk loading/saving
+//
+
+struct RLEEntry
+{
+    uint8_t count;
+    BlockID block;
+};
+
+// Decodes chunk from disk and writes it to `blocks`
+void LoadChunkFromDisk(std::filesystem::path chunk_file_path, BlockID *blocks)
+{
+    std::streamsize file_size;
+    std::ifstream chunk_file(chunk_file_path, std::ios::binary);
+
+    // Get file size
+    chunk_file.seekg(0, std::ios::end);
+    file_size = chunk_file.tellg();
+    chunk_file.seekg(0, std::ios::beg);
+
+    // Pull entries
+    RLEEntry entries[file_size / sizeof(RLEEntry)]; // file_size should be an exact multiple of sizeof(RLEEntry)
+    chunk_file.read(reinterpret_cast<char *>(entries), file_size);
+    chunk_file.close();
+
+    // Write block data
+    size_t block_index = 0;
+    for (RLEEntry entry : entries)
+    {
+        while (entry.count > 0)
+        {
+            blocks[block_index] = entry.block;
+            entry.count--;
+            block_index++;
+        }
+    }
+}
+
+// Run-length encodes the chunk and writes it to disk
+void WriteChunkToDisk(std::filesystem::path chunk_file_path, BlockID *blocks)
+{
+    std::vector<RLEEntry> entries;
+    entries.reserve(8000); // Initially generated chunks typically have 6000-7000. Added some padding.
+
+    uint8_t count = 0;
+    BlockID block = blocks[GetChunkIndex(0, 0, 0)];
+    for (int x = 0; x < CHUNK_SIZE; x++)
+    {
+        for (int z = 0; z < CHUNK_SIZE; z++)
+        {
+            for (int y = 0; y < WORLD_HEIGHT_LIMIT; y++)
+            {
+                BlockID next_block = blocks[GetChunkIndex(x, y, z)];
+                if (next_block == block)
+                {
+                    count++;
+                }
+                else
+                {
+                    entries.emplace_back(count, block);
+                    count = 1;
+                    block = next_block;
+                }
+            }
+        }
+    }
+
+    std::ofstream chunk_file(chunk_file_path, std::ios::binary);
+    chunk_file.write(reinterpret_cast<const char *>(entries.data()), entries.size() * sizeof(RLEEntry));
+    chunk_file.close();
 }

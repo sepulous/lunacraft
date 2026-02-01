@@ -2,8 +2,6 @@
 #include <cstdint>
 #include <vector>
 #include <unordered_map>
-#include <queue>
-#include <fstream>
 
 #include <glm/glm.hpp>
 
@@ -303,18 +301,12 @@ void Chunk::LoadBlocks()
     std::filesystem::path chunk_file_path = Storage::MOON_DIR / (std::string("moon") + std::to_string(Moon::GetCurrentMoon()->GetID())) / "chunks" / (std::to_string(chunk_id) + ".chunk");
     if (std::filesystem::exists(chunk_file_path))
     {
-        std::ifstream chunk_file(chunk_file_path, std::ios::binary);
-        chunk_file.read(reinterpret_cast<char *>(_blocks), BLOCKS_IN_CHUNK * sizeof(BlockID));
-        chunk_file.close();
+        LoadChunkFromDisk(chunk_file_path, _blocks);
     }
     else
     {
-        // GenerateChunk(_blocks, _coords.x, _coords.z, moon_settings.seed);
         GenerateChunk(_blocks, _coords.x, _coords.z, Moon::GetCurrentMoon()->GetSettings().seed);
-
-        std::ofstream chunk_file(chunk_file_path, std::ios::binary);
-        chunk_file.write(reinterpret_cast<char *>(_blocks), BLOCKS_IN_CHUNK * sizeof(BlockID));
-        chunk_file.close();
+        WriteChunkToDisk(chunk_file_path, _blocks);
     }
 
     // Start next task
