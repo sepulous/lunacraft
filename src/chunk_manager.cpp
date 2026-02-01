@@ -18,18 +18,21 @@
 
 ChunkManager::ChunkManager()
 {
-    _block_memory_head.blocks = (BlockID *)malloc(BLOCKS_IN_CHUNK * sizeof(BlockID));
+    BlockID *blocks = (BlockID *)malloc(BLOCKS_IN_CHUNK * sizeof(BlockID));
+    _block_memory_head = new BlockMemoryNode{.next = nullptr, .blocks = blocks, .in_use = false};
 }
 
 ChunkManager::~ChunkManager()
 {
     glDeleteTextures(1, &_texture_atlas);
 
-    BlockMemoryNode *node = &_block_memory_head;
+    BlockMemoryNode *node = _block_memory_head;
     do
     {
+        auto next = node->next;
         free(node->blocks);
-        node = node->next;
+        delete node;
+        node = next;
     } while (node != nullptr);
 }
 
@@ -150,7 +153,7 @@ void ChunkManager::CreateInitialPatch()
 BlockID *ChunkManager::AllocateBlockMemory()
 {
     // Start with head node
-    BlockMemoryNode *node = &_block_memory_head;
+    BlockMemoryNode *node = _block_memory_head;
 
     // Find first node that is not in use
     while (node->in_use && node->next != nullptr) { node = node->next; }

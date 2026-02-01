@@ -7,7 +7,7 @@
 
 using Sound = SoundSystem::Sound;
 
-std::vector<std::tuple<Sound, Soundlib::SoundSource *>> SoundSystem::_active_sounds;
+std::vector<std::tuple<Sound, std::unique_ptr<Soundlib::SoundSource>>> SoundSystem::_active_sounds;
 std::unordered_map<Sound, Soundlib::Sound> SoundSystem::_sound_map;
 float SoundSystem::_sfx_volume;
 float SoundSystem::_music_volume;
@@ -40,13 +40,17 @@ void SoundSystem::Init()
 
 void SoundSystem::Exit()
 {
+    for (auto &[sound, source] : _active_sounds)
+        source->Stop();
+    _active_sounds.clear();
+
     Soundlib::Exit();
 }
 
 void SoundSystem::Update(Options options)
 {
     // Remove finished sounds
-    std::erase_if(_active_sounds, [](std::tuple<Sound, Soundlib::SoundSource *> sound) {
+    std::erase_if(_active_sounds, [](std::tuple<Sound, std::unique_ptr<Soundlib::SoundSource>> &sound) {
         return std::get<1>(sound)->GetState() == Soundlib::SourceState::STOPPED;
     });
 
@@ -65,7 +69,7 @@ void SoundSystem::Update(Options options)
 // Plays global Soundlib::Sound (without distance attenuation)
 void SoundSystem::Play(Sound sound)
 {
-    Soundlib::SoundSource *source = new Soundlib::SoundSource(_sound_map[sound]);
+    auto source = std::make_unique<Soundlib::SoundSource>(_sound_map[sound]);
     source->SetRolloffFactor(0);
     source->SetGain(OptionsManager::GetOptions().sfx_volume);
     if (sound == Sound::SONG_1 || sound == Sound::SONG_2 || sound == Sound::SONG_3 || sound == Sound::SONG_4 || sound == Sound::SONG_5)
@@ -73,20 +77,20 @@ void SoundSystem::Play(Sound sound)
     else
         source->SetGain(_sfx_volume);
     source->Play();
-    _active_sounds.emplace_back(sound, source);
+    _active_sounds.emplace_back(sound, std::move(source));
 }
 
 // Plays positioned Soundlib::Sound (with distance attenuation)
 void SoundSystem::PlayAt(Sound sound, glm::vec3 position)
 {
-    Soundlib::SoundSource *source = new Soundlib::SoundSource(_sound_map[sound]);
+    auto source = std::make_unique<Soundlib::SoundSource>(_sound_map[sound]);
     source->SetPosition({position.x, position.y, position.z});
     if (sound == Sound::SONG_1 || sound == Sound::SONG_2 || sound == Sound::SONG_3 || sound == Sound::SONG_4 || sound == Sound::SONG_5)
         source->SetGain(_music_volume);
     else
         source->SetGain(_sfx_volume);
     source->Play();
-    _active_sounds.emplace_back(sound, source);
+    _active_sounds.emplace_back(sound, std::move(source));
 }
 
 void SoundSystem::SetPlayerPosition(glm::vec3 position)

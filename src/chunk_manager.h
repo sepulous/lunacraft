@@ -36,7 +36,7 @@ class ChunkManager
     private:
         int _loaded_chunk_count = 0;
         GLuint _texture_atlas;
-        BlockMemoryNode _block_memory_head;
+        BlockMemoryNode *_block_memory_head;
         std::unordered_map<uint64_t, std::shared_ptr<Chunk>> _chunks;
         std::mutex _chunks_mutex;
         ChunkWorkerPool _worker_pool;
