@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <cstdint>
 #include <vector>
 #include <array>
@@ -93,6 +94,7 @@ public:
     glm::ivec3 GetCoords();
     BlockID *GetBlocks();
     const Lightmap &GetLightmap() const;
+    std::filesystem::path GetFilePath();
 
     void Build();
     void BuildExternal();

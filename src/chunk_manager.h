@@ -55,4 +55,5 @@ class ChunkManager
         std::unordered_map<uint64_t, std::shared_ptr<Chunk>> &GetChunks();
         ChunkWorkerPool &GetWorkerPool();
         int GetLoadedChunkCount();
+        void WriteAllChunksToDisk();
 };

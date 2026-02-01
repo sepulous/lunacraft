@@ -282,6 +282,7 @@ int main()
                     player_data_file.close();
 
                     // Unload moon
+                    moon->GetChunkManager().WriteAllChunksToDisk();
                     delete moon;
                     moon = nullptr;
 

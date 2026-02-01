@@ -234,8 +234,9 @@ void ChunkManager::AdjustChunkPatch()
 
         if (outside_border && can_be_deleted)
         {
+            WriteChunkToDisk(chunk->GetFilePath(), chunk->GetBlocks());
             chunk->GLDestroy(); // Deletes OpenGL data
-            it = _chunks.erase(it); // Frees CPU data
+            it = _chunks.erase(it); // Frees chunk
             _loaded_chunk_count--;
         }
         else
@@ -289,4 +290,10 @@ ChunkWorkerPool &ChunkManager::GetWorkerPool()
 int ChunkManager::GetLoadedChunkCount()
 {
     return _loaded_chunk_count;
+}
+
+void ChunkManager::WriteAllChunksToDisk()
+{
+    for (auto &[chunk_id, chunk] : _chunks)
+        WriteChunkToDisk(chunk->GetFilePath(), chunk->GetBlocks());
 }

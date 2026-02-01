@@ -1,6 +1,4 @@
 
-#include <cstdint>
-#include <vector>
 #include <unordered_map>
 
 #include <glm/glm.hpp>
@@ -192,6 +190,12 @@ const Lightmap &Chunk::GetLightmap() const
     return _lightmap;
 }
 
+std::filesystem::path Chunk::GetFilePath()
+{
+    auto chunk_id = ChunkCoordsToID(_coords);
+    return Storage::MOON_DIR / (std::string("moon") + std::to_string(Moon::GetCurrentMoon()->GetID())) / "chunks" / (std::to_string(chunk_id) + ".chunk");
+}
+
 //
 // The behavior of this function depends on whether the chunk is a border chunk.
 //
@@ -297,17 +301,11 @@ void Chunk::LoadBlocks()
     SetState(ChunkState::LOADING_BLOCKS);
 
     // Load blocks
-    uint64_t chunk_id = ChunkCoordsToID(_coords);
-    std::filesystem::path chunk_file_path = Storage::MOON_DIR / (std::string("moon") + std::to_string(Moon::GetCurrentMoon()->GetID())) / "chunks" / (std::to_string(chunk_id) + ".chunk");
+    auto chunk_file_path = GetFilePath();
     if (std::filesystem::exists(chunk_file_path))
-    {
         LoadChunkFromDisk(chunk_file_path, _blocks);
-    }
     else
-    {
         GenerateChunk(_blocks, _coords.x, _coords.z, Moon::GetCurrentMoon()->GetSettings().seed);
-        WriteChunkToDisk(chunk_file_path, _blocks);
-    }
 
     // Start next task
     _chunk_manager->GetWorkerPool().SubmitJob([this]() { BuildLightmapInternal(); });
