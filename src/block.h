@@ -8,7 +8,15 @@
 
 enum class BlockID : uint8_t
 {
+    // Transparents
     air,
+    water,
+    sulphur_crystal,
+    blue_crystal,
+    boron_crystal,
+    glass,
+
+    // Opaques
     aluminum,
     aluminum_ore,
     amethyst_ore,
@@ -47,11 +55,6 @@ enum class BlockID : uint8_t
     unknown,
     xenostone,
     zircon_ore,
-    water,
-    sulphur_crystal,
-    blue_crystal,
-    boron_crystal,
-    glass,
     minilight_pz,
     minilight_nz,
     minilight_px,
