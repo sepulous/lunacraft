@@ -108,7 +108,7 @@ void EntityManager::RunPhysics(int steps, float interp)
                     // Decide whether on ice
                     auto entity_voxel_g = GetNearestVoxel(entity->GetPosition());
                     auto entity_voxel_l = GlobalToLocalVoxel(entity_voxel_g);
-                    auto entity_chunk = _chunk_manager->GetOrCreateChunk(VoxelToChunk(entity_voxel_g));
+                    auto entity_chunk = _chunk_manager->GetChunk(VoxelToChunk(entity_voxel_g));
                     BlockID foot_block = entity_chunk->GetBlocks()[GetChunkIndex(entity_voxel_l - glm::ivec3{0, 1, 0})]; // Can go out of bounds...
                     entity->SetIsOnIce(foot_block == BlockID::water);
                 }
