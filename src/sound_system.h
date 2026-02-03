@@ -48,7 +48,7 @@ class SoundSystem
         static void SetPlayerOrientation(glm::vec3 forward, glm::vec3 up);
 
     private:
-        static std::vector<std::tuple<Sound, std::unique_ptr<Soundlib::SoundSource>>> _active_sounds;
+        static std::vector<std::tuple<Sound, bool, std::unique_ptr<Soundlib::SoundSource>>> _active_sounds;
         static std::unordered_map<Sound, Soundlib::Sound> _sound_map;
         static float _sfx_volume;
         static float _music_volume;

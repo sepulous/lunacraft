@@ -7,7 +7,9 @@
 
 using Sound = SoundSystem::Sound;
 
-std::vector<std::tuple<Sound, std::unique_ptr<Soundlib::SoundSource>>> SoundSystem::_active_sounds;
+typedef std::tuple<Sound, bool, std::unique_ptr<Soundlib::SoundSource>> ActiveSound;
+
+std::vector<ActiveSound> SoundSystem::_active_sounds;
 std::unordered_map<Sound, Soundlib::Sound> SoundSystem::_sound_map;
 float SoundSystem::_sfx_volume;
 float SoundSystem::_music_volume;
@@ -40,7 +42,7 @@ void SoundSystem::Init()
 
 void SoundSystem::Exit()
 {
-    for (auto &[sound, source] : _active_sounds)
+    for (auto &[sound, is_global, source] : _active_sounds)
         source->Stop();
     _active_sounds.clear();
 
@@ -49,20 +51,31 @@ void SoundSystem::Exit()
 
 void SoundSystem::Update(Options options)
 {
-    // Remove finished sounds
-    std::erase_if(_active_sounds, [](std::tuple<Sound, std::unique_ptr<Soundlib::SoundSource>> &sound) {
-        return std::get<1>(sound)->GetState() == Soundlib::SourceState::STOPPED;
-    });
-
-    // Update volumes
     _sfx_volume = options.sfx_volume;
     _music_volume = options.music_volume;
-    for (auto &[sound_id, sound_source] : _active_sounds)
+
+    for (auto it = _active_sounds.begin(); it != _active_sounds.end(); )
     {
-        if (sound_id == Sound::SONG_1 || sound_id == Sound::SONG_2 || sound_id == Sound::SONG_3 || sound_id == Sound::SONG_4 || sound_id == Sound::SONG_5)
-            sound_source->SetGain(_music_volume);
+        auto &[sound_id, is_global, sound_source] = *it;
+
+        if (sound_source->GetState() == Soundlib::SourceState::STOPPED) // Remove finished sounds
+        {
+            it = _active_sounds.erase(it);
+        }
         else
-            sound_source->SetGain(_sfx_volume);
+        {
+            // Update volumes
+            if (sound_id <= Sound::SONG_5)
+                sound_source->SetGain(_music_volume);
+            else
+                sound_source->SetGain(_sfx_volume);
+
+            // Update positions of global sounds
+            if (is_global)
+                sound_source->SetPosition(Soundlib::GetListenerPosition());
+
+            ++it;
+        }
     }
 }
 
@@ -70,14 +83,14 @@ void SoundSystem::Update(Options options)
 void SoundSystem::Play(Sound sound)
 {
     auto source = std::make_unique<Soundlib::SoundSource>(_sound_map[sound]);
+    source->SetPosition(Soundlib::GetListenerPosition());
     source->SetRolloffFactor(0);
-    source->SetGain(OptionsManager::GetOptions().sfx_volume);
-    if (sound == Sound::SONG_1 || sound == Sound::SONG_2 || sound == Sound::SONG_3 || sound == Sound::SONG_4 || sound == Sound::SONG_5)
+    if (sound <= Sound::SONG_5)
         source->SetGain(_music_volume);
     else
         source->SetGain(_sfx_volume);
     source->Play();
-    _active_sounds.emplace_back(sound, std::move(source));
+    _active_sounds.emplace_back(sound, true, std::move(source));
 }
 
 // Plays positioned Soundlib::Sound (with distance attenuation)
@@ -85,12 +98,12 @@ void SoundSystem::PlayAt(Sound sound, glm::vec3 position)
 {
     auto source = std::make_unique<Soundlib::SoundSource>(_sound_map[sound]);
     source->SetPosition({position.x, position.y, position.z});
-    if (sound == Sound::SONG_1 || sound == Sound::SONG_2 || sound == Sound::SONG_3 || sound == Sound::SONG_4 || sound == Sound::SONG_5)
+    if (sound <= Sound::SONG_5)
         source->SetGain(_music_volume);
     else
         source->SetGain(_sfx_volume);
     source->Play();
-    _active_sounds.emplace_back(sound, std::move(source));
+    _active_sounds.emplace_back(sound, false, std::move(source));
 }
 
 void SoundSystem::SetPlayerPosition(glm::vec3 position)

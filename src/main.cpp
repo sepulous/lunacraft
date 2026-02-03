@@ -127,13 +127,13 @@ int main()
         // Update sound system
         if (current_time - last_sound_update_time >= 0.2f)
         {
-            SoundSystem::Update(OptionsManager::GetOptions());
             if (moon != nullptr)
             {
-                Player *player = moon->GetPlayer();
-                SoundSystem::SetPlayerPosition(player->GetPosition());
-                SoundSystem::SetPlayerOrientation(player->GetCamera().forward, player->GetCamera().up);
+                auto &camera = moon->GetPlayer()->GetCamera();
+                SoundSystem::SetPlayerPosition(camera.position);
+                SoundSystem::SetPlayerOrientation(camera.forward, camera.up);
             }
+            SoundSystem::Update(OptionsManager::GetOptions());
             last_sound_update_time = current_time;
         }
 
