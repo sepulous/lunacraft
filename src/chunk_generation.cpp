@@ -10,6 +10,7 @@
 #include "helpers.h"
 #include "rng.h"
 #include "chunk_generation.h"
+#include "moon.h"
 
 struct TreeBlock
 {
@@ -992,7 +993,7 @@ void GenerateHeightMap(uint8_t *height_map, int chunk_x, int chunk_z, uint64_t s
     }
 }
 
-void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
+void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, MoonSettings settings)
 {
     thread_local uint8_t height_maps[CHUNK_SIZE * CHUNK_SIZE * 4];
 
@@ -1004,10 +1005,10 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
     const int GRAVEL_OFFSET = 1 * CHUNK_SIZE * CHUNK_SIZE;
     const int DIRT_OFFSET   = 2 * CHUNK_SIZE * CHUNK_SIZE;
     const int SAND_OFFSET   = 3 * CHUNK_SIZE * CHUNK_SIZE;
-    GenerateHeightMap(&height_maps[ROCK_OFFSET], chunk_x, chunk_z, seed, 14, 0.2, 0.4, 4, 1.5f);
-    GenerateHeightMap(&height_maps[GRAVEL_OFFSET], chunk_x, chunk_z, seed, 4, 0.2, 0.6, 2, 1.5f);
-    GenerateHeightMap(&height_maps[DIRT_OFFSET], chunk_x, chunk_z, seed, 3, 0.2, 0.6, 3, 1.5f);
-    GenerateHeightMap(&height_maps[SAND_OFFSET], chunk_x, chunk_z, seed, 2, 0.2, 0.8, 2, 1.5f);
+    GenerateHeightMap(&height_maps[ROCK_OFFSET], chunk_x, chunk_z, settings.seed, 14, 0.2, 0.4, 4, settings.terrain_roughness);
+    GenerateHeightMap(&height_maps[GRAVEL_OFFSET], chunk_x, chunk_z, settings.seed, 4, 0.2, 0.6, 2, settings.terrain_roughness);
+    GenerateHeightMap(&height_maps[DIRT_OFFSET], chunk_x, chunk_z, settings.seed, 3, 0.2, 0.6, 3, settings.terrain_roughness);
+    GenerateHeightMap(&height_maps[SAND_OFFSET], chunk_x, chunk_z, settings.seed, 3, 0.2, 0.8, 2, settings.terrain_roughness * 0.8f);
 
     // For cleanup step after initial generation
     std::vector<glm::ivec3> topsoil_coords;
@@ -1113,7 +1114,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
     }
 
     // Seed RNG so structure placement is deterministic
-    uint64_t structure_seed = seed  ^ (chunk_x * 73856093) ^ (chunk_z * 19349663);
+    uint64_t structure_seed = settings.seed ^ ((uint64_t)chunk_x * 73856093ull) ^ ((uint64_t)chunk_z * 19349663ull);
     RNG rng{structure_seed};
 
     //
@@ -1886,72 +1887,77 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, uint64_t seed)
     //
     // Trees
     //
-    int num_trees = rng.Range(1, 3);
-    for (int i = 0; i < num_trees; i++)
+
+    // These calculations were reverse-engineered from an unknown version of the
+    // original game (definitely at least v1.91). Charlie's chunks were much
+    // bigger than mine, so I did my best to make the densities match.
+    int green_tree_count = settings.tree_cover * (rng.Range(0.0f, 1.0f) * rng.Range(0.0f, 1.0f) - 0.1f) * 9;
+    int wood_tree_count = settings.tree_cover * (rng.Range(0.0f, 1.0f) * rng.Range(0.0f, 1.0f) - 0.2f) * 7;
+    int color_tree_count = settings.tree_cover * (rng.Range(0.0f, 1.0f) * rng.Range(0.0f, 1.0f) - 0.4f) * 4;
+    for (int i = 0; i < 3; i++)
     {
-        int tree_type = rng.Range(1, 10);
-        int tree_orientation = rng.Range(1, 4);
+        int tree_count;
+        if (i == 0)
+            tree_count = green_tree_count;
+        else if (i == 1)
+            tree_count = wood_tree_count;
+        else
+            tree_count = color_tree_count;
 
-        int tree_shape;
-        std::vector<TreeBlock> tree_data;
-        if (tree_type < 6) // Green light tree
+        for (int j = 0; j < tree_count; j++)
         {
-            tree_shape = rng.Range(0, GREEN_LIGHT_TREE_SHAPES.size() - 1);
-            tree_data = GREEN_LIGHT_TREE_SHAPES[tree_shape];
-        }
-        else if (tree_type < 9) // Color wood tree
-        {
-            tree_shape = rng.Range(0, COLOR_WOOD_TREE_SHAPES.size() - 1);
-            tree_data = COLOR_WOOD_TREE_SHAPES[tree_shape];
-        }
-        else // Spiral light tree
-        {
-            tree_shape = rng.Range(0, SPIRAL_LIGHT_TREE_SHAPES.size() - 1);
-            tree_data = SPIRAL_LIGHT_TREE_SHAPES[tree_shape];
-        }
+            std::vector<TreeBlock> tree_data;
+            if (i == 0)
+                tree_data = GREEN_LIGHT_TREE_SHAPES[rng.Range(0, GREEN_LIGHT_TREE_SHAPES.size() - 1)];
+            else if (i == 1)
+                tree_data = SPIRAL_LIGHT_TREE_SHAPES[rng.Range(0, SPIRAL_LIGHT_TREE_SHAPES.size() - 1)];
+            else
+                tree_data = COLOR_WOOD_TREE_SHAPES[rng.Range(0, COLOR_WOOD_TREE_SHAPES.size() - 1)];
 
-        int padding_needed = tree_data[0].local_x;
-        int base_block_x = rng.Range(padding_needed, (CHUNK_SIZE - 1) - padding_needed);
-        int base_block_z = rng.Range(padding_needed, (CHUNK_SIZE - 1) - padding_needed);
-        int base_block_y;
-        for (int y = 63; y < WORLD_HEIGHT_LIMIT; y++)
-        {
-            chunk_index = GetChunkIndex(base_block_x, y, base_block_z);
-            if (chunk[chunk_index + 1] == BlockID::air)
+            int tree_orientation = rng.Range(1, 4);
+            int padding_needed = tree_data[0].local_x;
+            int base_block_x = rng.Range(padding_needed, (CHUNK_SIZE - 1) - padding_needed);
+            int base_block_z = rng.Range(padding_needed, (CHUNK_SIZE - 1) - padding_needed);
+            int base_block_y;
+            for (int y = 63; y < WORLD_HEIGHT_LIMIT; y++)
             {
-                if (chunk[chunk_index] == BlockID::topsoil || chunk[chunk_index] == BlockID::sand)
+                chunk_index = GetChunkIndex(base_block_x, y, base_block_z);
+                if (chunk[chunk_index + 1] == BlockID::air)
                 {
-                    base_block_y = y;
-                    for (int j = 1; j < tree_data.size(); j++)
+                    if (chunk[chunk_index] == BlockID::topsoil)
                     {
-                        TreeBlock tree_block = tree_data[j];
-                        if (tree_orientation == 2) // 90 degrees
+                        base_block_y = y;
+                        for (int j = 1; j < tree_data.size(); j++)
                         {
-                            int temp = tree_block.local_x;
-                            tree_block.local_x = -tree_block.local_z;
-                            tree_block.local_z = temp;
-                        }
-                        else if (tree_orientation == 3) // 180 degrees
-                        {
-                            tree_block.local_x *= -1;
-                            tree_block.local_z *= -1;
-                        }
-                        else if (tree_orientation == 4) // 270 degrees
-                        {
-                            int temp = tree_block.local_x;
-                            tree_block.local_x = tree_block.local_z;
-                            tree_block.local_z = -temp;
-                        }
+                            TreeBlock tree_block = tree_data[j];
+                            if (tree_orientation == 2) // 90 degrees
+                            {
+                                int temp = tree_block.local_x;
+                                tree_block.local_x = -tree_block.local_z;
+                                tree_block.local_z = temp;
+                            }
+                            else if (tree_orientation == 3) // 180 degrees
+                            {
+                                tree_block.local_x *= -1;
+                                tree_block.local_z *= -1;
+                            }
+                            else if (tree_orientation == 4) // 270 degrees
+                            {
+                                int temp = tree_block.local_x;
+                                tree_block.local_x = tree_block.local_z;
+                                tree_block.local_z = -temp;
+                            }
 
-                        chunk_index = GetChunkIndex(base_block_x + tree_block.local_x, base_block_y + tree_block.local_y, base_block_z + tree_block.local_z);
-                        chunk[chunk_index] = tree_block.block;
+                            chunk_index = GetChunkIndex(base_block_x + tree_block.local_x, base_block_y + tree_block.local_y, base_block_z + tree_block.local_z);
+                            chunk[chunk_index] = tree_block.block;
 
-                        // Partial fix for overhanging trees when placed on an edge
-                        if (tree_block.local_y == 1 && chunk[chunk_index - 1] == BlockID::air && chunk[chunk_index - 2] != BlockID::air)
-                            chunk[chunk_index - 1] = tree_block.block;
+                            // Partial fix for overhanging trees when placed on an edge
+                            if (tree_block.local_y == 1 && chunk[chunk_index - 1] == BlockID::air && chunk[chunk_index - 2] != BlockID::air)
+                                chunk[chunk_index - 1] = tree_block.block;
+                        }
                     }
+                    break;
                 }
-                break;
             }
         }
     }

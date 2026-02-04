@@ -305,7 +305,7 @@ void Chunk::LoadBlocks()
     if (std::filesystem::exists(chunk_file_path))
         LoadChunkFromDisk(chunk_file_path, _blocks);
     else
-        GenerateChunk(_blocks, _coords.x, _coords.z, Moon::GetCurrentMoon()->GetSettings().seed);
+        GenerateChunk(_blocks, _coords.x, _coords.z, Moon::GetCurrentMoon()->GetSettings());
 
     // Start next task
     _chunk_manager->GetWorkerPool().SubmitJob([this]() { BuildLightmapInternal(); });
