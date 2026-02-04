@@ -598,7 +598,7 @@ bool UIMoonSettingsMenu::IsLaunchButtonClicked()
 void UIMoonSettingsMenu::Reset()
 {
     // Reset sliders and seed textbox
-    _tree_cover_slider.SetValue(2.0f);
+    _tree_cover_slider.SetValue(0.5f);
     _roughness_slider.SetValue(2.0f);
     _wildlife_slider.SetValue(2.0f);
     _seed_textbox.SetText("");
