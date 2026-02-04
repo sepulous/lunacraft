@@ -432,11 +432,10 @@ UIMoonSettingsMenu::UIMoonSettingsMenu()
     _tree_cover.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
 
     // Tree cover slider
-    _tree_cover_slider.SetDiscrete(true);
     _tree_cover_slider.SetSize({460, 20});
     _tree_cover_slider.SetPosition({bg_pos_x + setting_text_align_x + 20, 700});
-    _tree_cover_slider.SetBounds({0.0f, 4.0f});
-    _tree_cover_slider.SetValue(2.0f);
+    _tree_cover_slider.SetBounds({0.0f, 1.0f});
+    _tree_cover_slider.SetValue(0.5f);
 
     // Terrain roughness
     float roughness_text_width = UIText::GetTextSizeInPixels("Terrain Roughness:", setting_font_size).x;
@@ -528,7 +527,7 @@ UIMoonSettingsMenu::UIMoonSettingsMenu()
         launch_button_position.y + (launch_button_size.y / 2.0f) - (launch_text_size.y / 2.0f)
     });
     _launch_button.SetClickAction([this]() {
-        _moon_settings.tree_cover = (uint8_t)_tree_cover_slider.GetValue();
+        _moon_settings.tree_cover = _tree_cover_slider.GetValue();
         _moon_settings.terrain_roughness = (uint8_t)_roughness_slider.GetValue();
         _moon_settings.wildlife_level = (uint8_t)_wildlife_slider.GetValue();
         _moon_settings.is_creative = _creative_button.IsToggled();
@@ -843,7 +842,7 @@ UIOptionsMenu::UIOptionsMenu()
     _render_distance_slider.SetDiscrete(true);
     _render_distance_slider.SetPosition({bg_pos_x + option_text_align_x1 + 25, 440});
     _render_distance_slider.SetSize({240, 20});
-    _render_distance_slider.SetBounds({1.0f, 16.0f});
+    _render_distance_slider.SetBounds({1.0f, 12.0f});
     _render_distance_slider.SetValue(current_options.render_distance);
 
     // Show GUI
@@ -2007,28 +2006,29 @@ void UISlider::Update()
 
     if (_held) // Still held; drag slider
     {
-        if (_discrete) // Discrete slider should depend on mouse position to avoid being too sensitive
+        // Determine new value and position of handle
+        float handle_pos_x;
+        if (_discrete)
         {
-            _value = glm::clamp(
-                (((float)mouse_pos.x - _position.x) / _size.x) * (_value_max - _value_min) + _value_min,
-                _value_min,
-                _value_max
-            );
-            _value = glm::round(_value);
+            float delta_x = _size.x / (_value_max - _value_min);
+            int n = glm::round(glm::clamp((float)mouse_pos.x - _position.x, 0.0f, _size.x) / delta_x);
+            handle_pos_x = _position.x + n * delta_x;
+            _value = _value_min + n;
         }
         else
         {
-            _value += 0.01f * Input::GetMouseDelta().x;
-            _value = glm::clamp(_value, _value_min, _value_max);
+            handle_pos_x = glm::clamp((float)mouse_pos.x, _position.x, _position.x + _size.x);
+            float t = (handle_pos_x - _position.x) / _size.x;
+            _value = glm::mix(_value_min, _value_max, t);
         }
 
-        float f = (_value - _value_min) / (_value_max - _value_min);
-        float handle_pos_x = _position.x + f*_size.x - 20;
-        _slider_level_middle.SetSize({handle_pos_x - _position.x + 20, _size.y}, false);
-        _slider_handle.SetPosition({handle_pos_x, _position.y - 16});
-        _slider_handle_held.SetPosition({handle_pos_x, _position.y - 16});
+        // Update positions
+        _slider_level_middle.SetSize({handle_pos_x - _position.x, _size.y}, false);
+        _slider_handle.SetPosition({handle_pos_x - 20, _position.y - 16});
+        _slider_handle_held.SetPosition({handle_pos_x - 20, _position.y - 16});
         _slider_value_text.SetPosition({handle_pos_x + 30, _position.y + 30});
 
+        // Update value text
         if (_discrete)
         {
             _slider_value_text.SetText(std::to_string((int)_value));
@@ -2054,7 +2054,7 @@ void UISlider::Render()
     else
         _slider_handle.Render();
 
-    if (_hovered)
+    if (_held || _hovered)
         _slider_value_text.Render();
 }
 
