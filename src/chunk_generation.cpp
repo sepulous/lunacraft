@@ -1869,11 +1869,22 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, MoonSettings settin
                     {
                         glm::vec3 offset = shape_offsets[i];
                         if (crystal_plant_orientation == 2) // 90 degrees
-                            (offset.x, offset.z) = (-offset.z, offset.x);
+                        {
+                            int temp = offset.x;
+                            offset.x = -offset.z;
+                            offset.z = temp;
+                        }
                         else if (crystal_plant_orientation == 3) // 180 degrees
-                            (offset.x, offset.z) = (-offset.x, -offset.z);
+                        {
+                            offset.x *= -1;
+                            offset.z *= -1;
+                        }
                         else if (crystal_plant_orientation == 4) // 270 degrees
-                            (offset.x, offset.z) = (offset.z, -offset.x);
+                        {
+                            int temp = offset.x;
+                            offset.x = offset.z;
+                            offset.z = -temp;
+                        }
 
                         chunk_index = GetChunkIndex(base_block_x + offset.x, base_block_y + offset.y, base_block_z + offset.z);
                         chunk[chunk_index] = crystal;
