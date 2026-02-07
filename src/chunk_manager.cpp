@@ -225,9 +225,17 @@ void ChunkManager::AdjustChunkPatch()
             chunk->MarkForDelete();
             if (chunk->GetPinCount() < 1)
             {
-                WriteChunkToDisk(chunk->GetFilePath(), chunk->GetBlocks()); // TODO: Do this on another thread
-                ReuseBlockMemory(chunk->GetID());
-                it = _chunks.erase(it); // Frees chunk
+                // Write chunk to disk and then take block memory back
+                auto file_path = chunk->GetFilePath();
+                auto blocks = chunk->GetBlocks();
+                auto chunk_id = chunk->GetID();
+                _worker_pool->SubmitJob([this, file_path, blocks, chunk_id]() {
+                    WriteChunkToDisk(file_path, blocks);
+                    ReuseBlockMemory(chunk_id);
+                });
+
+                // Erase chunk
+                it = _chunks.erase(it);
                 _loaded_chunk_count--;
             }
         }
