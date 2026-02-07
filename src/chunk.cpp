@@ -111,19 +111,20 @@ std::filesystem::path Chunk::GetFilePath()
     return Storage::MOON_DIR / (std::string("moon") + std::to_string(Moon::GetCurrentMoon()->GetID())) / "chunks" / (std::to_string(chunk_id) + ".chunk");
 }
 
+// Must only be called from the main thread!
 void Chunk::Pin()
 {
-    _pins.fetch_add(1);
+    _pins.fetch_add(1, std::memory_order_relaxed);
 }
 
 void Chunk::Unpin()
 {
-    _pins.fetch_sub(1);
+    _pins.fetch_sub(1, std::memory_order_release);
 }
 
 int Chunk::GetPinCount()
 {
-    return _pins.load();
+    return _pins.load(std::memory_order_acquire);
 }
 
 void Chunk::MarkForDelete()
