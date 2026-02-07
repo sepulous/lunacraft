@@ -1207,7 +1207,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, MoonSettings settin
     //
     bool spawn_astronaut_lair = rng.Range(1, 100) == 69; // 1% chance, each chunk
     const int lair_depth = 26;
-    if (true || spawn_astronaut_lair)
+    if (spawn_astronaut_lair)
     {
         int center_block_x = (int)(CHUNK_SIZE / 2);
         int center_block_z = (int)(CHUNK_SIZE / 2);
