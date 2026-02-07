@@ -295,7 +295,7 @@ void Chunk::BuildLightmapInternal()
     {
         for (int z = 0; z < CHUNK_SIZE; z++)
         {
-            uint8_t skylight_level = 15;
+            uint8_t skylight_level = 9;
             for (int y = WORLD_HEIGHT_LIMIT - 1; y >= 0; y--)
             {
                 BlockID block = _blocks[GetChunkIndex(x, y, z)];
@@ -307,7 +307,7 @@ void Chunk::BuildLightmapInternal()
 
                 if (skylight_level != 0)
                 {
-                    _lightmap.SetSkyLevel(15, x, y, z);
+                    _lightmap.SetSkyLevel(9, x, y, z);
                     to_expand.emplace_back(x, y, z);
                 }
 
@@ -327,7 +327,7 @@ void Chunk::BuildLightmapInternal()
                         BlockID neighbor_block = _blocks[GetChunkIndex(neighbor_coords.x, neighbor_coords.y, neighbor_coords.z)];
                         if (BlockIsTransparent(neighbor_block))
                         {
-                            _lightmap.SetBlockLevel(15, neighbor_coords.x, neighbor_coords.y, neighbor_coords.z);
+                            _lightmap.SetBlockLevel(9, neighbor_coords.x, neighbor_coords.y, neighbor_coords.z);
 
                             // This neighbor might have already been pushed, but duplicates are on the order of 10,
                             // while the total size of to_expand is on the order of 10,000
@@ -470,7 +470,7 @@ void Chunk::BuildLightmapExternal()
                         // Block light
                         if (neighbor_block == BlockID::light)
                         {
-                            _lightmap.SetBlockLevel(15, my_block_coords.x, my_block_coords.y, my_block_coords.z);
+                            _lightmap.SetBlockLevel(9, my_block_coords.x, my_block_coords.y, my_block_coords.z);
                             to_expand.emplace_back(my_block_coords.x, my_block_coords.y, my_block_coords.z);
                         }
                         else
@@ -540,7 +540,7 @@ void Chunk::BuildLightmapExternal()
                     // Block light
                     if (neighbor_block == BlockID::light)
                     {
-                        _lightmap.SetBlockLevel(13, my_block_coords.x, my_block_coords.y, my_block_coords.z);
+                        _lightmap.SetBlockLevel(7, my_block_coords.x, my_block_coords.y, my_block_coords.z);
                         to_expand.emplace_back(my_block_coords.x, my_block_coords.y, my_block_coords.z);
                     }
                     else
@@ -787,8 +787,8 @@ void Chunk::BuildVertices()
                 }
             }
         }
-        float sky_light = (float)_sky_light * (100.0f / 15.0f);      // Apparently Charlie's light values were in [0, 100]. Mine are in [0, 15], 
-        float block_light = (float)_block_light * (100.0f / 15.0f);  // so let's scale to [0, 100] so his code works as-is
+        float sky_light = (float)_sky_light * (100.0f / 9.0f);      // Apparently Charlie's light values were in [0, 100]. Mine are in [0, 9], 
+        float block_light = (float)_block_light * (100.0f / 9.0f);  // so let's scale to [0, 100] so his code works as-is
 
         float corrected_sky_light = (sky_light * ambient_light + (1.0 - ambient_light) * sky_light * dot) * sunlight_factor;
         float scaled_sky_light;
