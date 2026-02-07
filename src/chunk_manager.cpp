@@ -22,6 +22,10 @@ ChunkManager::~ChunkManager()
 
     // Stop worker pool
     delete _worker_pool;
+
+    // Free all block memory
+    for (auto &memory : _block_memory)
+        free(memory.blocks);
 }
 
 void ChunkManager::Init(int moon_id, MoonSettings moon_settings)
@@ -48,6 +52,9 @@ void ChunkManager::Init(int moon_id, MoonSettings moon_settings)
     std::filesystem::path chunk_dir = moon_dir / "chunks";
     if (!std::filesystem::exists(chunk_dir))
         std::filesystem::create_directory(chunk_dir);
+
+    // Reserve for maximum number of possible memory blocks (including border chunks)
+    _block_memory.reserve((2*MAX_RENDER_DISTANCE + 3) * (2*MAX_RENDER_DISTANCE + 3));
 
     // Start worker pool
     _worker_pool = new ChunkWorkerPool{};
@@ -219,6 +226,7 @@ void ChunkManager::AdjustChunkPatch()
             if (chunk->GetPinCount() < 1)
             {
                 WriteChunkToDisk(chunk->GetFilePath(), chunk->GetBlocks()); // TODO: Do this on another thread
+                ReuseBlockMemory(chunk->GetID());
                 it = _chunks.erase(it); // Frees chunk
                 _loaded_chunk_count--;
             }
@@ -268,6 +276,41 @@ void ChunkManager::AdjustChunkPatch()
     {
         chunk->SetIsBorderChunk(false);
         chunk->BuildExternal();
+    }
+}
+
+BlockID *ChunkManager::GetBlockMemory(uint64_t chunk_id)
+{
+    // Check for free memory blocks
+    for (auto &memory : _block_memory)
+    {
+        if (!memory.in_use)
+        {
+            memory.in_use = true;
+            memory.owner = chunk_id;
+            return memory.blocks;
+        }
+    }
+
+    // No free memory blocks; create new one
+    BlockMemory new_memory {
+        .blocks = (BlockID *)malloc(BLOCKS_IN_CHUNK * sizeof(BlockID)),
+        .in_use = true,
+        .owner = chunk_id
+    };
+    _block_memory.push_back(new_memory);
+    return new_memory.blocks;
+}
+
+void ChunkManager::ReuseBlockMemory(uint64_t chunk_id)
+{
+    for (auto &memory : _block_memory)
+    {
+        if (memory.owner == chunk_id)
+        {
+            memory.in_use = false;
+            return;
+        }
     }
 }
 

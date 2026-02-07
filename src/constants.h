@@ -7,3 +7,4 @@ constexpr int GROUND_LEVEL = 64;
 constexpr int LIGHT_PHASES = 11;
 constexpr int SECONDS_PER_LIGHT_PHASE = 30;
 constexpr float FIXED_DELTA_TIME = 0.02f;
+constexpr int MAX_RENDER_DISTANCE = 12;

@@ -14,11 +14,19 @@
 
 class Moon;
 
+struct BlockMemory
+{
+    BlockID *blocks;
+    bool in_use;
+    uint64_t owner; // Chunk ID
+};
+
 class ChunkManager
 {
     private:
         int _loaded_chunk_count = 0;
         GLuint _texture_atlas;
+        std::vector<BlockMemory> _block_memory;
         std::unordered_map<uint64_t, std::shared_ptr<Chunk>> _chunks;
         ChunkWorkerPool *_worker_pool;
 
@@ -31,6 +39,7 @@ class ChunkManager
         void UploadReadyChunks();
         void RenderChunks(Plane frustum[6]);
         void RebuildChunks();
+        BlockID *GetBlockMemory(uint64_t chunk_id);
         std::array<std::shared_ptr<Chunk>, 4> GetAdjacentNeighbors(glm::ivec3 chunk_coords);
         std::array<std::shared_ptr<Chunk>, 8> GetAllNeighbors(glm::ivec3 chunk_coords);
         std::shared_ptr<Chunk> GetChunk(glm::ivec3 chunk_coords);
@@ -38,4 +47,7 @@ class ChunkManager
         ChunkWorkerPool *GetWorkerPool();
         int GetLoadedChunkCount();
         void WriteAllChunksToDisk();
+
+    private:
+        void ReuseBlockMemory(uint64_t chunk_id);
 };
