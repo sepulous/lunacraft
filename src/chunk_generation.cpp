@@ -1077,7 +1077,8 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, MoonSettings settin
         }
     }
 
-    // Topsoil cleanup
+    // Flatten out the topsoil so the terrain better resembles the original game
+    const int NEIGHBORS_NEEDED = 3;
     for (auto &coord : topsoil_coords)
     {
         glm::ivec3 neighbors[] = {
@@ -1091,25 +1092,21 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, MoonSettings settin
             {coord.x + 1, coord.y, coord.z + 1},
         };
 
-        size_t non_air_neighbors = 0;
-        bool become_sand = false;
+        int neighbor_count = 0;
 
         for (auto &neighbor : neighbors)
         {
-            if (neighbor.x < 0 || neighbor.x >= CHUNK_SIZE || neighbor.z < 0 || neighbor.z >= CHUNK_SIZE)
+            if (!BlockIsInChunk(neighbor))
                 continue;
 
             if (chunk[GetChunkIndex(neighbor.x, neighbor.y, neighbor.z)] != BlockID::air)
-                non_air_neighbors++;
-
-            if (chunk[GetChunkIndex(neighbor.x, neighbor.y - 1, neighbor.z)] == BlockID::sand)
-                become_sand = true;
+                neighbor_count++;
         }
 
-        if (non_air_neighbors < 3)
+        if (neighbor_count < NEIGHBORS_NEEDED)
         {
             chunk[GetChunkIndex(coord.x, coord.y, coord.z)] = BlockID::air;
-            chunk[GetChunkIndex(coord.x, coord.y - 1, coord.z)] = become_sand ? BlockID::sand : BlockID::topsoil;
+            chunk[GetChunkIndex(coord.x, coord.y - 1, coord.z)] = coord.y == GROUND_LEVEL ? BlockID::sand : BlockID::topsoil;
         }
     }
 
@@ -1210,7 +1207,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, MoonSettings settin
     //
     bool spawn_astronaut_lair = rng.Range(1, 100) == 69; // 1% chance, each chunk
     const int lair_depth = 26;
-    if (spawn_astronaut_lair)
+    if (true || spawn_astronaut_lair)
     {
         int center_block_x = (int)(CHUNK_SIZE / 2);
         int center_block_z = (int)(CHUNK_SIZE / 2);
