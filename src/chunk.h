@@ -40,6 +40,7 @@ enum class ChunkState
     LIGHT_INTERNAL, // Initial light map fill based on internal data
     INTERNAL_DONE, // Chunk has internal data but has not incorporated neighbor chunk data yet
     LIGHT_EXTERNAL, // Incorporation of neighbor chunks' light maps
+    UPDATING_VERTEX_LIGHTING, // Updating light values of vertices (not modifying lightmap)
     BUILDING_VERTICES, // Meshing and building vertex data
     READY_TO_UPLOAD, // Vertices are ready to be uploaded to the GPU (must be done on main thread)
     RENDERABLE // Chunk is ready to render
@@ -88,6 +89,7 @@ private:
     void BuildLightmapInternal();
     void BuildLightmapExternal();
     void BuildVertices();
+    void UpdateVertexLighting();
 
 private:
     ChunkManager *_chunk_manager;

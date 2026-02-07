@@ -159,22 +159,19 @@ void Chunk::Build()
 }
 
 //
-// Fully rebuilds light map and vertices (for non-border chunks).
-//
-// This should not be called on a border chunk, because it would only recalculate the internal light map,
-// which doesn't change anyway.
+// Recalculates the vertex lighting.
 //
 void Chunk::Rebuild()
 {
     // Pin neighbors so they can't be deleted
     if (!IsBorderChunk())
     {
-        auto neighbors = _chunk_manager->GetAllNeighbors(_coords);
+        auto neighbors = _chunk_manager->GetAdjacentNeighbors(_coords);
         for (auto &neighbor : neighbors)
             neighbor->Pin();
     }
 
-    _chunk_manager->GetWorkerPool()->SubmitJob([this]() { BuildLightmapInternal(); });
+    _chunk_manager->GetWorkerPool()->SubmitJob([this]() { UpdateVertexLighting(); });
 }
 
 // Builds all data that depends on neighbor chunk data, ending in the state READY_TO_UPLOAD.
@@ -620,6 +617,111 @@ void Chunk::BuildLightmapExternal()
     _chunk_manager->GetWorkerPool()->SubmitJob([this]() { BuildVertices(); });
 }
 
+void Chunk::UpdateVertexLighting()
+{
+    SetState(ChunkState::UPDATING_VERTEX_LIGHTING);
+
+    auto neighbors = _chunk_manager->GetAdjacentNeighbors(_coords);
+    for (auto &neighbor : neighbors)
+    {
+        if (neighbor->GetState() <= ChunkState::LIGHT_INTERNAL) // Reschedule if any neighbors aren't ready
+        {
+            _chunk_manager->GetWorkerPool()->SubmitJob([this]() { UpdateVertexLighting(); });
+            return;
+        }
+    }
+
+    // We need to determine the global voxel position of the base of the quad (the inverse of what we do in BuildVertices), but some
+    // vertex positions include offsets (du and dv), so we can't always do this directly. But we submit vertices in groups of six,
+    // and for the first one in each group we always have vertex.position == quad.base_coords, so we can use the first one to determine
+    // the lighting and apply it to the whole group.
+    std::vector<BlockVertex> *vertex_lists[2] = {&_opaque_vertices, &_transparent_vertices};
+    for (auto vertices : vertex_lists)
+    {
+        for (int i = 0; i < vertices->size(); i += 6)
+        {
+            auto &first = vertices->at(i);
+
+            glm::ivec3 voxel_g;
+            if (first.face_normal.x != 0)
+                voxel_g = {first.position.x + first.face_normal.x*0.5f, first.position.y + 0.5f, first.position.z + 0.5f};
+            else if (first.face_normal.y != 0)
+                voxel_g = {first.position.x + 0.5f, first.position.y + first.face_normal.y*0.5f, first.position.z + 0.5f};
+            else
+                voxel_g = {first.position.x + 0.5f, first.position.y + 0.5f, first.position.z + first.face_normal.z*0.5f};
+
+            glm::vec3 light;
+
+            float world_time = Moon::GetCurrentMoon()->GetWorldTime();
+            float snapped_world_time = (((int)world_time % 330) / 30) * 30; // Snap world time to beginning of phase so all chunks in the same phase agree on ambient_light
+            float sin_world_time = glm::sin((snapped_world_time + SECONDS_PER_LIGHT_PHASE) * (2 * 3.14159f / (LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE))); // The offset initializes moon on Phase 1
+            glm::vec3 sunlight_direction = Moon::GetCurrentMoon()->GetSunlightDirection();
+            float ambient_light = 0.5f * sin_world_time;
+            if (ambient_light < 0)
+                ambient_light *= -0.5f;
+            float sunlight_factor = ambient_light + 0.5f;
+
+            float dot = glm::dot(sunlight_direction, first.face_normal);
+            if (dot < 0)
+                dot = 0;
+
+            uint8_t _sky_light, _block_light;
+            glm::ivec3 light_sample_voxel_coords = voxel_g - glm::ivec3(first.face_normal);
+            glm::ivec3 light_sample_chunk_coords = VoxelToChunk(light_sample_voxel_coords);
+            if (light_sample_chunk_coords == _coords)
+            {
+                _sky_light = _lightmap.GetSkyLevel(GlobalToLocalVoxel(light_sample_voxel_coords));
+                _block_light = _lightmap.GetBlockLevel(GlobalToLocalVoxel(light_sample_voxel_coords));
+            }
+            else
+            {
+                for (auto &neighbor : neighbors)
+                {
+                    if (neighbor->GetCoords() == light_sample_chunk_coords)
+                    {
+                        _sky_light = neighbor->GetLightmap().GetSkyLevel(GlobalToLocalVoxel(light_sample_voxel_coords));
+                        _block_light = neighbor->GetLightmap().GetBlockLevel(GlobalToLocalVoxel(light_sample_voxel_coords));
+                        break;
+                    }
+                }
+            }
+            float sky_light = (float)_sky_light * (100.0f / 9.0f);      // Apparently Charlie's light values were in [0, 100]. Mine are in [0, 9], 
+            float block_light = (float)_block_light * (100.0f / 9.0f);  // so let's scale to [0, 100] so his code works as-is
+
+            float corrected_sky_light = (sky_light * ambient_light + (1.0 - ambient_light) * sky_light * dot) * sunlight_factor;
+            float scaled_sky_light;
+            if (corrected_sky_light != 0)
+                scaled_sky_light = ((corrected_sky_light / 100.0) * 68.0) + 32;
+            else
+                scaled_sky_light = 0;
+
+            if (sin_world_time > 0)
+            {
+                light = glm::vec3(glm::max(scaled_sky_light, block_light) / 100.0f);
+            }
+            else
+            {
+                float red_green = glm::clamp(block_light / 100.0f + scaled_sky_light * sunlight_factor * 0.01f, 0.0f, 1.0f);
+                float blue = glm::clamp(block_light / 100.0f + scaled_sky_light * 0.01f, 0.0f, 1.0f);
+                light = {red_green, red_green, blue};
+            }
+
+            vertices->at(i).light = light;
+            vertices->at(i+1).light = light;
+            vertices->at(i+2).light = light;
+            vertices->at(i+3).light = light;
+            vertices->at(i+4).light = light;
+            vertices->at(i+5).light = light;
+        }
+    }
+
+    // Unpin neighbors
+    for (auto &neighbor : neighbors)
+        neighbor->Unpin();
+
+    SetState(ChunkState::READY_TO_UPLOAD);
+}
+
 void Chunk::BuildVertices()
 {
     SetState(ChunkState::BUILDING_VERTICES);
@@ -706,11 +808,10 @@ void Chunk::BuildVertices()
         return origins;
     }();
 
-    // Reschedule if any neighbors aren't ready
     auto neighbors = _chunk_manager->GetAdjacentNeighbors(_coords);
     for (auto &neighbor : neighbors)
     {
-        if (neighbor->GetState() <= ChunkState::LIGHT_INTERNAL)
+        if (neighbor->GetState() <= ChunkState::LIGHT_INTERNAL) // Reschedule if any neighbors aren't ready
         {
             _chunk_manager->GetWorkerPool()->SubmitJob([this]() { BuildVertices(); });
             return;
@@ -830,7 +931,7 @@ void Chunk::BuildVertices()
         }
     }
 
-    // Unpin neighbors; BuildVertices is the last build stage that needs neighbors
+    // Unpin neighbors
     auto all_neighbors = _chunk_manager->GetAllNeighbors(_coords);
     for (auto &neighbor : all_neighbors)
         neighbor->Unpin();
