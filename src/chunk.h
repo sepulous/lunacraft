@@ -61,6 +61,7 @@ public:
     void SetIsBorderChunk(bool status);
     bool IsBorderChunk();
     bool HasUploadedVertices();
+    uint64_t GetID();
     glm::ivec3 GetCoords();
     BlockID *GetBlocks();
     const Lightmap &GetLightmap() const;

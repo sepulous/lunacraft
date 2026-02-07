@@ -21,7 +21,7 @@ Chunk::Chunk(glm::ivec3 coords, bool is_border_chunk, ChunkManager *chunk_manage
 {
     _is_border_chunk = is_border_chunk;
     _coords = coords;
-    _blocks = (BlockID *)malloc(BLOCKS_IN_CHUNK * sizeof(BlockID));
+    _blocks = chunk_manager->GetBlockMemory(ChunkCoordsToID(coords));
     _chunk_manager = chunk_manager;
 
     // Opaques
@@ -63,8 +63,6 @@ Chunk::~Chunk()
     glDeleteVertexArrays(1, &_transparent_vao);
     glDeleteBuffers(1, &_opaque_vbo);
     glDeleteBuffers(1, &_transparent_vbo);
-
-    free(_blocks);
 }
 
 ChunkState Chunk::GetState()
@@ -85,6 +83,11 @@ bool Chunk::IsBorderChunk()
 bool Chunk::HasUploadedVertices()
 {
     return _has_uploaded_vertices;
+}
+
+uint64_t Chunk::GetID()
+{
+    return ChunkCoordsToID(_coords);
 }
 
 glm::ivec3 Chunk::GetCoords()
