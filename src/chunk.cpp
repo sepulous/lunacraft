@@ -14,69 +14,6 @@
 #include "chunk_generation.h"
 
 //
-// Chunk Vertices
-//
-
-void ChunkVertices::SwapBuffers()
-{
-    _read_buffer ^= 1;
-
-    // Clear new write buffers
-    _opaque_buffers[_read_buffer ^ 1].clear();
-    _transparent_buffers[_read_buffer ^ 1].clear();
-}
-
-void ChunkVertices::AddOpaqueVertex(BlockVertex &vertex)
-{
-    _opaque_buffers[_read_buffer ^ 1].push_back(vertex);
-}
-
-void ChunkVertices::AddTransparentVertex(BlockVertex &vertex)
-{
-    _transparent_buffers[_read_buffer ^ 1].push_back(vertex);
-}
-
-BlockVertex *ChunkVertices::GetOpaqueData()
-{
-    return _opaque_buffers[_read_buffer].data();
-}
-
-size_t ChunkVertices::GetOpaqueCount()
-{
-    return _opaque_buffers[_read_buffer].size();
-}
-
-size_t ChunkVertices::GetReservedOpaqueCount()
-{
-    return _reserved_opaque_count;
-}
-
-void ChunkVertices::SetReservedOpaqueCount(size_t count)
-{
-    _reserved_opaque_count = count;
-}
-
-BlockVertex *ChunkVertices::GetTransparentData()
-{
-    return _transparent_buffers[_read_buffer].data();
-}
-
-size_t ChunkVertices::GetTransparentCount()
-{
-    return _transparent_buffers[_read_buffer].size();
-}
-
-size_t ChunkVertices::GetReservedTransparentCount()
-{
-    return _reserved_transparent_count;
-}
-
-void ChunkVertices::SetReservedTransparentCount(size_t count)
-{
-    _reserved_transparent_count = count;
-}
-
-//
 // Chunk
 //
 
@@ -84,20 +21,9 @@ Chunk::Chunk(glm::ivec3 coords, bool is_border_chunk, ChunkManager *chunk_manage
 {
     _is_border_chunk = is_border_chunk;
     _coords = coords;
-    _blocks = chunk_manager->AllocateBlockMemory();
+    _blocks = (BlockID *)malloc(BLOCKS_IN_CHUNK * sizeof(BlockID));
     _chunk_manager = chunk_manager;
-}
 
-//
-// Creates OpenGL data for the chunk.
-//
-// Must be called from the main thread!
-//
-// Normally I would do this in the constructor (RAII), but chunks can be created off the
-// main thread, and only the main thread can make OpenGL calls.
-//
-void Chunk::GLCreate()
-{
     // Opaques
     glGenVertexArrays(1, &_opaque_vao);
     glBindVertexArray(_opaque_vao);
@@ -129,25 +55,16 @@ void Chunk::GLCreate()
     glEnableVertexAttribArray(2);
     glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 13 * sizeof(float), (void*)(10 * sizeof(float)));
     glEnableVertexAttribArray(3);
-
-    _has_gl_data = true;
 }
 
-//
-// Frees OpenGL data for the chunk.
-//
-// Must be called from the main thread!
-//
-// Normally I would do this in the destructor (RAII), and that would be fine since only the
-// main thread is allowed to delete chunk objects, but I prefer to be explicit about this.
-// Plus, it matches Chunk::GLCreate.
-//
-void Chunk::GLDestroy()
+Chunk::~Chunk()
 {
     glDeleteVertexArrays(1, &_opaque_vao);
     glDeleteVertexArrays(1, &_transparent_vao);
     glDeleteBuffers(1, &_opaque_vbo);
     glDeleteBuffers(1, &_transparent_vbo);
+
+    free(_blocks);
 }
 
 ChunkState Chunk::GetState()
@@ -168,11 +85,6 @@ bool Chunk::IsBorderChunk()
 bool Chunk::HasUploadedVertices()
 {
     return _has_uploaded_vertices;
-}
-
-bool Chunk::HasGLData()
-{
-    return _has_gl_data;
 }
 
 glm::ivec3 Chunk::GetCoords()
@@ -196,6 +108,31 @@ std::filesystem::path Chunk::GetFilePath()
     return Storage::MOON_DIR / (std::string("moon") + std::to_string(Moon::GetCurrentMoon()->GetID())) / "chunks" / (std::to_string(chunk_id) + ".chunk");
 }
 
+void Chunk::Pin()
+{
+    _pins.fetch_add(1);
+}
+
+void Chunk::Unpin()
+{
+    _pins.fetch_sub(1);
+}
+
+int Chunk::GetPinCount()
+{
+    return _pins.load();
+}
+
+void Chunk::MarkForDelete()
+{
+    _marked_for_delete.store(true);
+}
+
+bool Chunk::IsMarkedForDelete()
+{
+    return _marked_for_delete.load();
+}
+
 //
 // The behavior of this function depends on whether the chunk is a border chunk.
 //
@@ -207,7 +144,15 @@ std::filesystem::path Chunk::GetFilePath()
 //
 void Chunk::Build()
 {
-    _chunk_manager->GetWorkerPool().SubmitJob([this]() { LoadBlocks(); });
+    // Pin neighbors so they can't be deleted
+    if (!IsBorderChunk())
+    {
+        auto neighbors = _chunk_manager->GetAllNeighbors(_coords);
+        for (auto &neighbor : neighbors)
+            neighbor->Pin();
+    }
+
+    _chunk_manager->GetWorkerPool()->SubmitJob([this]() { LoadBlocks(); });
 }
 
 //
@@ -218,13 +163,26 @@ void Chunk::Build()
 //
 void Chunk::Rebuild()
 {
-    _chunk_manager->GetWorkerPool().SubmitJob([this]() { BuildLightmapInternal(); });
+    // Pin neighbors so they can't be deleted
+    if (!IsBorderChunk())
+    {
+        auto neighbors = _chunk_manager->GetAllNeighbors(_coords);
+        for (auto &neighbor : neighbors)
+            neighbor->Pin();
+    }
+
+    _chunk_manager->GetWorkerPool()->SubmitJob([this]() { BuildLightmapInternal(); });
 }
 
 // Builds all data that depends on neighbor chunk data, ending in the state READY_TO_UPLOAD.
 void Chunk::BuildExternal()
 {
-    _chunk_manager->GetWorkerPool().SubmitJob([this]() { BuildLightmapExternal(); });
+    // Pin neighbors so they can't be deleted
+    auto neighbors = _chunk_manager->GetAllNeighbors(_coords);
+    for (auto &neighbor : neighbors)
+        neighbor->Pin();
+
+    _chunk_manager->GetWorkerPool()->SubmitJob([this]() { BuildLightmapExternal(); });
 }
 
 //
@@ -239,26 +197,26 @@ void Chunk::UploadVertices()
 {
     // Opaques
     glBindBuffer(GL_ARRAY_BUFFER, _opaque_vbo);
-    if (_vertices.GetOpaqueCount() <= _vertices.GetReservedOpaqueCount())
+    if (_opaque_vertices.size() <= _reserved_opaque_vertex_count)
     {
-        glBufferSubData(GL_ARRAY_BUFFER, 0, _vertices.GetOpaqueCount() * sizeof(BlockVertex), _vertices.GetOpaqueData());
+        glBufferSubData(GL_ARRAY_BUFFER, 0, _opaque_vertices.size() * sizeof(BlockVertex), _opaque_vertices.data());
     }
     else
     {
-        glBufferData(GL_ARRAY_BUFFER, _vertices.GetOpaqueCount() * sizeof(BlockVertex), _vertices.GetOpaqueData(), GL_DYNAMIC_DRAW);
-        _vertices.SetReservedOpaqueCount(_vertices.GetOpaqueCount());
+        glBufferData(GL_ARRAY_BUFFER, _opaque_vertices.size() * sizeof(BlockVertex), _opaque_vertices.data(), GL_DYNAMIC_DRAW);
+        _reserved_opaque_vertex_count = _opaque_vertices.size();
     }
 
     // Transparents
     glBindBuffer(GL_ARRAY_BUFFER, _transparent_vbo);
-    if (_vertices.GetTransparentCount() <= _vertices.GetReservedTransparentCount())
+    if (_transparent_vertices.size() <= _reserved_transparent_vertex_count)
     {
-        glBufferSubData(GL_ARRAY_BUFFER, 0, _vertices.GetTransparentCount() * sizeof(BlockVertex), _vertices.GetTransparentData());
+        glBufferSubData(GL_ARRAY_BUFFER, 0, _transparent_vertices.size() * sizeof(BlockVertex), _transparent_vertices.data());
     }
     else
     {
-        glBufferData(GL_ARRAY_BUFFER, _vertices.GetTransparentCount() * sizeof(BlockVertex), _vertices.GetTransparentData(), GL_DYNAMIC_DRAW);
-        _vertices.SetReservedTransparentCount(_vertices.GetTransparentCount());
+        glBufferData(GL_ARRAY_BUFFER, _transparent_vertices.size() * sizeof(BlockVertex), _transparent_vertices.data(), GL_DYNAMIC_DRAW);
+        _reserved_transparent_vertex_count = _transparent_vertices.size();
     }
 
     _has_uploaded_vertices = true;
@@ -274,8 +232,7 @@ void Chunk::UploadVertices()
 void Chunk::RenderOpaques()
 {
     glBindVertexArray(_opaque_vao);
-    // glDrawArrays(GL_TRIANGLES, 0, _opaque_vertices.size());
-    glDrawArrays(GL_TRIANGLES, 0, _vertices.GetOpaqueCount());
+    glDrawArrays(GL_TRIANGLES, 0, _opaque_vertices.size());
 }
 
 //
@@ -286,8 +243,7 @@ void Chunk::RenderOpaques()
 void Chunk::RenderTransparents()
 {
     glBindVertexArray(_transparent_vao);
-    // glDrawArrays(GL_TRIANGLES, 0, _transparent_vertices.size());
-    glDrawArrays(GL_TRIANGLES, 0, _vertices.GetTransparentCount());
+    glDrawArrays(GL_TRIANGLES, 0, _transparent_vertices.size());
 }
 
 void Chunk::SetState(ChunkState state)
@@ -308,7 +264,7 @@ void Chunk::LoadBlocks()
         GenerateChunk(_blocks, _coords.x, _coords.z, Moon::GetCurrentMoon()->GetSettings());
 
     // Start next task
-    _chunk_manager->GetWorkerPool().SubmitJob([this]() { BuildLightmapInternal(); });
+    _chunk_manager->GetWorkerPool()->SubmitJob([this]() { BuildLightmapInternal(); });
 }
 
 void Chunk::BuildLightmapInternal()
@@ -427,14 +383,10 @@ void Chunk::BuildLightmapInternal()
         }
     }
 
-    if (IsBorderChunk())
-    {
-        SetState(ChunkState::INTERNAL_DONE);
-    }
-    else
-    {
-        _chunk_manager->GetWorkerPool().SubmitJob([this]() { BuildLightmapExternal(); });
-    }
+    SetState(ChunkState::INTERNAL_DONE);
+
+    if (!IsBorderChunk())
+        _chunk_manager->GetWorkerPool()->SubmitJob([this]() { BuildLightmapExternal(); });
 }
 
 void Chunk::BuildLightmapExternal()
@@ -447,7 +399,7 @@ void Chunk::BuildLightmapExternal()
     {
         if (neighbor->GetState() <= ChunkState::LIGHT_INTERNAL)
         {
-            _chunk_manager->GetWorkerPool().SubmitJob([this]() { BuildLightmapExternal(); });
+            _chunk_manager->GetWorkerPool()->SubmitJob([this]() { BuildLightmapExternal(); });
             return;
         }
     }
@@ -662,14 +614,14 @@ void Chunk::BuildLightmapExternal()
         }
     }
 
-    _chunk_manager->GetWorkerPool().SubmitJob([this]() { BuildVertices(); });
+    _chunk_manager->GetWorkerPool()->SubmitJob([this]() { BuildVertices(); });
 }
 
 void Chunk::BuildVertices()
 {
     SetState(ChunkState::BUILDING_VERTICES);
 
-    static std::unordered_map<BlockID, glm::vec3> ATLAS_TILE_MAP = { // Tile coordinates are: (top, side, bottom)
+    static const std::unordered_map<BlockID, glm::vec3> ATLAS_TILE_MAP = { // Tile coordinates are: (top, side, bottom)
         {BlockID::aluminum,        glm::vec3(32, 32, 32)},
         {BlockID::aluminum_ore,    glm::vec3(17, 17, 17)},
         {BlockID::amethyst_ore,    glm::vec3(168, 168, 168)},
@@ -720,33 +672,36 @@ void Chunk::BuildVertices()
         {BlockID::minilight_ny,    glm::vec3(9, 9, 9)}
     };
 
-    static std::unordered_map<BlockID, glm::mat3x2> TILE_ORIGINS;
-    static bool tile_origins_built = false;
-    if (!tile_origins_built) // This is kind of a silly hack, but I'd rather be explicit about the tile coordinates and build from them
+    // Thread-safe way to construct tile origins only once. Need to
+    // move this stuff out of here...
+    static auto TILE_ORIGINS = []()
     {
-        for (auto it = ATLAS_TILE_MAP.begin(); it != ATLAS_TILE_MAP.end(); ++it)
+        std::unordered_map<BlockID, glm::mat3x2> origins;
+
+        for (auto &[block_id, atlas_tiles] : ATLAS_TILE_MAP)
         {
-            BlockID block_id = it->first;
-            glm::vec3 atlas_tiles = it->second;
             glm::vec2 top_tile_origin = glm::vec2(
                 ((int)atlas_tiles.x % 14) / 14.0f,
                 (13 - ((int)atlas_tiles.x / 14)) / 14.0f
             );
+
             glm::vec2 side_tile_origin = glm::vec2(
                 ((int)atlas_tiles.y % 14) / 14.0f,
                 (13 - ((int)atlas_tiles.y / 14)) / 14.0f
             );
+
             glm::vec2 bottom_tile_origin = glm::vec2(
                 ((int)atlas_tiles.z % 14) / 14.0f,
                 (13 - ((int)atlas_tiles.z / 14)) / 14.0f
             );
-            TILE_ORIGINS.emplace(block_id, glm::mat3x2(
+
+            origins.emplace(block_id, glm::mat3x2(
                 top_tile_origin, side_tile_origin, bottom_tile_origin
             ));
         }
 
-        tile_origins_built = true;
-    }
+        return origins;
+    }();
 
     // Reschedule if any neighbors aren't ready
     auto neighbors = _chunk_manager->GetAdjacentNeighbors(_coords);
@@ -754,13 +709,15 @@ void Chunk::BuildVertices()
     {
         if (neighbor->GetState() <= ChunkState::LIGHT_INTERNAL)
         {
-            _chunk_manager->GetWorkerPool().SubmitJob([this]() { BuildVertices(); });
+            _chunk_manager->GetWorkerPool()->SubmitJob([this]() { BuildVertices(); });
             return;
         }
     }
 
     std::vector<BlockQuad> quads = GreedyMesh(_blocks, neighbors);
 
+    _opaque_vertices.clear();
+    _transparent_vertices.clear();
     for (const BlockQuad &quad : quads)
     {
         // Determine vertex normal
@@ -849,55 +806,31 @@ void Chunk::BuildVertices()
         }
 
         // Push vertices
-        BlockVertex vert_1{base_pos,                     glm::vec4{0,          0,           tile_origin}, normal, light};
-        BlockVertex vert_2{base_pos + quad.dv,           glm::vec4{0,          quad_height, tile_origin}, normal, light};
-        BlockVertex vert_3{base_pos + quad.dv + quad.du, glm::vec4{quad_width, quad_height, tile_origin}, normal, light};
-        BlockVertex vert_4{base_pos + quad.du,           glm::vec4{quad_width, 0,           tile_origin}, normal, light};
+        auto &vertices = BlockIsOpaque(quad.block) ? _opaque_vertices : _transparent_vertices;
         if (!quad.back_face)
         {
-            if (BlockIsOpaque(quad.block))
-            {
-                _vertices.AddOpaqueVertex(vert_1);
-                _vertices.AddOpaqueVertex(vert_2);
-                _vertices.AddOpaqueVertex(vert_3);
-                _vertices.AddOpaqueVertex(vert_3);
-                _vertices.AddOpaqueVertex(vert_4);
-                _vertices.AddOpaqueVertex(vert_1);
-            }
-            else
-            {
-                _vertices.AddTransparentVertex(vert_1);
-                _vertices.AddTransparentVertex(vert_2);
-                _vertices.AddTransparentVertex(vert_3);
-                _vertices.AddTransparentVertex(vert_3);
-                _vertices.AddTransparentVertex(vert_4);
-                _vertices.AddTransparentVertex(vert_1);
-            }
+            vertices.emplace_back(base_pos,                     glm::vec4{0,          0,           tile_origin}, normal, light);
+            vertices.emplace_back(base_pos + quad.dv,           glm::vec4{0,          quad_height, tile_origin}, normal, light);
+            vertices.emplace_back(base_pos + quad.dv + quad.du, glm::vec4{quad_width, quad_height, tile_origin}, normal, light);
+            vertices.emplace_back(base_pos + quad.dv + quad.du, glm::vec4{quad_width, quad_height, tile_origin}, normal, light);
+            vertices.emplace_back(base_pos + quad.du,           glm::vec4{quad_width, 0,           tile_origin}, normal, light);
+            vertices.emplace_back(base_pos,                     glm::vec4{0,          0,           tile_origin}, normal, light);
         }
         else
         {
-            if (BlockIsOpaque(quad.block))
-            {
-                _vertices.AddOpaqueVertex(vert_1);
-                _vertices.AddOpaqueVertex(vert_4);
-                _vertices.AddOpaqueVertex(vert_3);
-                _vertices.AddOpaqueVertex(vert_3);
-                _vertices.AddOpaqueVertex(vert_2);
-                _vertices.AddOpaqueVertex(vert_1);
-            }
-            else
-            {
-                _vertices.AddTransparentVertex(vert_1);
-                _vertices.AddTransparentVertex(vert_4);
-                _vertices.AddTransparentVertex(vert_3);
-                _vertices.AddTransparentVertex(vert_3);
-                _vertices.AddTransparentVertex(vert_2);
-                _vertices.AddTransparentVertex(vert_1);
-            }
+            vertices.emplace_back(base_pos,                     glm::vec4{0,          0,           tile_origin}, normal, light);
+            vertices.emplace_back(base_pos + quad.du,           glm::vec4{quad_width, 0,           tile_origin}, normal, light);
+            vertices.emplace_back(base_pos + quad.dv + quad.du, glm::vec4{quad_width, quad_height, tile_origin}, normal, light);
+            vertices.emplace_back(base_pos + quad.dv + quad.du, glm::vec4{quad_width, quad_height, tile_origin}, normal, light);
+            vertices.emplace_back(base_pos + quad.dv,           glm::vec4{0,          quad_height, tile_origin}, normal, light);
+            vertices.emplace_back(base_pos,                     glm::vec4{0,          0,           tile_origin}, normal, light);
         }
     }
 
-    _vertices.SwapBuffers();
+    // Unpin neighbors; BuildVertices is the last build stage that needs neighbors
+    auto all_neighbors = _chunk_manager->GetAllNeighbors(_coords);
+    for (auto &neighbor : all_neighbors)
+        neighbor->Unpin();
 
     SetState(ChunkState::READY_TO_UPLOAD);
 }

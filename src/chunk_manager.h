@@ -14,33 +14,16 @@
 
 class Moon;
 
-// 
-// ChunkManager hands out memory for block storage to chunks so it
-// doesn't have to be allocated every time a chunk is created.
-//
-// I'm using a linked list for this purpose.
-//
-struct BlockMemoryNode
-{
-    BlockMemoryNode *next = nullptr;
-    BlockID *blocks = nullptr; // After ChunkManager is constructed, every BlockMemoryNode is expected to have a valid blocks pointer
-    bool in_use = false;
-};
-
-//
-// ChunkManager manages the state and rendering of all loaded chunks.
-//
 class ChunkManager
 {
     private:
         int _loaded_chunk_count = 0;
         GLuint _texture_atlas;
-        BlockMemoryNode *_block_memory_head;
         std::unordered_map<uint64_t, std::shared_ptr<Chunk>> _chunks;
-        ChunkWorkerPool _worker_pool;
+        ChunkWorkerPool *_worker_pool;
 
     public:
-        ChunkManager();
+        ChunkManager() = default;
         ~ChunkManager();
         void Init(int moon_id, MoonSettings moon_settings);
         void CreateInitialPatch();
@@ -48,12 +31,11 @@ class ChunkManager
         void UploadReadyChunks();
         void RenderChunks(Plane frustum[6]);
         void RebuildChunks();
-        BlockID *AllocateBlockMemory();
         std::array<std::shared_ptr<Chunk>, 4> GetAdjacentNeighbors(glm::ivec3 chunk_coords);
         std::array<std::shared_ptr<Chunk>, 8> GetAllNeighbors(glm::ivec3 chunk_coords);
         std::shared_ptr<Chunk> GetChunk(glm::ivec3 chunk_coords);
         std::unordered_map<uint64_t, std::shared_ptr<Chunk>> &GetChunks();
-        ChunkWorkerPool &GetWorkerPool();
+        ChunkWorkerPool *GetWorkerPool();
         int GetLoadedChunkCount();
         void WriteAllChunksToDisk();
 };

@@ -16,24 +16,12 @@
 #include "options.h"
 #include "moon.h"
 
-ChunkManager::ChunkManager()
-{
-    BlockID *blocks = (BlockID *)malloc(BLOCKS_IN_CHUNK * sizeof(BlockID));
-    _block_memory_head = new BlockMemoryNode{.next = nullptr, .blocks = blocks, .in_use = false};
-}
-
 ChunkManager::~ChunkManager()
 {
     glDeleteTextures(1, &_texture_atlas);
 
-    BlockMemoryNode *node = _block_memory_head;
-    do
-    {
-        auto next = node->next;
-        free(node->blocks);
-        delete node;
-        node = next;
-    } while (node != nullptr);
+    // Stop worker pool
+    delete _worker_pool;
 }
 
 void ChunkManager::Init(int moon_id, MoonSettings moon_settings)
@@ -60,6 +48,9 @@ void ChunkManager::Init(int moon_id, MoonSettings moon_settings)
     std::filesystem::path chunk_dir = moon_dir / "chunks";
     if (!std::filesystem::exists(chunk_dir))
         std::filesystem::create_directory(chunk_dir);
+
+    // Start worker pool
+    _worker_pool = new ChunkWorkerPool{};
 }
 
 void ChunkManager::UploadReadyChunks()
@@ -69,8 +60,6 @@ void ChunkManager::UploadReadyChunks()
         Chunk *chunk = it->second.get();
         if (!chunk->IsBorderChunk() && chunk->GetState() == ChunkState::READY_TO_UPLOAD) // Shouldn't waste GPU memory with border chunks. Most are never rendered.
         {
-            if (!chunk->HasGLData())
-                chunk->GLCreate();
             chunk->UploadVertices();
             _loaded_chunk_count++;
         }
@@ -127,41 +116,6 @@ void ChunkManager::RebuildChunks()
 }
 
 //
-// Chunks call this to request memory to store their block data, instead of
-// managing such memory themselves. This allows the memory to be reused.
-//
-BlockID *ChunkManager::AllocateBlockMemory()
-{
-    // Start with head node
-    BlockMemoryNode *node = _block_memory_head;
-
-    // Find first node that is not in use
-    while (node->in_use && node->next != nullptr) { node = node->next; }
-
-    if (node->in_use && node->next == nullptr) // If no such node exists, create a new one
-    {
-        //
-        // We could double the number of free nodes instead of only creating one at a time.
-        //
-        // As it stands, initially this system is no better than having chunks allocate block
-        // memory each time they're created. However, once the maximum number of possible nodes
-        // is hit (for a given render distance), block data never needs to be allocated again,
-        // and we have exactly as many nodes as we need.
-        //
-
-        BlockID *new_blocks = (BlockID *)malloc(BLOCKS_IN_CHUNK * sizeof(BlockID));
-        BlockMemoryNode *new_node = new BlockMemoryNode{.next = nullptr, .blocks = new_blocks, .in_use = true};
-        node->next = new_node;
-        return new_blocks;
-    }
-    else // Otherwise, use existing node
-    {
-        node->in_use = true;
-        return node->blocks;
-    }
-}
-
-//
 // Create initial chunk patch around player spawn.
 //
 void ChunkManager::CreateInitialPatch()
@@ -203,17 +157,7 @@ std::array<std::shared_ptr<Chunk>, 4> ChunkManager::GetAdjacentNeighbors(glm::iv
     for (auto &neighbor : neighbor_coords)
     {
         auto chunk_id = ChunkCoordsToID(neighbor);
-        
-        if (!_chunks.contains(chunk_id))
-        {
-            neighbors[idx] = nullptr;
-            printf("REQUESTED NEIGHBOR DIDNT EXIST\n");
-        }
-        else
-        {
-            neighbors[idx] = _chunks.at(chunk_id);
-        }
-        
+        neighbors[idx] = _chunks.at(chunk_id); // Existence of neighbors should be guaranteed
         idx++;
     }
 
@@ -239,23 +183,19 @@ std::array<std::shared_ptr<Chunk>, 8> ChunkManager::GetAllNeighbors(glm::ivec3 c
     for (auto &neighbor : neighbor_coords)
     {
         auto chunk_id = ChunkCoordsToID(neighbor);
-        
-        if (!_chunks.contains(chunk_id))
-        {
-            neighbors[idx] = nullptr;
-            printf("REQUESTED NEIGHBOR DIDNT EXIST\n");
-        }
-        else
-        {
-            neighbors[idx] = _chunks.at(chunk_id);
-        }
-        
+        neighbors[idx] = _chunks.at(chunk_id); // Existence of neighbors should be guaranteed
         idx++;
     }
 
     return neighbors;
 }
 
+// I'd like to make this more efficient so I can do it regularly. Then I don't need to rely on
+// any information (whether player chunk changed or render distance changed). Just grab the
+// current player chunk and render distance and make sure everything is correct.
+//
+// It honestly makes sense to have a fixed interval. Then it's completely predictable, and
+// doesn't need to know if anything changed.
 void ChunkManager::AdjustChunkPatch()
 {
     auto player_chunk = VoxelToChunk(GetNearestVoxel(Moon::GetCurrentMoon()->GetPlayer()->GetPosition()));
@@ -264,29 +204,24 @@ void ChunkManager::AdjustChunkPatch()
     // Remove all chunks outside the patch + border
     for (auto it = _chunks.begin(); it != _chunks.end(); )
     {
-        auto chunk = it->second;
+        auto &chunk = it->second;
 
         glm::ivec3 coords = chunk->GetCoords();
+        bool marked_for_delete = chunk->IsMarkedForDelete();
         bool outside_border = coords.x < player_chunk.x - render_distance - 1
                           || coords.x > player_chunk.x + render_distance + 1
                           || coords.z < player_chunk.z - render_distance - 1
                           || coords.z > player_chunk.z + render_distance + 1;
 
-        auto chunk_state = chunk->GetState();
-        bool can_be_deleted = chunk.use_count() == 1 && (chunk_state == ChunkState::INTERNAL_DONE || chunk_state >= ChunkState::READY_TO_UPLOAD);
-
-        //
-        // The ChunkManager ultimately owns the chunks, so it should be the last thing to delete its shared pointer.
-        // When there are no more owners, the chunk data is freed, so this must not happen unless the chunk is
-        // in an idle state (not accessing its own data).
-        //
-
-        if (outside_border && can_be_deleted)
+        if (marked_for_delete || outside_border)
         {
-            WriteChunkToDisk(chunk->GetFilePath(), chunk->GetBlocks());
-            chunk->GLDestroy(); // Deletes OpenGL data
-            it = _chunks.erase(it); // Frees chunk
-            _loaded_chunk_count--;
+            chunk->MarkForDelete();
+            if (chunk->GetPinCount() < 1)
+            {
+                WriteChunkToDisk(chunk->GetFilePath(), chunk->GetBlocks()); // TODO: Do this on another thread
+                it = _chunks.erase(it); // Frees chunk
+                _loaded_chunk_count--;
+            }
         }
         else
         {
@@ -350,7 +285,7 @@ std::unordered_map<uint64_t, std::shared_ptr<Chunk>> &ChunkManager::GetChunks()
     return _chunks;
 }
 
-ChunkWorkerPool &ChunkManager::GetWorkerPool()
+ChunkWorkerPool *ChunkManager::GetWorkerPool()
 {
     return _worker_pool;
 }
