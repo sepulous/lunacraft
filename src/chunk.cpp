@@ -756,7 +756,7 @@ void Chunk::BuildVertices()
 
         float world_time = Moon::GetCurrentMoon()->GetWorldTime();
         float snapped_world_time = (((int)world_time % 330) / 30) * 30; // Snap world time to beginning of phase so all chunks in the same phase agree on ambient_light
-        float sin_world_time = glm::sin((snapped_world_time + 3*SECONDS_PER_LIGHT_PHASE) * (2 * 3.14159f / (LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE)));
+        float sin_world_time = glm::sin((snapped_world_time + SECONDS_PER_LIGHT_PHASE) * (2 * 3.14159f / (LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE))); // The offset initializes moon on Phase 1
         glm::vec3 sunlight_direction = Moon::GetCurrentMoon()->GetSunlightDirection();
         float ambient_light = 0.5f * sin_world_time;
         if (ambient_light < 0)

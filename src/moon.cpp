@@ -106,12 +106,9 @@ EntityManager &Moon::GetEntityManager()
 
 glm::vec4 Moon::GetFogColor()
 {
-    float factor = glm::cos(_world_time * (2 * 3.1416 / (LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE)));
-    if (factor < 0)
-        factor = 0;
+    float factor = glm::sin((_world_time + SECONDS_PER_LIGHT_PHASE) * (2 * 3.1416 / (LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE))); // The offset initializes moon on Phase 1
     glm::vec3 fog_rgb = factor * glm::vec3(_base_fog_color);
-
-    return {fog_rgb.r, fog_rgb.g, fog_rgb.b, _base_fog_color.a};
+    return {fog_rgb, _base_fog_color.a};
 }
 
 int Moon::GetID()
@@ -137,8 +134,7 @@ double Moon::GetWorldTime()
 
 glm::vec3 Moon::GetSunlightDirection()
 {
-    constexpr int PERIOD = LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE;
-    int phase = ((int)(_world_time + (3 * SECONDS_PER_LIGHT_PHASE)) / SECONDS_PER_LIGHT_PHASE) % LIGHT_PHASES; // The offset initializes moon on Phase 3
+    int phase = ((int)(_world_time + SECONDS_PER_LIGHT_PHASE) / SECONDS_PER_LIGHT_PHASE) % LIGHT_PHASES; // The offset initializes moon on Phase 1
     float main_light_angle_deg;
     if (phase <= 6) // Day
     {
@@ -182,7 +178,7 @@ void Moon::Update(double delta_time, int old_render_distance)
     _entity_manager.Update();
 
     // Update lighting
-    int light_phase = ((int)(_world_time + (3 * SECONDS_PER_LIGHT_PHASE)) / SECONDS_PER_LIGHT_PHASE) % LIGHT_PHASES; // The offset initializes moon on Phase 3
+    int light_phase = ((int)(_world_time + SECONDS_PER_LIGHT_PHASE) / SECONDS_PER_LIGHT_PHASE) % LIGHT_PHASES; // The offset initializes moon on Phase 1
     if (light_phase != _current_light_phase)
     {
         _current_light_phase = light_phase;
@@ -234,8 +230,7 @@ void Moon::Render(glm::mat4 projection)
 
     view = glm::mat4(glm::mat3(view));
     view_projection = projection * view;
-    constexpr int PERIOD = LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE;
-    float skybox_angle = glm::radians(90.0f + (360.0f / PERIOD) * _world_time);
+    float skybox_angle = (_world_time + SECONDS_PER_LIGHT_PHASE) * (2 * 3.1416f / (LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE)); // The offset initializes moon on Phase 1
     _skybox.Update(view_projection, skybox_angle);
     _skybox.Render();
 }
