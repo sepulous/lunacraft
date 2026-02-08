@@ -23,5 +23,10 @@ void main()
     float view_distance = length(u_ws_camera_position - v_ws_position) - u_fog_distance;
     float fog_factor = clamp(exp(-0.1 * view_distance), 0, 1);
 
-    out_color = mix(tex_color, mix(u_fog_color, tex_color, fog_factor), u_fog_color.a);
+    //
+    // This is just: mix(tex_color, mix(u_fog_color, tex_color, fog_factor), u_fog_color.a)
+    //
+    // But that has 4 adds/subs and 4 mults, while this only has 3 adds/subs and 2 mults
+    //
+    out_color = tex_color + u_fog_color.a * (u_fog_color - tex_color) * (1.0 - fog_factor);
 }
