@@ -107,6 +107,8 @@ EntityManager &Moon::GetEntityManager()
 glm::vec4 Moon::GetFogColor()
 {
     float factor = glm::sin((_world_time + SECONDS_PER_LIGHT_PHASE) * (2 * 3.1416 / (LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE))); // The offset initializes moon on Phase 1
+    if (factor < 0)
+        factor = 0;
     glm::vec3 fog_rgb = factor * glm::vec3(_base_fog_color);
     return {fog_rgb, _base_fog_color.a};
 }
