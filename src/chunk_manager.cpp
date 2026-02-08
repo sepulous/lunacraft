@@ -23,7 +23,11 @@ ChunkManager::~ChunkManager()
     // Stop worker pool
     delete _worker_pool;
 
-    // Free all block memory
+    // Free chunks
+    for (auto [chunk_id, chunk] : _chunks)
+        delete chunk;
+
+    // Free block memory
     for (auto &memory : _block_memory)
         free(memory.blocks);
 }
@@ -64,7 +68,7 @@ void ChunkManager::UploadReadyChunks()
 {
     for (auto it = _chunks.begin(); it != _chunks.end(); ++it)
     {
-        Chunk *chunk = it->second.get();
+        Chunk *chunk = it->second;
         if (!chunk->IsBorderChunk() && chunk->GetState() == ChunkState::READY_TO_UPLOAD) // Shouldn't waste GPU memory with border chunks. Most are never rendered.
         {
             chunk->UploadVertices();
@@ -83,7 +87,7 @@ void ChunkManager::RenderChunks(Plane frustum[6])
 
     for (auto it = _chunks.begin(); it != _chunks.end(); ++it)
     {
-        Chunk *chunk = it->second.get();
+        Chunk *chunk = it->second;
         if (chunk->HasUploadedVertices() && !chunk->IsBorderChunk()) // Border chunks should never be rendered, and patch chunks aren't necessarily ready
         {
             glm::ivec3 chunk_coords = chunk->GetCoords();
@@ -116,7 +120,7 @@ void ChunkManager::RebuildChunks()
 {
     for (auto it = _chunks.begin(); it != _chunks.end(); ++it)
     {
-        Chunk *chunk = it->second.get();
+        Chunk *chunk = it->second;
         if (!chunk->IsBorderChunk())
             chunk->Rebuild();
     }
@@ -140,7 +144,7 @@ void ChunkManager::CreateInitialPatch()
                                 || z == player_chunk.z - render_distance - 1
                                 || z == player_chunk.z + render_distance + 1;
 
-            _chunks.emplace(chunk_id, std::make_shared<Chunk>(glm::ivec3{x, 0, z}, is_border_chunk, this));
+            _chunks.emplace(chunk_id, new Chunk(glm::ivec3{x, 0, z}, is_border_chunk, this)); // This must succeed so the new chunk isn't leaked
         }
     }
 
@@ -149,9 +153,9 @@ void ChunkManager::CreateInitialPatch()
         it->second->Build();
 }
 
-std::array<std::shared_ptr<Chunk>, 4> ChunkManager::GetAdjacentNeighbors(glm::ivec3 chunk_coords)
+std::array<Chunk *, 4> ChunkManager::GetAdjacentNeighbors(glm::ivec3 chunk_coords)
 {
-    std::array<std::shared_ptr<Chunk>, 4> neighbors;
+    std::array<Chunk *, 4> neighbors;
 
     glm::ivec3 neighbor_coords[] = {
         {chunk_coords.x, 0, chunk_coords.z + 1}, // Front
@@ -171,9 +175,9 @@ std::array<std::shared_ptr<Chunk>, 4> ChunkManager::GetAdjacentNeighbors(glm::iv
     return neighbors;
 }
 
-std::array<std::shared_ptr<Chunk>, 8> ChunkManager::GetAllNeighbors(glm::ivec3 chunk_coords)
+std::array<Chunk *, 8> ChunkManager::GetAllNeighbors(glm::ivec3 chunk_coords)
 {
-    std::array<std::shared_ptr<Chunk>, 8> neighbors;
+    std::array<Chunk *, 8> neighbors;
 
     glm::ivec3 neighbor_coords[] = {
         {chunk_coords.x - 1, 0, chunk_coords.z},
@@ -235,6 +239,7 @@ void ChunkManager::AdjustChunkPatch()
                 });
 
                 // Erase chunk
+                delete chunk;
                 it = _chunks.erase(it);
                 _loaded_chunk_count--;
             }
@@ -245,7 +250,7 @@ void ChunkManager::AdjustChunkPatch()
         }
     }
 
-    std::vector<std::shared_ptr<Chunk>> to_convert;
+    std::vector<Chunk *> to_build;
 
     // Update patch + border
     for (int x = player_chunk.x - render_distance - 1; x <= player_chunk.x + render_distance + 1; x++)
@@ -258,33 +263,32 @@ void ChunkManager::AdjustChunkPatch()
                                 || z == player_chunk.z + render_distance + 1
                                 || z == player_chunk.z - render_distance - 1;
 
-            auto [it, success] = _chunks.try_emplace(chunk_id, std::make_shared<Chunk>(glm::ivec3{x, 0, z}, on_new_border, this));
-            auto chunk = it->second;
-            if (on_new_border)
+            if (_chunks.contains(chunk_id))
             {
-                if (success) // Build new border chunk
-                    chunk->Build();
-                else // Convert existing non-border chunk
-                    chunk->SetIsBorderChunk(true);
-            }
-            else // In patch
-            {
-                if (!success && chunk->IsBorderChunk()) // Is an existing border chunk
+                auto chunk = _chunks.at(chunk_id);
+                if (on_new_border) // Mark as border chunk
                 {
-                    // We can't convert and build yet, as we haven't guaranteed the existence
-                    // of all neighbors, so we must defer.
-                    to_convert.push_back(chunk);
+                    chunk->SetIsBorderChunk(true);
                 }
+                else if (chunk->IsBorderChunk()) // Mark as non-border chunk
+                {
+                    // We can't build yet, as we haven't guaranteed the existence of all neighbors, so we must defer
+                    chunk->SetIsBorderChunk(false);
+                    to_build.push_back(chunk);
+                }
+            }
+            else
+            {
+                Chunk *chunk = new Chunk(glm::ivec3{x, 0, z}, on_new_border, this);
+                _chunks.emplace(chunk_id, chunk);
+                chunk->Build();
             }
         }
     }
 
-    // Convert border chunks that should now be rendered and finish building
-    for (auto &chunk : to_convert)
-    {
-        chunk->SetIsBorderChunk(false);
+    // Build border chunks that just became patch chunks
+    for (auto chunk : to_build)
         chunk->BuildExternal();
-    }
 }
 
 BlockID *ChunkManager::GetBlockMemory(uint64_t chunk_id)
@@ -322,7 +326,7 @@ void ChunkManager::ReuseBlockMemory(uint64_t chunk_id)
     }
 }
 
-std::shared_ptr<Chunk> ChunkManager::GetChunk(glm::ivec3 chunk_coords)
+Chunk *ChunkManager::GetChunk(glm::ivec3 chunk_coords)
 {
     auto chunk_id = ChunkCoordsToID(chunk_coords);
     if (_chunks.contains(chunk_id))
@@ -331,7 +335,7 @@ std::shared_ptr<Chunk> ChunkManager::GetChunk(glm::ivec3 chunk_coords)
         return nullptr;
 }
 
-std::unordered_map<uint64_t, std::shared_ptr<Chunk>> &ChunkManager::GetChunks()
+std::unordered_map<uint64_t, Chunk *> &ChunkManager::GetChunks()
 {
     return _chunks;
 }
