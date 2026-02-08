@@ -43,7 +43,6 @@ class ChunkManager
         std::array<Chunk *, 4> GetAdjacentNeighbors(glm::ivec3 chunk_coords);
         std::array<Chunk *, 8> GetAllNeighbors(glm::ivec3 chunk_coords);
         Chunk *GetChunk(glm::ivec3 chunk_coords);
-        std::unordered_map<uint64_t, Chunk *> &GetChunks();
         ChunkWorkerPool *GetWorkerPool();
         int GetLoadedChunkCount();
         void WriteAllChunksToDisk();

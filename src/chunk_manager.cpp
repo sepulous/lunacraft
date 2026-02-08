@@ -335,11 +335,6 @@ Chunk *ChunkManager::GetChunk(glm::ivec3 chunk_coords)
         return nullptr;
 }
 
-std::unordered_map<uint64_t, Chunk *> &ChunkManager::GetChunks()
-{
-    return _chunks;
-}
-
 ChunkWorkerPool *ChunkManager::GetWorkerPool()
 {
     return _worker_pool;

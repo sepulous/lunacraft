@@ -34,7 +34,7 @@ void EntityManager::Update()
 
 void EntityManager::RunPhysics(int steps, float interp)
 {
-    auto TestAABBWorld = [this](const AABB& box) {
+    auto TestAABBWorld = [this](const AABB &box) {
         float min_x = glm::round(box.center.x - box.extents.x);
         float max_x = glm::round(box.center.x + box.extents.x);
         float min_y = glm::round(box.center.y - box.extents.y);
@@ -42,21 +42,18 @@ void EntityManager::RunPhysics(int steps, float interp)
         float min_z = glm::round(box.center.z - box.extents.z);
         float max_z = glm::round(box.center.z + box.extents.z);
 
-        auto &chunks = _chunk_manager->GetChunks();
         for (int x = min_x; x <= max_x; x++)
         {
-            for (int y = min_y; y <= max_y; y++)
+            for (int z = min_z; z <= max_z; z++)
             {
-                for (int z = min_z; z <= max_z; z++)
+                glm::ivec3 box_chunk_coords = VoxelToChunk({x, 0, z});
+                auto chunk = _chunk_manager->GetChunk(box_chunk_coords);
+                if (chunk != nullptr)
                 {
-                    glm::ivec3 box_chunk_coords = VoxelToChunk({x, y, z});
-                    uint64_t chunk_id = ChunkCoordsToID(box_chunk_coords);
-
-                    auto it = chunks.find(chunk_id);
-                    if (it != chunks.end())
+                    for (int y = min_y; y <= max_y; y++)
                     {
                         glm::ivec3 local_block_pos = GlobalToLocalVoxel({x, y, z});
-                        if ((BlockID)it->second->GetBlocks()[GetChunkIndex(local_block_pos.x, local_block_pos.y, local_block_pos.z)] != BlockID::air)
+                        if (chunk->GetBlocks()[GetChunkIndex(local_block_pos)] != BlockID::air)
                             return true;
                     }
                 }
