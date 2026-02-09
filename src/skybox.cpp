@@ -76,12 +76,12 @@ Skybox::Skybox()
     glBindTexture(GL_TEXTURE_CUBE_MAP, _texture);
 
     std::vector<std::filesystem::path> faces = {
-        Storage::IMAGE_DIR / "skybox" / "skybox_right.png",
-        Storage::IMAGE_DIR / "skybox" / "skybox_left.png",
-        Storage::IMAGE_DIR / "skybox" / "skybox_top.png",
-        Storage::IMAGE_DIR / "skybox" / "skybox_bottom.png",
-        Storage::IMAGE_DIR / "skybox" / "skybox_front.png",
-        Storage::IMAGE_DIR / "skybox" / "skybox_back.png"
+        Storage::IMAGES / "skybox" / "skybox_right.png",
+        Storage::IMAGES / "skybox" / "skybox_left.png",
+        Storage::IMAGES / "skybox" / "skybox_top.png",
+        Storage::IMAGES / "skybox" / "skybox_bottom.png",
+        Storage::IMAGES / "skybox" / "skybox_front.png",
+        Storage::IMAGES / "skybox" / "skybox_back.png"
     };
     for (unsigned int i = 0; i < faces.size(); i++)
     {

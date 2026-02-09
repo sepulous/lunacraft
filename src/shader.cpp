@@ -23,10 +23,10 @@ Shader ShaderManager::SKYBOX_SHADER;
 
 void ShaderManager::CompileAllShaders()
 {
-    UI_IMAGE_SHADER.MakeProgram(Storage::SHADER_DIR / "ui_image.vert", Storage::SHADER_DIR / "ui_image.frag");
-    UI_TEXT_SHADER.MakeProgram(Storage::SHADER_DIR / "ui_text.vert", Storage::SHADER_DIR / "ui_text.frag");
-    BLOCK_SHADER.MakeProgram(Storage::SHADER_DIR / "block.vert", Storage::SHADER_DIR / "block.frag");
-    SKYBOX_SHADER.MakeProgram(Storage::SHADER_DIR / "skybox.vert", Storage::SHADER_DIR / "skybox.frag");
+    UI_IMAGE_SHADER.MakeProgram(Storage::SHADERS / "ui_image.vert", Storage::SHADERS / "ui_image.frag");
+    UI_TEXT_SHADER.MakeProgram(Storage::SHADERS / "ui_text.vert", Storage::SHADERS / "ui_text.frag");
+    BLOCK_SHADER.MakeProgram(Storage::SHADERS / "block.vert", Storage::SHADERS / "block.frag");
+    SKYBOX_SHADER.MakeProgram(Storage::SHADERS / "skybox.vert", Storage::SHADERS / "skybox.frag");
 }
 
 //

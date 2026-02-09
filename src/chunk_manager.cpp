@@ -37,7 +37,7 @@ void ChunkManager::Init(int moon_id, MoonSettings moon_settings)
     // Load texture atlas
     int width, height, nrChannels;
     stbi_set_flip_vertically_on_load(true);
-    std::filesystem::path atlas_path = Storage::IMAGE_DIR / "texture_atlas.png";
+    std::filesystem::path atlas_path = Storage::IMAGES / "texture_atlas.png";
     unsigned char *texture_atlas_data = stbi_load(reinterpret_cast<const char *>(atlas_path.u8string().c_str()), &width, &height, &nrChannels, 0);
 
     glGenTextures(1, &_texture_atlas);
@@ -52,7 +52,7 @@ void ChunkManager::Init(int moon_id, MoonSettings moon_settings)
     stbi_image_free(texture_atlas_data);
 
     // Create chunks folder
-    std::filesystem::path moon_dir = Storage::MOON_DIR / (std::string("moon") + std::to_string(moon_id));
+    std::filesystem::path moon_dir = Storage::MOONS / (std::string("moon") + std::to_string(moon_id));
     std::filesystem::path chunk_dir = moon_dir / "chunks";
     if (!std::filesystem::exists(chunk_dir))
         std::filesystem::create_directory(chunk_dir);

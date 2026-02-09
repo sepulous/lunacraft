@@ -18,7 +18,7 @@ Moon *Moon::_current_moon;
 Moon::Moon(int moon_id, MoonSettings moon_settings)
 {
     // Create moon folder (if necessary)
-    std::filesystem::path moon_dir = Storage::MOON_DIR / (std::string("moon") + std::to_string(moon_id));
+    std::filesystem::path moon_dir = Storage::MOONS / (std::string("moon") + std::to_string(moon_id));
     if (!std::filesystem::exists(moon_dir))
         std::filesystem::create_directory(moon_dir);
 
@@ -78,7 +78,7 @@ Moon::~Moon()
 
     // Save world time to file
     _settings.world_time = _world_time;
-    std::filesystem::path moon_data_path = Storage::MOON_DIR / (std::string("moon") + std::to_string(_id)) / "moon.dat";
+    std::filesystem::path moon_data_path = Storage::MOONS / (std::string("moon") + std::to_string(_id)) / "moon.dat";
     std::ofstream moon_data_file(moon_data_path, std::ios::binary);
     moon_data_file.write(reinterpret_cast<char *>(&_settings), sizeof(MoonSettings));
     moon_data_file.close();

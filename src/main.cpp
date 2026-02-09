@@ -277,7 +277,7 @@ int main()
                 {
                     // Save player data
                     PlayerData player_data = moon->GetPlayer()->GetPlayerData();
-                    std::ofstream player_data_file(Storage::MOON_DIR / (std::string("moon") + std::to_string(moon->GetID())) / "player.dat", std::ios::binary);
+                    std::ofstream player_data_file(Storage::MOONS / (std::string("moon") + std::to_string(moon->GetID())) / "player.dat", std::ios::binary);
                     player_data_file.write(reinterpret_cast<char *>(&player_data), sizeof(PlayerData));
                     player_data_file.close();
 
@@ -345,7 +345,7 @@ void LoadMoon(int moon_id, MoonSettings moon_settings)
     Player *player = moon->GetPlayer();
 
     // Create/fetch player data
-    std::filesystem::path moon_dir = Storage::MOON_DIR / (std::string("moon") + std::to_string(moon_id));
+    std::filesystem::path moon_dir = Storage::MOONS / (std::string("moon") + std::to_string(moon_id));
     std::filesystem::path player_data_path = moon_dir / "player.dat";
     if (std::filesystem::exists(player_data_path))
     {

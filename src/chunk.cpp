@@ -108,7 +108,7 @@ const Lightmap &Chunk::GetLightmap() const
 std::filesystem::path Chunk::GetFilePath()
 {
     auto chunk_id = ChunkCoordsToID(_coords);
-    return Storage::MOON_DIR / (std::string("moon") + std::to_string(Moon::GetCurrentMoon()->GetID())) / "chunks" / (std::to_string(chunk_id) + ".chunk");
+    return Storage::MOONS / (std::string("moon") + std::to_string(Moon::GetCurrentMoon()->GetID())) / "chunks" / (std::to_string(chunk_id) + ".chunk");
 }
 
 // Must only be called from the main thread!
@@ -129,12 +129,12 @@ int Chunk::GetPinCount()
 
 void Chunk::MarkForDelete()
 {
-    _marked_for_delete.store(true);
+    _marked_for_delete.store(true, std::memory_order_relaxed);
 }
 
 bool Chunk::IsMarkedForDelete()
 {
-    return _marked_for_delete.load();
+    return _marked_for_delete.load(std::memory_order_relaxed);
 }
 
 //

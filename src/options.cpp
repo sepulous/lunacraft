@@ -10,7 +10,7 @@ Options OptionsManager::_options;
 
 void OptionsManager::Init()
 {
-    std::filesystem::path options_file_path =  Storage::ROOT_DIR / "options.dat";
+    std::filesystem::path options_file_path =  Storage::USER_DATA / "options.dat";
     if (std::filesystem::exists(options_file_path))
     {
         std::ifstream options_file(options_file_path, std::ios::binary);
@@ -38,7 +38,7 @@ void OptionsManager::SetOptions(Options new_options)
 
 void OptionsManager::SaveOptions()
 {
-    std::filesystem::path options_file_path =  Storage::ROOT_DIR / "options.dat";
+    std::filesystem::path options_file_path =  Storage::USER_DATA / "options.dat";
     std::ofstream options_file(options_file_path, std::ios::binary);
     options_file.write(reinterpret_cast<char *>(&_options), sizeof(Options));
     options_file.close();

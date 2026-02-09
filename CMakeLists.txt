@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(FetchContent)
+include(GNUInstallDirs)
 
 # GLFW
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -72,22 +73,44 @@ target_link_libraries(Lunacraft
 
 target_compile_options(Lunacraft PRIVATE -Wno-volatile)
 
-if (WIN32)
-    add_custom_command(TARGET Lunacraft POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            $<TARGET_FILE:OpenAL::OpenAL>
-            $<TARGET_FILE_DIR:Lunacraft>
+target_compile_definitions(Lunacraft PRIVATE
+    LUNACRAFT_ROOT_DIR="${CMAKE_INSTALL_FULL_DATADIR}/lunacraft"
+)
+
+# ---------------- INSTALL ----------------
+
+# Install executable
+install(TARGETS Lunacraft
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}   # Windows / Linux
+    BUNDLE  DESTINATION .                         # macOS
+)
+
+# Install assets
+if (APPLE)
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/assets/
+        DESTINATION Lunacraft.app/Contents/Resources
+    )
+else()
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/assets/
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/lunacraft
     )
 endif()
 
-if (APPLE)
-    target_link_libraries(Lunacraft PRIVATE "-framework Cocoa")
-    set_target_properties(Lunacraft PROPERTIES
-        MACOSX_BUNDLE TRUE
+# Install .desktop file and icon (Linux)
+if (NOT (WIN32 OR APPLE))
+    install(FILES lunacraft.desktop
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/applications
     )
-    add_custom_command(TARGET Lunacraft POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-            $<TARGET_FILE_DIR:OpenAL::OpenAL>
-            $<TARGET_BUNDLE_CONTENT_DIR:Lunacraft>/Frameworks
+
+    install(FILES ${CMAKE_SOURCE_DIR}/assets/images/icon.png
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/128x128/apps
+        RENAME lunacraft.png
+    )
+endif()
+
+# Copy OpenAL
+if (WIN32)
+    install(FILES $<TARGET_FILE:OpenAL::OpenAL>
+        DESTINATION ${CMAKE_INSTALL_BINDIR}
     )
 endif()

@@ -61,7 +61,7 @@ glm::mat4 UIGetVirtualToWindow()
 UIMainMenu::UIMainMenu()
 {
     // Lunacraft logo
-    _lunacraft_logo.LoadImage(Storage::IMAGE_DIR / "lunacraft.png");
+    _lunacraft_logo.LoadImage(Storage::IMAGES / "lunacraft.png");
     _lunacraft_logo.SetPosition({70, 875});
     _lunacraft_logo.SetSize({859, 130});
 
@@ -70,7 +70,7 @@ UIMainMenu::UIMainMenu()
     for (UIImage& background_image : _background_images)
     {
         std::string image_path = std::string("main_menu_") + std::to_string(i) + ".png";
-        background_image.LoadImage(Storage::IMAGE_DIR / image_path);
+        background_image.LoadImage(Storage::IMAGES / image_path);
         background_image.SetPosition({0, 0});
         background_image.SetSize({VIRTUAL_UI_WIDTH, VIRTUAL_UI_HEIGHT});
         i++;
@@ -84,10 +84,10 @@ UIMainMenu::UIMainMenu()
         glm::vec2 button_size = {820, 105};
         moon_button.SetSize(button_size);
         moon_button.SetPosition(button_position);
-        moon_button.SetImage(Storage::IMAGE_DIR / "ui" / "ui_button_1.png");
+        moon_button.SetImage(Storage::IMAGES / "ui" / "ui_button_1.png");
 
         std::string button_text;
-        std::filesystem::path moon_folder = Storage::MOON_DIR / (std::string("moon") + std::to_string(i));
+        std::filesystem::path moon_folder = Storage::MOONS / (std::string("moon") + std::to_string(i));
         if (std::filesystem::exists(moon_folder))
         {
             int chunk_count = std::count_if(
@@ -142,7 +142,7 @@ UIMainMenu::UIMainMenu()
         glm::vec2 button_size = {210, 80};
         reset_button.SetSize(button_size);
         reset_button.SetPosition(button_position);
-        reset_button.SetImage(Storage::IMAGE_DIR / "ui" / "ui_button_2.png");
+        reset_button.SetImage(Storage::IMAGES / "ui" / "ui_button_2.png");
 
         glm::vec2 text_size = UIText::GetTextSizeInPixels("Reset", 0.425f);
         reset_button.GetText().SetPosition({
@@ -164,7 +164,7 @@ UIMainMenu::UIMainMenu()
     float options_font_size = 0.6f;
     _options_button.SetSize(options_button_size);
     _options_button.SetPosition(options_button_position);
-    _options_button.SetImage(Storage::IMAGE_DIR / "ui" / "ui_button_3.png");
+    _options_button.SetImage(Storage::IMAGES / "ui" / "ui_button_3.png");
     glm::vec2 options_text_size = UIText::GetTextSizeInPixels("Options", options_font_size);
     _options_button.GetText().SetPosition({
         options_button_position.x + (options_button_size.x / 2.0f) - (options_text_size.x / 2.0f),
@@ -179,7 +179,7 @@ UIMainMenu::UIMainMenu()
     float quit_font_size = 0.6f;
     _quit_button.SetSize(quit_button_size);
     _quit_button.SetPosition(quit_button_position);
-    _quit_button.SetImage(Storage::IMAGE_DIR / "ui" / "ui_button_4.png");
+    _quit_button.SetImage(Storage::IMAGES / "ui" / "ui_button_4.png");
     glm::vec2 quit_text_size = UIText::GetTextSizeInPixels("Quit", quit_font_size);
     _quit_button.GetText().SetPosition({
         quit_button_position.x + (quit_button_size.x / 2.0f) - (quit_text_size.x / 2.0f),
@@ -197,7 +197,7 @@ void UIMainMenu::RefreshMoonButtonText()
         glm::vec2 button_size = {820, 105};
 
         std::string button_text;
-        std::filesystem::path moon_folder = Storage::MOON_DIR / (std::string("moon") + std::to_string(i));
+        std::filesystem::path moon_folder = Storage::MOONS / (std::string("moon") + std::to_string(i));
         if (std::filesystem::exists(moon_folder))
         {
             int chunk_count = std::count_if(
@@ -405,7 +405,7 @@ void UIMainMenu::Render(float delta_time)
 UIMoonSettingsMenu::UIMoonSettingsMenu()
 {
     // Background
-    _background.LoadImage(Storage::IMAGE_DIR / "ui" / "ui_menu_bg.png", GL_NEAREST);
+    _background.LoadImage(Storage::IMAGES / "ui" / "ui_menu_bg.png", GL_NEAREST);
     float bg_width = 1200;
     float bg_height = 700;
     float bg_pos_x = (VIRTUAL_UI_WIDTH / 2.0f) - (bg_width / 2.0f);
@@ -484,15 +484,15 @@ UIMoonSettingsMenu::UIMoonSettingsMenu()
     _mode_description.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
 
     // Creative button
-    _creative_button.SetToggledImage(Storage::IMAGE_DIR / "ui" / "creative_toggled.png");
-    _creative_button.SetUntoggledImage(Storage::IMAGE_DIR / "ui" / "creative_untoggled.png");
+    _creative_button.SetToggledImage(Storage::IMAGES / "ui" / "creative_toggled.png");
+    _creative_button.SetUntoggledImage(Storage::IMAGES / "ui" / "creative_untoggled.png");
     glm::vec2 creative_button_size = {200, 60};
     _creative_button.SetSize(creative_button_size);
     _creative_button.SetPosition({bg_pos_x + (bg_width / 2.0f) - (creative_button_size.x / 2.0f) - 100, bg_pos_y + 150});
 
     // Explore button
-    _explore_button.SetToggledImage(Storage::IMAGE_DIR / "ui" / "explore_toggled.png");
-    _explore_button.SetUntoggledImage(Storage::IMAGE_DIR / "ui" / "explore_untoggled.png");
+    _explore_button.SetToggledImage(Storage::IMAGES / "ui" / "explore_toggled.png");
+    _explore_button.SetUntoggledImage(Storage::IMAGES / "ui" / "explore_untoggled.png");
     glm::vec2 explore_button_size = {200, 60};
     _explore_button.SetSize(explore_button_size);
     _explore_button.SetPosition({bg_pos_x + (bg_width / 2.0f) + (explore_button_size.x / 2.0f) - 100, bg_pos_y + 150});
@@ -504,7 +504,7 @@ UIMoonSettingsMenu::UIMoonSettingsMenu()
     float back_font_size = 0.4f;
     _back_button.SetPosition(back_button_position);
     _back_button.SetSize(back_button_size);
-    _back_button.SetImage(Storage::IMAGE_DIR / "ui" / "ui_button_4.png");
+    _back_button.SetImage(Storage::IMAGES / "ui" / "ui_button_4.png");
     _back_button.SetText("Back", back_font_size, {0.0f, 0.0f, 0.0f, 1.0f});
     glm::vec2 back_text_size = UIText::GetTextSizeInPixels("Back", back_font_size);
     _back_button.GetText().SetPosition({
@@ -519,7 +519,7 @@ UIMoonSettingsMenu::UIMoonSettingsMenu()
     float launch_font_size = 0.4f;
     _launch_button.SetPosition(launch_button_position);
     _launch_button.SetSize(launch_button_size);
-    _launch_button.SetImage(Storage::IMAGE_DIR / "ui" / "ui_button_3.png");
+    _launch_button.SetImage(Storage::IMAGES / "ui" / "ui_button_3.png");
     _launch_button.SetText("Launch!", launch_font_size, {0.0f, 0.0f, 0.0f, 1.0f});
     glm::vec2 launch_text_size = UIText::GetTextSizeInPixels("Launch!", launch_font_size);
     _launch_button.GetText().SetPosition({
@@ -681,7 +681,7 @@ void UIMoonSettingsMenu::Render()
 UILoadMoonMenu::UILoadMoonMenu()
 {
     // Background
-    _background.LoadImage(Storage::IMAGE_DIR / "ui" / "ui_menu_bg.png", GL_NEAREST);
+    _background.LoadImage(Storage::IMAGES / "ui" / "ui_menu_bg.png", GL_NEAREST);
     float bg_width = 780;
     float bg_height = 420;
     float bg_pos_x = (VIRTUAL_UI_WIDTH / 2.0f) - (bg_width / 2.0f);
@@ -770,7 +770,7 @@ void UILoadMoonMenu::Render()
 UIOptionsMenu::UIOptionsMenu()
 {
     // Background
-    _background.LoadImage(Storage::IMAGE_DIR / "ui" / "ui_menu_bg.png", GL_NEAREST);
+    _background.LoadImage(Storage::IMAGES / "ui" / "ui_menu_bg.png", GL_NEAREST);
     float bg_width = 1200;
     float bg_height = 700;
     float bg_pos_x = (VIRTUAL_UI_WIDTH / 2.0f) - (bg_width / 2.0f);
@@ -899,7 +899,7 @@ UIOptionsMenu::UIOptionsMenu()
     float back_font_size = 0.4f;
     _back_button.SetPosition(back_button_position);
     _back_button.SetSize(back_button_size);
-    _back_button.SetImage(Storage::IMAGE_DIR / "ui" / "ui_button_4.png");
+    _back_button.SetImage(Storage::IMAGES / "ui" / "ui_button_4.png");
     _back_button.SetText("Back", back_font_size, {0.0f, 0.0f, 0.0f, 1.0f});
     glm::vec2 back_text_size = UIText::GetTextSizeInPixels("Back", back_font_size);
     _back_button.GetText().SetPosition({
@@ -999,7 +999,7 @@ void UIOptionsMenu::Render()
 UIResetMoonMenu::UIResetMoonMenu()
 {
     // Background
-    _background.LoadImage(Storage::IMAGE_DIR / "ui" / "ui_menu_bg.png", GL_NEAREST);
+    _background.LoadImage(Storage::IMAGES / "ui" / "ui_menu_bg.png", GL_NEAREST);
     float bg_width = 720;
     float bg_height = 420;
     float bg_pos_x = (VIRTUAL_UI_WIDTH / 2.0f) - (bg_width / 2.0f);
@@ -1021,7 +1021,7 @@ UIResetMoonMenu::UIResetMoonMenu()
     float cancel_font_size = 0.4f;
     _cancel_button.SetPosition(cancel_button_position);
     _cancel_button.SetSize(cancel_button_size);
-    _cancel_button.SetImage(Storage::IMAGE_DIR / "ui" / "ui_button_3.png");
+    _cancel_button.SetImage(Storage::IMAGES / "ui" / "ui_button_3.png");
     _cancel_button.SetText("Cancel", cancel_font_size, {0.0f, 0.0f, 0.0f, 1.0f});
     glm::vec2 cancel_text_size = UIText::GetTextSizeInPixels("Cancel", cancel_font_size);
     _cancel_button.GetText().SetPosition({
@@ -1036,7 +1036,7 @@ UIResetMoonMenu::UIResetMoonMenu()
     float reset_font_size = 0.4f;
     _reset_button.SetPosition(reset_button_position);
     _reset_button.SetSize(reset_button_size);
-    _reset_button.SetImage(Storage::IMAGE_DIR / "ui" / "ui_button_3.png");
+    _reset_button.SetImage(Storage::IMAGES / "ui" / "ui_button_3.png");
     _reset_button.SetText("Reset", reset_font_size, {0.9f, 0.0f, 0.0f, 1.0f});
     glm::vec2 reset_text_size = UIText::GetTextSizeInPixels("Reset", reset_font_size);
     _reset_button.GetText().SetPosition({
@@ -1044,7 +1044,7 @@ UIResetMoonMenu::UIResetMoonMenu()
         reset_button_position.y + (reset_button_size.y / 2.0f) - (reset_text_size.y / 2.0f)
     });
     _reset_button.SetClickAction([this]() {
-        std::filesystem::path moon_path = Storage::MOON_DIR / (std::string("moon") + std::to_string(_moon));
+        std::filesystem::path moon_path = Storage::MOONS / (std::string("moon") + std::to_string(_moon));
         std::filesystem::remove_all(moon_path);
         SetActive(false);
     });
@@ -1095,7 +1095,7 @@ void UIResetMoonMenu::Render()
 
 UIPauseMenu::UIPauseMenu()
 {
-    _background.LoadImage(Storage::IMAGE_DIR / "ui" / "ui_black.png", GL_NEAREST);
+    _background.LoadImage(Storage::IMAGES / "ui" / "ui_black.png", GL_NEAREST);
     _background.SetPosition({0, 0});
     _background.SetSize({VIRTUAL_UI_WIDTH, VIRTUAL_UI_HEIGHT});
 
@@ -1105,7 +1105,7 @@ UIPauseMenu::UIPauseMenu()
     glm::vec2 resume_button_position = {(VIRTUAL_UI_WIDTH / 2.0f) - (button_size.x / 2.0f), 700};
     _resume_button.SetSize(button_size);
     _resume_button.SetPosition(resume_button_position);
-    _resume_button.SetImage(Storage::IMAGE_DIR / "ui" / "ui_button_3.png");
+    _resume_button.SetImage(Storage::IMAGES / "ui" / "ui_button_3.png");
     _resume_button.SetText("Resume", text_scale, {0.0f, 0.0f, 0.0f, 1.0f});
     glm::vec2 resume_text_size = UIText::GetTextSizeInPixels("Resume", text_scale);
     _resume_button.GetText().SetPosition({
@@ -1117,7 +1117,7 @@ UIPauseMenu::UIPauseMenu()
     glm::vec2 options_button_position = {(VIRTUAL_UI_WIDTH / 2.0f) - (button_size.x / 2.0f), 500};
     _options_button.SetSize(button_size);
     _options_button.SetPosition(options_button_position);
-    _options_button.SetImage(Storage::IMAGE_DIR / "ui" / "ui_button_3.png");
+    _options_button.SetImage(Storage::IMAGES / "ui" / "ui_button_3.png");
     _options_button.SetText("Options", text_scale, {0.0f, 0.0f, 0.0f, 1.0f});
     glm::vec2 options_text_size = UIText::GetTextSizeInPixels("Options", text_scale);
     _options_button.GetText().SetPosition({
@@ -1129,7 +1129,7 @@ UIPauseMenu::UIPauseMenu()
     glm::vec2 quit_button_position = {(VIRTUAL_UI_WIDTH / 2.0f) - (button_size.x / 2.0f), 300};
     _quit_button.SetSize(button_size);
     _quit_button.SetPosition(quit_button_position);
-    _quit_button.SetImage(Storage::IMAGE_DIR / "ui" / "ui_button_3.png");
+    _quit_button.SetImage(Storage::IMAGES / "ui" / "ui_button_3.png");
     _quit_button.SetText("Save & Quit", text_scale, {0.0f, 0.0f, 0.0f, 1.0f});
     glm::vec2 quit_text_size = UIText::GetTextSizeInPixels("Save & Quit", text_scale);
     _quit_button.GetText().SetPosition({
@@ -1430,7 +1430,7 @@ stbtt_aligned_quad UIText::_aligned_quads[95];
 
 void UIText::_SetupFont()
 {
-    std::ifstream inputStream(Storage::ASSET_DIR / "fonts" / "ack.ttf", std::ios::binary);
+    std::ifstream inputStream(Storage::FONTS / "ack.ttf", std::ios::binary);
 
     inputStream.seekg(0, std::ios::end);
     auto&& fontFileSize = inputStream.tellg();
@@ -1832,8 +1832,8 @@ void UIButton::Render()
 
 UIToggleButton::UIToggleButton()
 {
-    _toggled_image.LoadImage(Storage::IMAGE_DIR / "ui" / "ui_toggle_checked.png");
-    _untoggled_image.LoadImage(Storage::IMAGE_DIR / "ui" / "ui_toggle_unchecked.png");
+    _toggled_image.LoadImage(Storage::IMAGES / "ui" / "ui_toggle_checked.png");
+    _untoggled_image.LoadImage(Storage::IMAGES / "ui" / "ui_toggle_unchecked.png");
 }
 
 void UIToggleButton::SetToggledImage(std::filesystem::path image_path)
@@ -1900,14 +1900,14 @@ void UIToggleButton::Render()
 
 UISlider::UISlider()
 {
-    _slider_bg_middle.LoadImage(Storage::IMAGE_DIR / "ui" / "ui_slider_bg_middle.png");
-    _slider_bg_right.LoadImage(Storage::IMAGE_DIR / "ui" / "ui_slider_bg_right.png");
+    _slider_bg_middle.LoadImage(Storage::IMAGES / "ui" / "ui_slider_bg_middle.png");
+    _slider_bg_right.LoadImage(Storage::IMAGES / "ui" / "ui_slider_bg_right.png");
 
-    _slider_level_left.LoadImage(Storage::IMAGE_DIR / "ui" / "ui_slider_level_left.png");
-    _slider_level_middle.LoadImage(Storage::IMAGE_DIR / "ui" / "ui_slider_level_middle.png");
+    _slider_level_left.LoadImage(Storage::IMAGES / "ui" / "ui_slider_level_left.png");
+    _slider_level_middle.LoadImage(Storage::IMAGES / "ui" / "ui_slider_level_middle.png");
 
-    _slider_handle.LoadImage(Storage::IMAGE_DIR / "ui" / "ui_slider_handle.png", GL_NEAREST);
-    _slider_handle_held.LoadImage(Storage::IMAGE_DIR / "ui" / "ui_slider_handle_held.png");
+    _slider_handle.LoadImage(Storage::IMAGES / "ui" / "ui_slider_handle.png", GL_NEAREST);
+    _slider_handle_held.LoadImage(Storage::IMAGES / "ui" / "ui_slider_handle_held.png");
     _slider_value_text.SetFontSize(0.5f);
     _slider_value_text.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
 }
@@ -2064,8 +2064,8 @@ void UISlider::Render()
 
 UIProgressBar::UIProgressBar()
 {
-    _slider_bg.SetImage(Storage::IMAGE_DIR / "ui" / "ui_slider_bg.png");
-    _slider_level.SetImage(Storage::IMAGE_DIR / "ui" / "ui_slider_level.png");
+    _slider_bg.SetImage(Storage::IMAGES / "ui" / "ui_slider_bg.png");
+    _slider_level.SetImage(Storage::IMAGES / "ui" / "ui_slider_level.png");
 }
 
 void UIProgressBar::SetLevel(float level)
@@ -2101,7 +2101,7 @@ void UIProgressBar::Render()
 
 UITextBox::UITextBox()
 {
-    _box.SetImage(Storage::IMAGE_DIR / "ui" / "ui_textbox.png");
+    _box.SetImage(Storage::IMAGES / "ui" / "ui_textbox.png");
     _text.SetText("");
     _text.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
     _text.SetFontSize(0.4f);

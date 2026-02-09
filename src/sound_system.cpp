@@ -18,26 +18,26 @@ void SoundSystem::Init()
 {
     Soundlib::Init();
 
-    _sound_map[Sound::SONG_1].LoadSound((Storage::ASSET_DIR / "sounds" / "theme1.mp3").string());
-    _sound_map[Sound::SONG_2].LoadSound((Storage::ASSET_DIR / "sounds" / "theme2.mp3").string());
-    _sound_map[Sound::SONG_3].LoadSound((Storage::ASSET_DIR / "sounds" / "theme3.mp3").string());
-    _sound_map[Sound::SONG_4].LoadSound((Storage::ASSET_DIR / "sounds" / "theme4.mp3").string());
-    _sound_map[Sound::SONG_5].LoadSound((Storage::ASSET_DIR / "sounds" / "theme5.mp3").string());
-    _sound_map[Sound::BLOCK_BREAK].LoadSound((Storage::ASSET_DIR / "sounds" / "blockbreak.wav").string());
-    _sound_map[Sound::BLOCK_PLACE].LoadSound((Storage::ASSET_DIR / "sounds" / "blockplace.wav").string());
-    _sound_map[Sound::CRAFT].LoadSound((Storage::ASSET_DIR / "sounds" / "craft.wav").string());
-    _sound_map[Sound::DING].LoadSound((Storage::ASSET_DIR / "sounds" / "ding.wav").string());
-    _sound_map[Sound::DRILL].LoadSound((Storage::ASSET_DIR / "sounds" / "drill.wav").string());
-    _sound_map[Sound::DRILL2].LoadSound((Storage::ASSET_DIR / "sounds" / "drill2.wav").string());
-    _sound_map[Sound::DRILL3].LoadSound((Storage::ASSET_DIR / "sounds" / "drill3.wav").string());
-    _sound_map[Sound::FRIENDLY_SUMMON].LoadSound((Storage::ASSET_DIR / "sounds" / "friendlysummon.wav").string());
-    _sound_map[Sound::HURT].LoadSound((Storage::ASSET_DIR / "sounds" / "hurt.wav").string());
-    _sound_map[Sound::JETPACK].LoadSound((Storage::ASSET_DIR / "sounds" / "jetpack.wav").string());
-    _sound_map[Sound::JUMP].LoadSound((Storage::ASSET_DIR / "sounds" / "jump.wav").string());
-    _sound_map[Sound::LAND].LoadSound((Storage::ASSET_DIR / "sounds" / "land.wav").string());
-    _sound_map[Sound::LASER].LoadSound((Storage::ASSET_DIR / "sounds" / "lasergun.wav").string());
-    _sound_map[Sound::MEDKIT].LoadSound((Storage::ASSET_DIR / "sounds" / "medkit.wav").string());
-    _sound_map[Sound::PICKUP].LoadSound((Storage::ASSET_DIR / "sounds" / "pickup.wav").string());
+    _sound_map[Sound::SONG_1].LoadSound((Storage::SOUNDS / "theme1.mp3").string());
+    _sound_map[Sound::SONG_2].LoadSound((Storage::SOUNDS / "theme2.mp3").string());
+    _sound_map[Sound::SONG_3].LoadSound((Storage::SOUNDS / "theme3.mp3").string());
+    _sound_map[Sound::SONG_4].LoadSound((Storage::SOUNDS / "theme4.mp3").string());
+    _sound_map[Sound::SONG_5].LoadSound((Storage::SOUNDS / "theme5.mp3").string());
+    _sound_map[Sound::BLOCK_BREAK].LoadSound((Storage::SOUNDS / "blockbreak.wav").string());
+    _sound_map[Sound::BLOCK_PLACE].LoadSound((Storage::SOUNDS / "blockplace.wav").string());
+    _sound_map[Sound::CRAFT].LoadSound((Storage::SOUNDS / "craft.wav").string());
+    _sound_map[Sound::DING].LoadSound((Storage::SOUNDS / "ding.wav").string());
+    _sound_map[Sound::DRILL].LoadSound((Storage::SOUNDS / "drill.wav").string());
+    _sound_map[Sound::DRILL2].LoadSound((Storage::SOUNDS / "drill2.wav").string());
+    _sound_map[Sound::DRILL3].LoadSound((Storage::SOUNDS / "drill3.wav").string());
+    _sound_map[Sound::FRIENDLY_SUMMON].LoadSound((Storage::SOUNDS / "friendlysummon.wav").string());
+    _sound_map[Sound::HURT].LoadSound((Storage::SOUNDS / "hurt.wav").string());
+    _sound_map[Sound::JETPACK].LoadSound((Storage::SOUNDS / "jetpack.wav").string());
+    _sound_map[Sound::JUMP].LoadSound((Storage::SOUNDS / "jump.wav").string());
+    _sound_map[Sound::LAND].LoadSound((Storage::SOUNDS / "land.wav").string());
+    _sound_map[Sound::LASER].LoadSound((Storage::SOUNDS / "lasergun.wav").string());
+    _sound_map[Sound::MEDKIT].LoadSound((Storage::SOUNDS / "medkit.wav").string());
+    _sound_map[Sound::PICKUP].LoadSound((Storage::SOUNDS / "pickup.wav").string());
 }
 
 void SoundSystem::Exit()

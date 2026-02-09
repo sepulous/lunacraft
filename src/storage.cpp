@@ -1,45 +1,53 @@
 #include <cstdlib>
+#include <string>
 #include <filesystem>
 #include <iostream>
 
 #include "storage.h"
 
-std::filesystem::path Storage::ROOT_DIR;
-std::filesystem::path Storage::ASSET_DIR;
-std::filesystem::path Storage::IMAGE_DIR;
-std::filesystem::path Storage::SHADER_DIR;
-std::filesystem::path Storage::MOON_DIR;
-std::filesystem::path Storage::SCREENSHOT_DIR;
+std::filesystem::path Storage::USER_DATA;
+std::filesystem::path Storage::IMAGES;
+std::filesystem::path Storage::SHADERS;
+std::filesystem::path Storage::SOUNDS;
+std::filesystem::path Storage::MOONS;
+std::filesystem::path Storage::SCREENSHOTS;
+std::filesystem::path Storage::FONTS;
 
 void Storage::Init()
 {
-    ROOT_DIR = std::filesystem::path("/home/blake/Lunacraft");
-    // #if defined(_WIN32) || defined(_WIN64)
-    //     ROOT_DIR = std::filesystem::path(std::getenv("APPDATA")) / ".lunacraft";
-    // #elif defined(__APPLE__)
-    //     ROOT_DIR = std::filesystem::path(std::getenv("HOME")) / "Library" / "Application Support" / ".lunacraft";
-    // #else
-    //     ROOT_DIR = std::filesystem::path(std::getenv("HOME")) / ".lunacraft";
-    // #endif
+    auto root_dir = std::filesystem::path(LUNACRAFT_ROOT_DIR); // LUNACRAFT_ROOT_DIR is supplied by CMake
+    IMAGES = root_dir / "images";
+    SHADERS = root_dir / "shaders";
+    SOUNDS = root_dir / "sounds";
+    FONTS = root_dir / "fonts";
 
-    // if (!std::filesystem::exists(ROOT_DIR))
-    //     std::filesystem::create_directory(ROOT_DIR);
+    USER_DATA = GetDataDir();
+    if (!std::filesystem::exists(USER_DATA))
+        std::filesystem::create_directory(USER_DATA);
 
-    ASSET_DIR = ROOT_DIR / "assets";
-    // if (!std::filesystem::exists(ASSET_DIR))
-    //     std::filesystem::create_directory(ASSET_DIR);
+    MOONS = USER_DATA / "moons";
+    if (!std::filesystem::exists(MOONS))
+        std::filesystem::create_directory(MOONS);
 
-    IMAGE_DIR = ASSET_DIR / "images";
+    SCREENSHOTS = USER_DATA / "screenshots";
+    if (!std::filesystem::exists(SCREENSHOTS))
+        std::filesystem::create_directory(SCREENSHOTS);
+}
 
-    SHADER_DIR = ASSET_DIR / "shaders";
-    // if (!std::filesystem::exists(SHADER_DIR))
-    //     std::filesystem::create_directory(SHADER_DIR);
+std::filesystem::path Storage::GetDataDir()
+{
+    #ifdef _WIN32
+        const char *appdata = std::getenv("APPDATA");
+        return appdata ? appdata : ".";
+    #elif __APPLE__
+        const char *home = std::getenv("HOME");
+        return std::filesystem::path(home) / "Library/Application Support/Lunacraft";
+    #else
+        const char *xdg = std::getenv("XDG_DATA_HOME");
+        if (xdg)
+            return std::filesystem::path(xdg) / "lunacraft";
 
-    MOON_DIR = ROOT_DIR / "moons";
-    if (!std::filesystem::exists(MOON_DIR))
-        std::filesystem::create_directory(MOON_DIR);
-
-    SCREENSHOT_DIR = ROOT_DIR / "screenshots";
-    // if (!std::filesystem::exists(SCREENSHOT_DIR))
-    //     std::filesystem::create_directory(SCREENSHOT_DIR);
+        const char *home = std::getenv("HOME");
+        return std::filesystem::path(home) / ".local/share/lunacraft";
+    #endif
 }
