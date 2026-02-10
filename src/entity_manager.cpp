@@ -71,7 +71,8 @@ void EntityManager::RunPhysics(int steps, float interp)
             entity->SetPrevPosition(entity->GetPosition());
 
             // Gravity
-            entity->SetVelocity(entity->GetVelocity() - glm::vec3(0, 4.0f * FIXED_DELTA_TIME, 0));
+            if (!entity->IsGrounded())
+                entity->SetVelocity(entity->GetVelocity() - glm::vec3(0, 4.0f * FIXED_DELTA_TIME, 0));
 
             // X
             next_position.x += entity->GetVelocity().x * FIXED_DELTA_TIME;
@@ -108,9 +109,18 @@ void EntityManager::RunPhysics(int steps, float interp)
                     auto entity_chunk = _chunk_manager->GetChunk(VoxelToChunk(entity_voxel_g));
                     BlockID foot_block = entity_chunk->GetBlocks()[GetChunkIndex(entity_voxel_l - glm::ivec3{0, 1, 0})]; // Can go out of bounds...
                     entity->SetIsOnIce(foot_block == BlockID::water);
+
+                    // Snap to ground to avoid sinking
+                    float floor_feet = glm::floor(entity->GetPosition().y - entity->GetAABB().extents.y);
+                    next_position.y = floor_feet + entity->GetAABB().extents.y + 0.5f;
+                    entity->GetAABB().center.y = next_position.y;
                 }
-                next_position.y = entity->GetPosition().y; // Don't actually move
-                entity->GetAABB().center.y = entity->GetPosition().y;
+                else
+                {
+                    next_position.y = entity->GetPosition().y;
+                    entity->GetAABB().center.y = entity->GetPosition().y;
+                }
+                
                 entity->SetVelocity({entity->GetVelocity().x, 0, entity->GetVelocity().z});
             }
             else
