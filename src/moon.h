@@ -21,6 +21,7 @@ class Moon
         int _initial_chunk_count = 0;
         int _current_light_phase = 1;
         double _world_time = 0;
+        double _last_patch_update = 0;
         double _accumulator = 0;
         glm::vec4 _base_fog_color; // This doesn't change for a given moon. Use GetFogColor() to get the correct color.
         Player *_player; // Avoids destructor call so EntityManager can destroy player

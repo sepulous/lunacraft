@@ -188,10 +188,11 @@ void Moon::Update(double delta_time, int old_render_distance)
     }
     
     // Load new chunks around player (and unload old ones)
-    glm::ivec3 current_player_chunk = VoxelToChunk(GetNearestVoxel(_player->GetPosition()));
-    int current_render_distance = OptionsManager::GetOptions().render_distance;
-    if (current_player_chunk != old_player_chunk || old_render_distance != current_render_distance)
+    if (_world_time - _last_patch_update >= 0.2)
+    {
         _chunk_manager.AdjustChunkPatch();
+        _last_patch_update = _world_time;
+    }
 
     // Upload any new chunks that are ready to the GPU
     _chunk_manager.UploadReadyChunks();
