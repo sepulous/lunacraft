@@ -27,8 +27,13 @@ target_include_directories(glad PUBLIC third_party/glad/include)
 target_link_libraries(glad PUBLIC OpenGL::GL)
 
 # Soundlib
-set(STATIC_SOUNDLIB ON CACHE BOOL "" FORCE)
-set(SOUNDLIB_USE_SYSTEM_OPENAL OFF CACHE BOOL "" FORCE)
+set(STATIC_SOUNDLIB ON CACHE BOOL "" FORCE) # Include Soundlib in binary
+if (NOT USE_SYSTEM_OPENAL)
+    set(USE_SYSTEM_OPENAL OFF CACHE BOOL "" FORCE) # Fetch OpenAL by default
+endif()
+set(ALSOFT_EXAMPLES OFF CACHE BOOL "" FORCE) # Don't need this bloat
+set(ALSOFT_UTILS OFF CACHE BOOL "" FORCE)    #
+set(ALSOFT_TESTS OFF CACHE BOOL "" FORCE)    #
 FetchContent_Declare(
     Soundlib
     GIT_REPOSITORY https://github.com/sepulous/soundlib.git
@@ -108,7 +113,7 @@ if (NOT (WIN32 OR APPLE))
     )
 endif()
 
-# Copy OpenAL
+# Copy OpenAL (Windows)
 if (WIN32)
     install(FILES $<TARGET_FILE:OpenAL::OpenAL>
         DESTINATION ${CMAKE_INSTALL_BINDIR}
