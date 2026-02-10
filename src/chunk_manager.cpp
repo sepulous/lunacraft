@@ -201,12 +201,6 @@ std::array<Chunk *, 8> ChunkManager::GetAllNeighbors(glm::ivec3 chunk_coords)
     return neighbors;
 }
 
-// I'd like to make this more efficient so I can do it regularly. Then I don't need to rely on
-// any information (whether player chunk changed or render distance changed). Just grab the
-// current player chunk and render distance and make sure everything is correct.
-//
-// It honestly makes sense to have a fixed interval. Then it's completely predictable, and
-// doesn't need to know if anything changed.
 void ChunkManager::AdjustChunkPatch()
 {
     auto player_chunk = VoxelToChunk(GetNearestVoxel(Moon::GetCurrentMoon()->GetPlayer()->GetPosition()));
@@ -250,6 +244,7 @@ void ChunkManager::AdjustChunkPatch()
         }
     }
 
+    std::vector<Chunk *> to_convert;
     std::vector<Chunk *> to_build;
 
     // Update patch + border
@@ -274,21 +269,25 @@ void ChunkManager::AdjustChunkPatch()
                 {
                     // We can't build yet, as we haven't guaranteed the existence of all neighbors, so we must defer
                     chunk->SetIsBorderChunk(false);
-                    to_build.push_back(chunk);
+                    to_convert.push_back(chunk);
                 }
             }
             else
             {
+                // We can't build yet, as we haven't guaranteed the existence of all neighbors, so we must defer
                 Chunk *chunk = new Chunk(glm::ivec3{x, 0, z}, on_new_border, this);
                 _chunks.emplace(chunk_id, chunk);
-                chunk->Build();
+                to_build.push_back(chunk);
             }
         }
     }
 
     // Build border chunks that just became patch chunks
-    for (auto chunk : to_build)
+    for (auto chunk : to_convert)
         chunk->BuildExternal();
+
+    for (auto chunk : to_build)
+        chunk->Build();
 }
 
 BlockID *ChunkManager::GetBlockMemory(uint64_t chunk_id)
