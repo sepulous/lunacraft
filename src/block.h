@@ -52,7 +52,6 @@ enum class BlockID : uint8_t
     titanium,
     titanium_ore,
     topsoil,
-    unknown,
     xenostone,
     zircon_ore,
     minilight_pz,
