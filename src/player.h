@@ -4,6 +4,7 @@
 
 #include "entity.h"
 #include "camera.h"
+#include "inventory.h"
 
 struct PlayerData
 {
@@ -11,12 +12,15 @@ struct PlayerData
     int suit_status;
     glm::vec3 position;
     glm::vec2 camera_rotation; // {pitch, yaw}
+    Inventory inventory;
 };
 
 class Player : public Entity
 {
     private:
         Camera _camera;
+        Inventory _inventory;
+        bool _inventory_changed = false; // For UI updating. I don't love this system...
         glm::vec3 _input_direction;
         int _health = 100;
         int _suit_status = 100;
@@ -40,6 +44,9 @@ class Player : public Entity
 
         void SetSuitStatus(int suit_status);
         int GetSuitStatus();
+
+        Inventory &GetInventory();
+        void SetInventory(Inventory inventory);
 
         void SetCameraRotation(glm::vec2 rotation);
         glm::vec2 GetCameraRotation();

@@ -20,13 +20,9 @@
 #include "options.h"
 #include "viewport.h"
 #include "rng.h"
+#include "inventory.h"
 
-#define STB_IMAGE_IMPLEMENTATION
-#define STB_IMAGE_STATIC
 #include <stb_image/stb_image.h>
-
-#define STB_TRUETYPE_IMPLEMENTATION
-#define STBTT_STATIC
 #include <stb_truetype/stb_truetype.h>
 
 // Must compile shaders before calling this!
@@ -1248,6 +1244,11 @@ UIDebugMenu &UIGame::GetDebugMenu()
     return _debug_menu;
 }
 
+UIInventory &UIGame::GetInventoryUI()
+{
+    return _inventory;
+}
+
 void UIGame::Update(const DebugInfo& debug_info)
 {
     if (_debug_menu.IsActive())
@@ -1261,11 +1262,551 @@ void UIGame::Render()
 {
     glDepthFunc(GL_LEQUAL);
 
+    _inventory.Render();
+
     if (_debug_menu.IsActive())
         _debug_menu.Render();
 
     if (_pause_menu.IsActive())
         _pause_menu.Render();
+}
+
+//
+// Inventory UI
+//
+
+UIInventory::UIInventory()
+{
+    /*
+            * The inventory slots start at (477px, 56px) and are 85px by 85px (margin = 14px)
+                x_n = 477 + (85 + 14) * n  (n = 0...9)
+                y_m = 56 + (85 + 14) * m   (m = 0...4)
+
+            * The bottom left assembler slot is at (1122px, 682px) and is 76px by 76px (margin = 13px)
+                x_n = 1122 + (76 + 13) * n  (n = 0..2)
+                y_m = 682 + (76 + 13) * m   (m = 0..2)
+
+            ------
+
+            * The bottom left of the suit status text is (490px, 20px), and the health text starts at x=1006px
+
+            * The scanner slot is at (362px, 862px) and is 76px by 76px
+
+            * The jetpack slot is at (921px, 658px) and is 73px by 73px
+
+            * The battery slot is at (921px, 793px) and is 73px by 73px
+
+            * The helmet slot is at (921px, 906px) and is 73px by 73px
+
+
+            bool _toggled = false;
+
+            [X] UIImage _hotbar_base;
+            [X] UIImage _inventory_base;
+
+            [X] std::pair<UIImage, UIText> _hotbar_slots[10];
+            [X] std::pair<UIImage, UIText> _inventory_slots[40];
+
+            [X] std::pair<UIImage, UIText> _assembler_input_slots[9];
+            [X] std::pair<UIImage, UIText> _assembler_output_slot;
+
+            [X] std::pair<UIImage, UIText> _scanner_slot;
+            [X] UIText _scanner_text;
+
+            [X] UIImage _suit_status_bar;
+            [X] UIImage _health_bar;
+
+            [X] UIImage _hotbar_select;
+            [ ] UIImage _inventory_select;
+    */
+
+    _hotbar_base.LoadImage(Storage::IMAGES / "ui" / "hotbar_base.png", GL_NEAREST);
+    _hotbar_base.SetSize({VIRTUAL_UI_WIDTH, VIRTUAL_UI_HEIGHT});
+    _hotbar_base.SetPosition({0, 0});
+
+    _inventory_base.LoadImage(Storage::IMAGES / "ui" / "inventory_base.png", GL_NEAREST);
+    _inventory_base.SetSize({VIRTUAL_UI_WIDTH, VIRTUAL_UI_HEIGHT});
+    _inventory_base.SetPosition({0, 0});
+
+    _scanner_slot.first.SetPosition({362, 862});
+    _scanner_slot.first.SetSize({76, 76});
+    _scanner_slot.second.SetFontSize(0.3f);
+    _scanner_slot.second.SetPosition({362 + 60, 862 + 10});
+    _scanner_slot.second.SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+    _scanner_text.SetPosition({535, 920});
+    _scanner_text.SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+    _scanner_text.SetText("Sample text.");
+
+    _suit_status_text.SetPosition({491, 20});
+    _suit_status_text.SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+    _suit_status_text.SetFontSize(0.28f);
+    _suit_status_text.SetText("Suit status:");
+
+    _suit_status_bar.LoadImage(Storage::IMAGES / "ui" / "health_bar.png");
+    _suit_status_bar.SetSize({186, 18});
+    _suit_status_bar.SetPosition({735, 18});
+
+    _health_text.SetPosition({1004, 20});
+    _health_text.SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+    _health_text.SetFontSize(0.28f);
+    _health_text.SetText("Health:");
+
+    _health_bar.LoadImage(Storage::IMAGES / "ui" / "health_bar.png");
+    _health_bar.SetSize({186, 18});
+    _health_bar.SetPosition({1156, 18});
+
+    _hotbar_select.LoadImage(Storage::IMAGES / "ui" / "inventory_select.png");
+    _hotbar_select.SetSize({88, 88});
+    _hotbar_select.SetPosition({477, 54});
+
+    _held_item.LoadImage(Storage::IMAGES / "items" / "none.png");
+    _held_item.SetSize({85, 85});
+    _held_amount.SetFontSize(0.3f);
+    _held_amount.SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+    
+    //
+    // Hotbar and inventory slots
+    //
+
+    const int INV_SLOT_SIZE = 88;
+    const int INV_SLOT_MARGIN = 12;
+    for (int row = 0; row < 5; row++)
+    {
+        for (int col = 0; col < 10; col++)
+        {
+            float x = 477 + (INV_SLOT_SIZE + INV_SLOT_MARGIN) * col;
+            float y = 54 + (INV_SLOT_SIZE + INV_SLOT_MARGIN) * row;
+
+            auto &[slot_image, slot_amount] = _inventory_slots[row][col];
+            slot_image.SetPosition({x + 6, y});
+            slot_image.SetSize({INV_SLOT_SIZE - 6, INV_SLOT_SIZE - 6});
+            slot_amount.SetFontSize(0.3f);
+            slot_amount.SetPosition({x + 62, y + 10});
+            slot_amount.SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+        }
+    }
+
+    //
+    // Assembler slots
+    //
+
+    _assembler_output_slot.first.SetPosition({1468, 682});
+    _assembler_output_slot.first.SetSize({76, 76});
+    _assembler_output_slot.second.SetFontSize(0.3f);
+    _assembler_output_slot.second.SetPosition({1468 + 60, 682 + 10});
+    _assembler_output_slot.second.SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+
+    const int ASS_SLOT_SIZE = 76;
+    const int ASS_SLOT_MARGIN = 13;
+    for (int row = 0; row < 3; row++)
+    {
+        for (int col = 0; col < 3; col++)
+        {
+            float x = 1122 + (ASS_SLOT_SIZE + ASS_SLOT_MARGIN) * col;
+            float y = 682 + (ASS_SLOT_SIZE + ASS_SLOT_MARGIN) * row;
+
+            auto &[slot_image, slot_amount] = _assembler_input_slots[row][col];
+            slot_image.SetPosition({x, y});
+            slot_image.SetSize({ASS_SLOT_SIZE, ASS_SLOT_SIZE});
+            slot_amount.SetFontSize(0.3f);
+            slot_amount.SetPosition({x + 60, y + 10});
+            slot_amount.SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+        }
+    }
+
+    //
+    // Spacesuit slots
+    //
+
+    // Helmet
+    _spacesuit_slots[2].first.SetPosition({921, 906});
+    _spacesuit_slots[2].first.SetSize({73, 73});
+    _spacesuit_slots[2].second.SetFontSize(0.3f);
+    _spacesuit_slots[2].second.SetPosition({921 + 60, 906 + 10});
+    _spacesuit_slots[2].second.SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+
+    // Battery
+    _spacesuit_slots[1].first.SetPosition({921, 793});
+    _spacesuit_slots[1].first.SetSize({73, 73});
+    _spacesuit_slots[1].second.SetFontSize(0.3f);
+    _spacesuit_slots[1].second.SetPosition({921 + 60, 793 + 10});
+    _spacesuit_slots[1].second.SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+
+    // Jetpack
+    _spacesuit_slots[0].first.SetPosition({921, 658});
+    _spacesuit_slots[0].first.SetSize({73, 73});
+    _spacesuit_slots[0].second.SetFontSize(0.3f);
+    _spacesuit_slots[0].second.SetPosition({921 + 60, 658 + 10});
+    _spacesuit_slots[0].second.SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+}
+
+void UIInventory::Update(Inventory &inventory)
+{
+    static bool init = false;
+    if (!init) // TODO: Add something like UIInventory::ForceRebuild() to ensure it's initially set up
+    {
+        // Hotbar and inventory slots
+        for (int row = 0; row < 5; row++)
+        {
+            for (int col = 0; col < 10; col++)
+            {
+                auto slot = inventory.inventory[row][col];
+                auto &[slot_image, slot_amount] = _inventory_slots[row][col];
+                slot_image.LoadImage(Storage::IMAGES / "items" / GetItemFile(slot.item), GL_NEAREST);
+                if (slot.amount > 1)
+                    slot_amount.SetText(std::to_string(slot.amount));
+                else
+                    slot_amount.SetText("");
+            }
+        }
+
+        // Spacesuit slots
+        for (int i = 0; i < 3; i++)
+        {
+            auto slot = inventory.spacesuit[i];
+            auto &[slot_image, slot_amount] = _spacesuit_slots[i];
+            slot_image.LoadImage(Storage::IMAGES / "items" / GetItemFile(slot.item), GL_NEAREST);
+            if (slot.amount > 1)
+                slot_amount.SetText(std::to_string(slot.amount));
+            else
+                slot_amount.SetText("");
+        }
+
+        // Assembler slots
+        for (int row = 0; row < 3; row++)
+        {
+            for (int col = 0; col < 3; col++)
+            {
+                auto slot = inventory.assembler_input[row][col];
+                auto &[slot_image, slot_amount] = _assembler_input_slots[row][col];
+                slot_image.LoadImage(Storage::IMAGES / "items" / GetItemFile(slot.item), GL_NEAREST);
+                if (slot.amount > 1)
+                    slot_amount.SetText(std::to_string(slot.amount));
+                else
+                    slot_amount.SetText("");
+            }
+        }
+        _assembler_output_slot.first.LoadImage(Storage::IMAGES / "items" / GetItemFile(inventory.assembler_output.item), GL_NEAREST);
+        if (inventory.assembler_output.amount > 1)
+            _assembler_output_slot.second.SetText(std::to_string(inventory.assembler_output.amount));
+        else
+            _assembler_output_slot.second.SetText("");
+
+        // Scanner slot
+        _scanner_slot.first.LoadImage(Storage::IMAGES / "items" / GetItemFile(inventory.scanner.item), GL_NEAREST);
+
+        init = true;
+    }
+
+    glm::dvec2 mouse_position = Input::GetVirtualMousePosition(UIGetVirtualToWindow());
+
+    // Update held item (UI)
+    _held_item.SetPosition({mouse_position.x - (85 / 2), mouse_position.y - (85 / 2)});
+    _held_amount.SetPosition(_held_item.GetPosition() + glm::vec2{60, 10});
+
+    // Update inventory
+    if (!_active)
+    {
+        int scroll = Input::GetMouseScroll();
+        if (scroll > 0) // Scroll left
+        {
+            if (inventory.selected_hotbar_slot == 0)
+                inventory.selected_hotbar_slot = 9;
+            else
+                inventory.selected_hotbar_slot--;
+        }
+        else if (scroll < 0) // Scroll right
+        {
+            inventory.selected_hotbar_slot = (inventory.selected_hotbar_slot + 1) % 10;
+        }
+
+        if (Input::IsKeyPressed(GLFW_KEY_1))
+            inventory.selected_hotbar_slot = 0;
+        else if (Input::IsKeyPressed(GLFW_KEY_2))
+            inventory.selected_hotbar_slot = 1;
+        else if (Input::IsKeyPressed(GLFW_KEY_3))
+            inventory.selected_hotbar_slot = 2;
+        else if (Input::IsKeyPressed(GLFW_KEY_4))
+            inventory.selected_hotbar_slot = 3;
+        else if (Input::IsKeyPressed(GLFW_KEY_5))
+            inventory.selected_hotbar_slot = 4;
+        else if (Input::IsKeyPressed(GLFW_KEY_6))
+            inventory.selected_hotbar_slot = 5;
+        else if (Input::IsKeyPressed(GLFW_KEY_7))
+            inventory.selected_hotbar_slot = 6;
+        else if (Input::IsKeyPressed(GLFW_KEY_8))
+            inventory.selected_hotbar_slot = 7;
+        else if (Input::IsKeyPressed(GLFW_KEY_9))
+            inventory.selected_hotbar_slot = 8;
+        else if (Input::IsKeyPressed(GLFW_KEY_0))
+            inventory.selected_hotbar_slot = 9;
+
+        // Update selection box
+        _hotbar_select.SetPosition({477 + (88 + 12) * inventory.selected_hotbar_slot, 54});
+    }
+    else
+    {
+        bool left_click = Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT);
+        bool right_click = Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT);
+        if (left_click || right_click)
+        {
+            if (inventory.held_stack.item == ItemID::none) // Pick up stack
+            {
+                std::pair<UIImage, UIText> *ui_slot;
+                ItemStack *clicked_slot = GetSlotUnderMouse(mouse_position, inventory, &ui_slot);
+                if (clicked_slot && clicked_slot->item != ItemID::none && clicked_slot->amount > 0)
+                {
+                    // TODO: Can only take items from assembler output; can't place
+
+                    if (left_click)
+                    {
+                        // Update inventory
+                        inventory.held_stack = *clicked_slot;
+                        *clicked_slot = {ItemID::none, 0};
+
+                        // Update slot UI
+                        ui_slot->first.LoadImage(Storage::IMAGES / "items" / "none.png", GL_NEAREST);
+                        ui_slot->second.SetText("");
+                    }
+                    else
+                    {
+                        // Update inventory
+                        int amount_to_take = glm::max(clicked_slot->amount / 2, 1);
+                        clicked_slot->amount -= amount_to_take;
+                        inventory.held_stack = {clicked_slot->item, amount_to_take};
+                        if (clicked_slot->amount == 0)
+                            clicked_slot->item = ItemID::none;
+
+                        // Update slot UI
+                        if (clicked_slot->amount == 0)
+                        {
+                            ui_slot->first.LoadImage(Storage::IMAGES / "items" / "none.png", GL_NEAREST);
+                            ui_slot->second.SetText("");
+                        }
+                        else
+                        {
+                            ui_slot->second.SetText(std::to_string(clicked_slot->amount));
+                        }
+                    }
+
+                    // Update held stack UI
+                    _held_item.LoadImage(Storage::IMAGES / "items" / GetItemFile(inventory.held_stack.item), GL_NEAREST);
+                    if (inventory.held_stack.amount > 1)
+                        _held_amount.SetText(std::to_string(inventory.held_stack.amount));
+                    else
+                        _held_amount.SetText("");
+                }
+            }
+            else // Place/swap stack
+            {
+                std::pair<UIImage, UIText> *ui_slot;
+                ItemStack *clicked_slot = GetSlotUnderMouse(mouse_position, inventory, &ui_slot);
+                if (clicked_slot && clicked_slot != &inventory.assembler_output)
+                {
+                    if (clicked_slot->amount == 0) // Place
+                    {
+                        if (left_click)
+                        {
+                            *clicked_slot = inventory.held_stack;
+                            inventory.held_stack = {ItemID::none, 0};
+                        }
+                        else
+                        {
+                            *clicked_slot = {inventory.held_stack.item, 1};
+                            if (!inventory.IsCreative())
+                            {
+                                inventory.held_stack.amount--;
+                                if (inventory.held_stack.amount < 0)
+                                    inventory.held_stack = {ItemID::none, 0};
+                            }
+                        }
+                    }
+                    else // Swap
+                    {
+                        if (clicked_slot->item == inventory.held_stack.item) // Add to slot
+                        {
+                            if (left_click)
+                            {
+                                clicked_slot->amount += inventory.held_stack.amount;
+                                inventory.held_stack = {ItemID::none, 0};
+                            }
+                            else
+                            {
+                                clicked_slot->amount++;
+                                if (!inventory.IsCreative())
+                                {
+                                    inventory.held_stack.amount--;
+                                    if (inventory.held_stack.amount < 0)
+                                        inventory.held_stack = {ItemID::none, 0};
+                                }
+                            }
+                        }
+                        else // Swap with slot
+                        {
+                            ItemStack clicked_slot_copy = *clicked_slot;
+                            *clicked_slot = inventory.held_stack;
+                            inventory.held_stack = clicked_slot_copy;
+                        }
+                    }
+
+                    // Update slot UI
+                    ui_slot->first.LoadImage(Storage::IMAGES / "items" / GetItemFile(clicked_slot->item), GL_NEAREST);
+                    if (clicked_slot->amount > 1)
+                        ui_slot->second.SetText(std::to_string(clicked_slot->amount));
+                    else
+                        ui_slot->second.SetText("");
+
+                    // Update held stack UI
+                    _held_item.LoadImage(Storage::IMAGES / "items" / GetItemFile(inventory.held_stack.item), GL_NEAREST);
+                    if (inventory.held_stack.amount > 1)
+                        _held_amount.SetText(std::to_string(inventory.held_stack.amount));
+                    else
+                        _held_amount.SetText("");
+                }
+            }
+        }
+    }
+}
+
+void UIInventory::Render()
+{
+    Shader &image_shader = ShaderManager::UI_IMAGE_SHADER;
+    image_shader.Use();
+    image_shader.SetFloat("u_darkness", 0);
+
+    _hotbar_base.Render();
+    _suit_status_text.Render();
+    _suit_status_bar.Render();
+    _health_text.Render();
+    _health_bar.Render();
+    _hotbar_select.Render();
+    
+    // Hotbar slots
+    for (int col = 0; col < 10; col++)
+    {
+        auto &[slot_image, slot_amount] = _inventory_slots[0][col];
+        slot_image.Render();
+        slot_amount.Render();
+    }
+
+    // Rest of the inventory
+    if (_active)
+    {
+        _inventory_base.Render();
+        
+        // Inventory
+        for (int row = 1; row < 5; row++)
+        {
+            for (int col = 0; col < 10; col++)
+            {
+                auto &[slot_image, slot_amount] = _inventory_slots[row][col];
+                slot_image.Render();
+                slot_amount.Render();
+            }
+        }
+
+        // Assembler
+        for (int row = 0; row < 3; row++)
+        {
+            for (int col = 0; col < 3; col++)
+            {
+                auto &[slot_image, slot_amount] = _assembler_input_slots[row][col];
+                slot_image.Render();
+                slot_amount.Render();
+            }
+        }
+        _assembler_output_slot.first.Render();
+        _assembler_output_slot.second.Render();
+
+        // Spacesuit
+        for (int i = 0; i < 3; i++)
+        {
+            auto &[slot_image, slot_amount] = _spacesuit_slots[i];
+            slot_image.Render();
+            slot_amount.Render();
+        }
+
+        // Scanner
+        _scanner_slot.first.Render();
+        _scanner_slot.second.Render();
+
+        // Held stack
+        _held_item.Render();
+        _held_amount.Render();
+    }
+}
+
+bool UIInventory::IsActive()
+{
+    return _active;
+}
+
+void UIInventory::SetActive(bool active)
+{
+    _active = active;
+}
+
+ItemStack *UIInventory::GetSlotUnderMouse(glm::dvec2 mouse_pos, Inventory &inventory, std::pair<UIImage, UIText> **out_slot)
+{
+    if (mouse_pos.x >= 362 && mouse_pos.x <= 362 + 76 && mouse_pos.y >= 862 && mouse_pos.y <= 862 + 76) // Scanner slot
+    {
+        *out_slot = &_scanner_slot;
+        return &inventory.scanner;
+    }
+    else if (mouse_pos.x >= 921 && mouse_pos.x <= 921 + 73 && mouse_pos.y >= 658 && mouse_pos.y <= 658 + 73) // Jetpack slot
+    {
+        *out_slot = &_spacesuit_slots[0];
+        return &inventory.spacesuit[0];
+    }
+    else if (mouse_pos.x >= 921 && mouse_pos.x <= 921 + 73 && mouse_pos.y >= 793 && mouse_pos.y <= 793 + 73) // Battery slot
+    {
+        *out_slot = &_spacesuit_slots[1];
+        return &inventory.spacesuit[1];
+    }
+    else if (mouse_pos.x >= 921 && mouse_pos.x <= 921 + 73 && mouse_pos.y >= 906 && mouse_pos.y <= 906 + 73) // Helmet slot
+    {
+        *out_slot = &_spacesuit_slots[2];
+        return &inventory.spacesuit[2];
+    }
+    else if (mouse_pos.x >= 1468 && mouse_pos.x <= 1468 + 76 && mouse_pos.y >= 682 && mouse_pos.y <= 682 + 76) // Assembler output
+    {
+        *out_slot = &_assembler_output_slot;
+        return &inventory.assembler_output;
+    }
+    else
+    {
+        // Check inventory slots
+        for (int row = 0; row < 5; row++)
+        {
+            for (int col = 0; col < 10; col++)
+            {
+                float x = 477 + (85 + 14) * col;
+                float y = 56 + (85 + 14) * row;
+                if (mouse_pos.x >= x && mouse_pos.x <= x + 85 && mouse_pos.y >= y && mouse_pos.y <= y + 85)
+                {
+                    *out_slot = &_inventory_slots[row][col];
+                    return &inventory.inventory[row][col];
+                }
+            }
+        }
+
+        // Check assembler inputs
+        for (int row = 0; row < 3; row++)
+        {
+            for (int col = 0; col < 3; col++)
+            {
+                float x = 1122 + (76 + 13) * col;
+                float y = 682 + (76 + 13) * row;
+                if (mouse_pos.x >= x && mouse_pos.x <= x + 76 && mouse_pos.y >= y && mouse_pos.y <= y + 76)
+                {
+                    *out_slot = &_assembler_input_slots[row][col];
+                    return &inventory.assembler_input[row][col];
+                }
+            }
+        }
+    }
+
+    return nullptr;
 }
 
 //

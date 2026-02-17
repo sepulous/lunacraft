@@ -209,6 +209,7 @@ int main()
         {
             UIPauseMenu &ui_pause_menu = ui_game.GetPauseMenu();
             UIDebugMenu &ui_debug_menu = ui_game.GetDebugMenu();
+            UIInventory &ui_inventory = ui_game.GetInventoryUI();
             int old_render_distance = OptionsManager::GetOptions().render_distance;
 
             //
@@ -222,7 +223,7 @@ int main()
                 {
                     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
                 }
-                else
+                else if (!ui_inventory.IsActive())
                 {
                     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
                     if (glfwRawMouseMotionSupported())
@@ -235,6 +236,21 @@ int main()
                 Options options = OptionsManager::GetOptions();
                 options.show_debug_info = !options.show_debug_info;
                 OptionsManager::SetOptions(options);
+            }
+
+            if (Input::IsKeyPressed(GLFW_KEY_E) && !ui_pause_menu.IsActive())
+            {
+                ui_inventory.SetActive(!ui_inventory.IsActive());
+                if (ui_inventory.IsActive())
+                {
+                    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+                }
+                else
+                {
+                    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+                    if (glfwRawMouseMotionSupported())
+                        glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE); // More natural mouse motion
+                }
             }
 
             //
@@ -269,6 +285,9 @@ int main()
                 last_debug_update_time = current_time;
             }
 
+            // Update inventory
+            ui_inventory.Update(moon->GetPlayer()->GetInventory());
+
             // Handle quit/resume buttons (this combines Update and Input; let's try to do better)
             if (ui_pause_menu.IsActive())
             {
@@ -292,7 +311,7 @@ int main()
                     game_state = GameState::MAIN_MENU;
                     continue;
                 }
-                else if (ui_pause_menu.ResumeClicked())
+                else if (ui_pause_menu.ResumeClicked() && !ui_inventory.IsActive())
                 {
                     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
                     if (glfwRawMouseMotionSupported())
@@ -302,8 +321,11 @@ int main()
             else
             {
                 ui_debug_menu.SetActive(OptionsManager::GetOptions().show_debug_info);
-                moon->GetPlayer()->UpdateCamera();
-                moon->GetPlayer()->SetCameraSensitivity(0.05f * OptionsManager::GetOptions().sensitivity);
+                if (!ui_inventory.IsActive())
+                {
+                    moon->GetPlayer()->UpdateCamera();
+                    moon->GetPlayer()->SetCameraSensitivity(0.05f * OptionsManager::GetOptions().sensitivity);
+                }
                 moon->Update(delta_time, old_render_distance);
             }
 
@@ -360,9 +382,11 @@ void LoadMoon(int moon_id, MoonSettings moon_settings)
         player->SetHealth(player_data.health);
         player->SetSuitStatus(player_data.suit_status);
         player->SetCameraRotation({player_data.camera_rotation.x, player_data.camera_rotation.y});
+        player->SetInventory(player_data.inventory);
     }
     else
     {
+        player->SetInventory(Inventory{moon_settings.is_creative});
         PlayerData player_data = player->GetPlayerData();
         std::ofstream player_data_file(player_data_path, std::ios::binary);
         player_data_file.write(reinterpret_cast<char *>(&player_data), sizeof(PlayerData));

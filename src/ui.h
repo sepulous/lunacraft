@@ -10,6 +10,9 @@
 #include "shader.h"
 #include "moon_settings.h"
 
+class Inventory; // Forward declarations
+class ItemStack; //
+
 const float VIRTUAL_UI_WIDTH = 1920.0f;
 const float VIRTUAL_UI_HEIGHT = 1080.0f;
 
@@ -22,6 +25,7 @@ class UIOptionsMenu;
 class UIPauseMenu;
 class UIDebugMenu;
 class UIMoonSettingsMenu;
+class UIInventory;
 
 // UI elements
 class UITextBox;
@@ -390,16 +394,58 @@ class UIDebugMenu
         void Render();
 };
 
+class UIInventory
+{
+    public:
+        UIInventory();
+        void Update(Inventory &inventory);
+        void Render();
+        bool IsActive();
+        void SetActive(bool active);
+
+    private:
+        bool _active = false;
+
+        UIImage _hotbar_base;
+        UIImage _inventory_base;
+
+        std::pair<UIImage, UIText> _inventory_slots[5][10];
+
+        std::pair<UIImage, UIText> _assembler_input_slots[3][3];
+        std::pair<UIImage, UIText> _assembler_output_slot;
+
+        std::pair<UIImage, UIText> _spacesuit_slots[3];
+
+        std::pair<UIImage, UIText> _scanner_slot;
+        UIText _scanner_text;
+
+        UIText _suit_status_text;
+        UIImage _suit_status_bar;
+
+        UIText _health_text;
+        UIImage _health_bar;
+
+        UIImage _hotbar_select;
+        // TODO: UIImage _inventory_select;  (this will probably force me to explicitly define the UI coordinates, which isn't a bad thing)
+
+        UIImage _held_item;
+        UIText _held_amount;
+
+        ItemStack *GetSlotUnderMouse(glm::dvec2 mouse_pos, Inventory &inventory, std::pair<UIImage, UIText> **out_slot);
+};
+
 class UIGame
 {
     public:
         UIGame();
         UIPauseMenu &GetPauseMenu();
         UIDebugMenu &GetDebugMenu();
+        UIInventory &GetInventoryUI();
         void Update(const DebugInfo &debug_info);
         void Render();
 
     private:
         UIPauseMenu _pause_menu;
         UIDebugMenu _debug_menu;
+        UIInventory _inventory;
 };

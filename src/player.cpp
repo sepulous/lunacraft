@@ -54,7 +54,7 @@ void Player::FixedUpdate()
     // The friction and maximum speed depend on whether the player is on ice.
     //
 
-    float max_move_speed = IsOnIce() ? 10.0f : 8.0f;
+    float max_move_speed = IsOnIce() ? 8.0f : 6.0f;
     float friction = IsOnIce() ? 4.0f : 10.0f;
     float alpha = friction * 8.0f;
     float beta = alpha / max_move_speed;
@@ -110,6 +110,7 @@ PlayerData Player::GetPlayerData()
     player_data.suit_status = _suit_status;
     player_data.position = _position;
     player_data.camera_rotation = GetCameraRotation();
+    player_data.inventory = _inventory;
     return player_data;
 }
 
@@ -136,6 +137,16 @@ void Player::SetSuitStatus(int suit_status)
 int Player::GetSuitStatus()
 {
     return _suit_status;
+}
+
+Inventory &Player::GetInventory()
+{
+    return _inventory;
+}
+
+void Player::SetInventory(Inventory inventory)
+{
+    _inventory = inventory;
 }
 
 void Player::SetCameraRotation(glm::vec2 rotation)

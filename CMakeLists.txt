@@ -31,9 +31,10 @@ set(STATIC_SOUNDLIB ON CACHE BOOL "" FORCE) # Include Soundlib in binary
 if (NOT USE_SYSTEM_OPENAL)
     set(USE_SYSTEM_OPENAL OFF CACHE BOOL "" FORCE) # Fetch OpenAL by default
 endif()
-set(ALSOFT_EXAMPLES OFF CACHE BOOL "" FORCE) # Don't need this bloat
+set(ALSOFT_EXAMPLES OFF CACHE BOOL "" FORCE) # Don't need this
 set(ALSOFT_UTILS OFF CACHE BOOL "" FORCE)    #
 set(ALSOFT_TESTS OFF CACHE BOOL "" FORCE)    #
+set(ALSOFT_EAX OFF CACHE BOOL "" FORCE)      #
 FetchContent_Declare(
     Soundlib
     GIT_REPOSITORY https://github.com/sepulous/soundlib.git
@@ -62,6 +63,11 @@ add_executable(Lunacraft
     src/entity_manager.cpp
     src/entity.cpp
     src/player.cpp
+    src/inventory.cpp
+    src/item.cpp
+
+    third_party/stb_image/stb_image/stb_image.cpp
+    third_party/stb_truetype/stb_truetype/stb_truetype.cpp
 )
 
 # Include directories
