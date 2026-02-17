@@ -35,19 +35,19 @@ static constexpr uint8_t _perm[] = {
 
 static inline double Grad(uint8_t hash, double x, double y)
 {
-    uint8_t h = hash & 7;
-    double a, b;
-    if (h < 4)
-    {
-        a = (1 - 2*(h & 1)) * x;
-        b = (1 - (h & 2)) * 2.0 * y;
-    }
-    else
-    {
-        a = (1 - 2*(h & 1)) * y;
-        b = (1 - (h & 2)) * 2.0 * x;
-    }
-    return a + b;
+    static constexpr double grads[8][2] = {
+        {1, 2},
+        {-1, 2},
+        {1, -2},
+        {-1, -2},
+        {1, 2},
+        {-1, 2},
+        {1, -2},
+        {-1, -2}
+    };
+
+    auto coeffs = grads[hash & 7];
+    return coeffs[0] * x + coeffs[1] * y;
 }
 
 double SimplexNoise(double x, double y)
