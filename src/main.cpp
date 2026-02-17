@@ -62,6 +62,15 @@ int main()
         initial_viewport_dims = {(float)mode->width / 2.0f, (float)mode->height / 2.0f};
         Viewport::SetDimensions(initial_viewport_dims);
         window = glfwCreateWindow(initial_viewport_dims.x, initial_viewport_dims.y, "Lunacraft", nullptr, nullptr);
+        glfwSetWindowMonitor(
+            window,
+            nullptr,
+            initial_viewport_dims.x - (initial_viewport_dims.x / 2.0f),
+            initial_viewport_dims.y - (initial_viewport_dims.y / 2.0f),
+            initial_viewport_dims.x,
+            initial_viewport_dims.y,
+            0 // Refresh rate is ignored in windowed mode
+        );
     }
     Viewport::SetLastMousePosition({0.5 * initial_viewport_dims.x, 0.5 * initial_viewport_dims.y});
     
