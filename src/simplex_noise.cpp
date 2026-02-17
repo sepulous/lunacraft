@@ -1,6 +1,5 @@
 
 #include <cstdint>
-#include <cmath>
 
 #include "simplex_noise.h"
 
@@ -50,6 +49,12 @@ static inline double Grad(uint8_t hash, double x, double y)
     return coeffs[0] * x + coeffs[1] * y;
 }
 
+static inline long FastFloor(double x)
+{
+    long i = (long)x;
+    return i - (i > x);
+}
+
 double SimplexNoise(double x, double y)
 {
     constexpr double F = 0.366025403784; // (sqrt(3) - 1) / 2
@@ -59,8 +64,8 @@ double SimplexNoise(double x, double y)
     double s = (x + y) * F;
     double xs = x + s;
     double ys = y + s;
-    long i = xs > 0 ? (long)xs : (long)xs - 1;
-    long j = ys > 0 ? (long)ys : (long)ys - 1;
+    long i = FastFloor(xs);
+    long j = FastFloor(ys);
 
     double t = (i + j) * G;
     double x0 = x + t - i;
