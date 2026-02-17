@@ -5,8 +5,6 @@
 #include <thread>
 #include <stop_token>
 
-#define STB_IMAGE_IMPLEMENTATION
-#define STB_IMAGE_STATIC
 #include <stb_image/stb_image.h>
 
 #include "chunk_manager.h"
@@ -47,7 +45,6 @@ void ChunkManager::Init(int moon_id, MoonSettings moon_settings)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture_atlas_data);
-    glGenerateMipmap(GL_TEXTURE_2D);
 
     stbi_image_free(texture_atlas_data);
 
