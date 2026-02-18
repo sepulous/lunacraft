@@ -71,6 +71,11 @@ glm::dvec2 Input::GetMousePosition()
     return _mouse_position;
 }
 
+void Input::SetMousePosition(double x, double y)
+{
+    _mouse_position = {x, y};
+}
+
 glm::dvec2 Input::GetVirtualMousePosition(const glm::mat4 &virtual_to_window)
 {
     glm::vec4 virtual_mouse = glm::inverse(virtual_to_window) * glm::vec4(_mouse_position.x, Viewport::GetDimensions().y - _mouse_position.y, 0.0f, 1.0f);

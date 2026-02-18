@@ -28,6 +28,7 @@ public:
     static bool IsMouseButtonReleased(int button);
 
     static glm::dvec2 GetMousePosition();
+    static void SetMousePosition(double x, double y);
     static glm::dvec2 GetVirtualMousePosition(const glm::mat4 &virtual_to_window);
     static glm::dvec2 GetMouseDelta();
     static int GetMouseScroll();

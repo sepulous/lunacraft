@@ -13,13 +13,3 @@ glm::ivec2 Viewport::GetDimensions()
 {
     return _dimensions;
 }
-
-void Viewport::SetLastMousePosition(const glm::dvec2 &position)
-{
-    _last_mouse_pos = position;
-}
-
-glm::dvec2 Viewport::GetLastMousePosition()
-{
-    return _last_mouse_pos;
-}

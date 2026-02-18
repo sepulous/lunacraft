@@ -72,7 +72,6 @@ int main()
             0 // Refresh rate is ignored in windowed mode
         );
     }
-    Viewport::SetLastMousePosition({0.5 * initial_viewport_dims.x, 0.5 * initial_viewport_dims.y});
     
     if (!window)
     {
@@ -237,6 +236,10 @@ int main()
                     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
                     if (glfwRawMouseMotionSupported())
                         glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE); // More natural mouse motion
+
+                    double x, y;
+                    glfwGetCursorPos(window, &x, &y);
+                    Input::SetMousePosition(x, y);
                 }
             }
 
@@ -259,6 +262,10 @@ int main()
                     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
                     if (glfwRawMouseMotionSupported())
                         glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE); // More natural mouse motion
+
+                    double x, y;
+                    glfwGetCursorPos(window, &x, &y);
+                    Input::SetMousePosition(x, y);
                 }
             }
 
@@ -325,6 +332,10 @@ int main()
                     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
                     if (glfwRawMouseMotionSupported())
                         glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE); // More natural mouse motion
+
+                    double x, y;
+                    glfwGetCursorPos(window, &x, &y);
+                    Input::SetMousePosition(x, y);
                 }
             }
             else
