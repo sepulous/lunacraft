@@ -6,6 +6,9 @@ struct ItemStack
 {
     ItemID item = ItemID::none;
     int amount = 0;
+
+    bool IsEmpty();
+    bool ItemIsDisk();
 };
 
 class Inventory

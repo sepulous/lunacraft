@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <sstream>
 #include <algorithm>
+#include <format>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -1333,9 +1334,10 @@ UIInventory::UIInventory()
     _scanner_slot.second.SetFontSize(0.3f);
     _scanner_slot.second.SetPosition({362 + 60, 862 + 10});
     _scanner_slot.second.SetColor({1.0f, 1.0f, 1.0f, 1.0f});
-    _scanner_text.SetPosition({535, 920});
+    _scanner_text.SetPosition({540, 915});
     _scanner_text.SetColor({1.0f, 1.0f, 1.0f, 1.0f});
-    _scanner_text.SetText("Sample text.");
+    _scanner_text.SetFontSize(0.2f);
+    _scanner_text.SetText("INSERT ITEM TO\nRECEIVE\nSCANNING\nINFORMATION.");
 
     _suit_status_text.SetPosition({491, 20});
     _suit_status_text.SetColor({1.0f, 1.0f, 1.0f, 1.0f});
@@ -1358,6 +1360,9 @@ UIInventory::UIInventory()
     _hotbar_select.LoadImage(Storage::IMAGES / "ui" / "inventory_select.png");
     _hotbar_select.SetSize({88, 88});
     _hotbar_select.SetPosition({477, 54});
+
+    // _inventory_select.LoadImage(Storage::IMAGES / "ui" / "inventory_select.png");
+    // _inventory_select.SetSize({88, 88});
 
     _held_item.LoadImage(Storage::IMAGES / "items" / "none.png");
     _held_item.SetSize({85, 85});
@@ -1554,10 +1559,8 @@ void UIInventory::Update(Inventory &inventory)
             {
                 std::pair<UIImage, UIText> *ui_slot;
                 ItemStack *clicked_slot = GetSlotUnderMouse(mouse_position, inventory, &ui_slot);
-                if (clicked_slot && clicked_slot->item != ItemID::none && clicked_slot->amount > 0)
+                if (clicked_slot && !clicked_slot->IsEmpty())
                 {
-                    // TODO: Can only take items from assembler output; can't place
-
                     if (left_click)
                     {
                         // Update inventory
@@ -1595,6 +1598,10 @@ void UIInventory::Update(Inventory &inventory)
                         _held_amount.SetText(std::to_string(inventory.held_stack.amount));
                     else
                         _held_amount.SetText("");
+
+                    // Update scanner text
+                    if (clicked_slot == &inventory.scanner)
+                        _scanner_text.SetText("INSERT ITEM TO\nRECEIVE\nSCANNING\nINFORMATION.");
                 }
             }
             else // Place/swap stack
@@ -1662,6 +1669,25 @@ void UIInventory::Update(Inventory &inventory)
                         _held_amount.SetText(std::to_string(inventory.held_stack.amount));
                     else
                         _held_amount.SetText("");
+
+                    // Update scanner data
+                    if (clicked_slot == &inventory.scanner && !inventory.scanner.IsEmpty())
+                    {
+                        auto scanner_data = GetItemScannerData(inventory.scanner.item);
+                        std::string scanner_text;
+                        if (inventory.scanner.ItemIsDisk())
+                        {
+                            scanner_text = std::format("{}", scanner_data[ScannerDataType::COMPOSITION]);
+                        }
+                        else
+                        {
+                            scanner_text = std::format("Type: {}\n\nComposition:\n{}\n\nValue: {}",
+                                scanner_data[ScannerDataType::TYPE],
+                                scanner_data[ScannerDataType::COMPOSITION],
+                                scanner_data[ScannerDataType::VALUE]);
+                        }
+                        _scanner_text.SetText(scanner_text);
+                    }
                 }
             }
         }
@@ -1729,6 +1755,7 @@ void UIInventory::Render()
         // Scanner
         _scanner_slot.first.Render();
         _scanner_slot.second.Render();
+        _scanner_text.Render();
 
         // Held stack
         _held_item.Render();

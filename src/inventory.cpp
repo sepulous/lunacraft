@@ -13,40 +13,43 @@ Inventory::Inventory(bool is_creative)
         inventory[4][3] = {ItemID::beryllium, 1};
         inventory[4][4] = {ItemID::blue_crystal, 1};
         inventory[4][5] = {ItemID::boron_crystal, 1};
-        inventory[4][6] = {ItemID::sulphur_crystal, 1};
-        inventory[4][7] = {ItemID::calcite, 1};
-        inventory[4][8] = {ItemID::carbon, 1};
-        inventory[4][9] = {ItemID::chalchanthite, 1};
+        inventory[4][6] = {ItemID::calcite, 1};
+        inventory[4][7] = {ItemID::carbon, 1};
+        inventory[4][8] = {ItemID::chalchanthite, 1};
+        inventory[4][9] = {ItemID::feldspar, 1};
 
-        inventory[3][0] = {ItemID::dirt, 1};
-        inventory[3][1] = {ItemID::feldspar, 1};
-        inventory[3][2] = {ItemID::glass, 1};
-        inventory[3][3] = {ItemID::gold_ore, 1};
-        inventory[3][4] = {ItemID::granite, 1};
-        inventory[3][5] = {ItemID::graphite, 1};
-        inventory[3][6] = {ItemID::gravel, 1};
-        inventory[3][7] = {ItemID::light, 1};
-        inventory[3][8] = {ItemID::magnetite, 1};
-        inventory[3][9] = {ItemID::molybdenum_ore, 1};
+        inventory[3][0] = {ItemID::glass, 1};
+        inventory[3][1] = {ItemID::gold_ore, 1};
+        inventory[3][2] = {ItemID::granite, 1};
+        inventory[3][3] = {ItemID::graphite, 1};
+        inventory[3][4] = {ItemID::gravel, 1};
+        inventory[3][5] = {ItemID::light, 1};
+        inventory[3][6] = {ItemID::magnetite, 1};
+        inventory[3][7] = {ItemID::molybdenum_ore, 1};
+        inventory[3][8] = {ItemID::moon_bark, 1};
+        inventory[3][9] = {ItemID::moon_leaf, 1};
 
-        inventory[2][0] = {ItemID::moon_bark, 1};
-        inventory[2][1] = {ItemID::moon_leaf, 1};
-        inventory[2][2] = {ItemID::moon_wood, 1};
-        inventory[2][3] = {ItemID::neptunium, 1};
-        inventory[2][4] = {ItemID::notchium, 1};
-        inventory[2][5] = {ItemID::notchium_ore, 1};
-        inventory[2][6] = {ItemID::phosphate, 1};
-        inventory[2][7] = {ItemID::polymer, 1};
-        inventory[2][8] = {ItemID::quartz_ore, 1};
-        inventory[2][9] = {ItemID::rock, 1};
+        inventory[2][0] = {ItemID::moon_wood, 1};
+        inventory[2][1] = {ItemID::neptunium, 1};
+        inventory[2][2] = {ItemID::notchium, 1};
+        inventory[2][3] = {ItemID::notchium_ore, 1};
+        inventory[2][4] = {ItemID::phosphate, 1};
+        inventory[2][5] = {ItemID::polymer, 1};
+        inventory[2][6] = {ItemID::quartz_ore, 1};
+        inventory[2][7] = {ItemID::rock, 1};
+        inventory[2][8] = {ItemID::shale_gravel, 1};
+        inventory[2][9] = {ItemID::silver_ore, 1};
 
-        inventory[1][0] = {ItemID::sand, 1};
+        inventory[1][0] = {ItemID::snow, 1};
         inventory[1][1] = {ItemID::zircon_ore, 1};
-        inventory[1][2] = {ItemID::silver_ore, 1};
-        inventory[1][3] = {ItemID::shale_gravel, 1};
-        inventory[1][4] = {ItemID::titanium_ore, 1};
-        inventory[1][5] = {ItemID::titanium, 1};
-        inventory[1][6] = {ItemID::minilight, 1};
+        inventory[1][2] = {ItemID::sulphur_crystal, 1};
+        inventory[1][3] = {ItemID::sulphur_ore, 1};
+        inventory[1][4] = {ItemID::titanium, 1};
+        inventory[1][5] = {ItemID::titanium_ore, 1};
+        inventory[1][6] = {ItemID::topsoil, 1};
+        inventory[1][7] = {ItemID::xenostone, 1};
+        inventory[1][8] = {ItemID::zircon_ore, 1};
+        inventory[1][9] = {ItemID::minilight, 1};
 
         inventory[0][0] = {ItemID::drill_t3, 1};
         inventory[0][1] = {ItemID::slug_pistol_t3, 1};
@@ -96,4 +99,20 @@ bool Inventory::ItemIsStackable(ItemID item)
 bool Inventory::IsCreative()
 {
     return _is_creative;
+}
+
+bool ItemStack::IsEmpty()
+{
+    return item == ItemID::none || amount < 1;
+}
+
+bool ItemStack::ItemIsDisk()
+{
+    return item == ItemID::disk || item == ItemID::disk1 || item == ItemID::disk2
+        || item == ItemID::disk3 || item == ItemID::disk4 || item == ItemID::disk5
+        || item == ItemID::disk6 || item == ItemID::disk7 || item == ItemID::disk8
+        || item == ItemID::disk9 || item == ItemID::disk10 || item == ItemID::disk11
+        || item == ItemID::disk12 || item == ItemID::disk13 || item == ItemID::disk14
+        || item == ItemID::disk15 || item == ItemID::disk16 || item == ItemID::disk17
+        || item == ItemID::disk18;
 }

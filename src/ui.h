@@ -426,7 +426,7 @@ class UIInventory
         UIImage _health_bar;
 
         UIImage _hotbar_select;
-        // TODO: UIImage _inventory_select;  (this will probably force me to explicitly define the UI coordinates, which isn't a bad thing)
+        // UIImage _inventory_select;
 
         UIImage _held_item;
         UIText _held_amount;

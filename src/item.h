@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string>
+#include <unordered_map>
 
 enum class ItemID : uint8_t
 {
@@ -102,4 +103,7 @@ enum class ItemID : uint8_t
     chronowinder
 };
 
+enum class ScannerDataType {TYPE, COMPOSITION, VALUE};
+
 std::string GetItemFile(ItemID item);
+std::unordered_map<ScannerDataType, std::string> GetItemScannerData(ItemID item);
