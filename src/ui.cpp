@@ -1264,7 +1264,8 @@ void UIGame::Render()
 {
     glDepthFunc(GL_LEQUAL);
 
-    _inventory.Render();
+    if (OptionsManager::GetOptions().show_gui)
+        _inventory.Render();
 
     if (_debug_menu.IsActive())
         _debug_menu.Render();
