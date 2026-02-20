@@ -1233,7 +1233,9 @@ void UIDebugMenu::Render()
 
 UIGame::UIGame()
 {
-
+    _crosshair.LoadImage(Storage::IMAGES / "ui" / "crosshair.png", GL_NEAREST);
+    _crosshair.SetSize({50, 50});
+    _crosshair.SetPosition({937, 517});
 }
 
 UIPauseMenu &UIGame::GetPauseMenu()
@@ -1265,7 +1267,10 @@ void UIGame::Render()
     glDepthFunc(GL_LEQUAL);
 
     if (OptionsManager::GetOptions().show_gui)
+    {
+        _crosshair.Render();
         _inventory.Render();
+    }
 
     if (_debug_menu.IsActive())
         _debug_menu.Render();

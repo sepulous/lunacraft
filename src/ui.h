@@ -448,4 +448,5 @@ class UIGame
         UIPauseMenu _pause_menu;
         UIDebugMenu _debug_menu;
         UIInventory _inventory;
+        UIImage _crosshair;
 };
