@@ -22,6 +22,7 @@
 #include "viewport.h"
 #include "rng.h"
 #include "inventory.h"
+#include "sound_system.h"
 
 #include <stb_image/stb_image.h>
 #include <stb_truetype/stb_truetype.h>
@@ -1555,11 +1556,11 @@ void UIInventory::Update(Inventory &inventory)
         bool right_click = Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT);
         if (left_click || right_click)
         {
-            if (inventory.held_stack.item == ItemID::none) // Pick up stack
+            std::pair<UIImage, UIText> *ui_slot;
+            ItemStack *clicked_slot = GetSlotUnderMouse(mouse_position, inventory, &ui_slot);
+            if (inventory.held_stack.IsEmpty()) // Pick up stack
             {
-                std::pair<UIImage, UIText> *ui_slot;
-                ItemStack *clicked_slot = GetSlotUnderMouse(mouse_position, inventory, &ui_slot);
-                if (clicked_slot && !clicked_slot->IsEmpty())
+                if (clicked_slot && !clicked_slot->IsEmpty() && clicked_slot != &inventory.assembler_output)
                 {
                     if (left_click)
                     {
@@ -1606,8 +1607,6 @@ void UIInventory::Update(Inventory &inventory)
             }
             else // Place/swap stack
             {
-                std::pair<UIImage, UIText> *ui_slot;
-                ItemStack *clicked_slot = GetSlotUnderMouse(mouse_position, inventory, &ui_slot);
                 if (clicked_slot && clicked_slot != &inventory.assembler_output)
                 {
                     if (clicked_slot->amount == 0) // Place
@@ -1623,12 +1622,12 @@ void UIInventory::Update(Inventory &inventory)
                             if (!inventory.IsCreative())
                             {
                                 inventory.held_stack.amount--;
-                                if (inventory.held_stack.amount < 0)
+                                if (inventory.held_stack.amount < 1)
                                     inventory.held_stack = {ItemID::none, 0};
                             }
                         }
                     }
-                    else // Swap
+                    else // Add/swap
                     {
                         if (clicked_slot->item == inventory.held_stack.item) // Add to slot
                         {
@@ -1643,7 +1642,7 @@ void UIInventory::Update(Inventory &inventory)
                                 if (!inventory.IsCreative())
                                 {
                                     inventory.held_stack.amount--;
-                                    if (inventory.held_stack.amount < 0)
+                                    if (inventory.held_stack.amount < 1)
                                         inventory.held_stack = {ItemID::none, 0};
                                 }
                             }
@@ -1687,6 +1686,126 @@ void UIInventory::Update(Inventory &inventory)
                                 scanner_data[ScannerDataType::VALUE]);
                         }
                         _scanner_text.SetText(scanner_text);
+                    }
+                }
+            }
+
+            // Assembler
+            if (clicked_slot >= &inventory.assembler_input[0][0] && clicked_slot <= &inventory.assembler_input[3][3]) // Recompute output
+            {
+                auto recipe = inventory.GetRecipeMatch();
+                if (recipe.empty())
+                    inventory.assembler_output = {ItemID::none, 0};
+                else
+                    inventory.assembler_output = {recipe[0].first, recipe[0].second};
+
+                _assembler_output_slot.first.LoadImage(Storage::IMAGES / "items" / GetItemFile(inventory.assembler_output.item), GL_NEAREST);
+                if (inventory.assembler_output.amount > 1)
+                    _assembler_output_slot.second.SetText(std::to_string(inventory.assembler_output.amount));
+                else
+                    _assembler_output_slot.second.SetText("");
+            }
+            
+            if (clicked_slot == &inventory.assembler_output && !inventory.assembler_output.IsEmpty()) // Take item (if possible)
+            {
+                auto recipe = inventory.GetRecipeMatch();
+                if (!recipe.empty())
+                {
+                    // We shouldn't do anything if the item can't actually be taken in some way
+                    if ((inventory.HasSpaceForItem(recipe[0].first) && Input::IsKeyHeld(GLFW_KEY_LEFT_SHIFT)) || inventory.held_stack.IsEmpty() || inventory.held_stack.item == recipe[0].first)
+                    {
+                        // Use input items
+                        bool reached_input = false;
+                        int recipe_idx = 1;
+                        for (int row = 2; row >= 0; row--)
+                        {
+                            for (int col = 0; col < 3; col++)
+                            {
+                                ItemStack &input_stack = inventory.assembler_input[row][col];
+
+                                if (!reached_input)
+                                {
+                                    if (input_stack.IsEmpty())
+                                        continue;
+                                    else
+                                        reached_input = true;
+                                }
+
+                                int amount_to_take = recipe[recipe_idx].second;
+                                input_stack.amount -= amount_to_take;
+                                if (input_stack.amount < 1)
+                                    input_stack.item = ItemID::none;
+                                recipe_idx++;
+                                if (recipe_idx == recipe.size())
+                                    goto done_consuming_input;
+                            }
+                        }
+
+                        done_consuming_input:
+
+                        int added_slot_idx = -1;
+                        if (Input::IsKeyHeld(GLFW_KEY_LEFT_SHIFT))
+                        {
+                            added_slot_idx = inventory.Add({recipe[0].first, recipe[0].second});
+                        }
+                        else if (inventory.held_stack.IsEmpty()) // Put output in hand
+                        {
+                            inventory.held_stack = {recipe[0].first, recipe[0].second};
+                        }
+                        else // Already holding output item
+                        {
+                            inventory.held_stack.amount += recipe[0].second;
+                        }
+
+                        if (inventory.GetRecipeMatch().empty())
+                            inventory.assembler_output = {ItemID::none, 0};
+                        
+                        SoundSystem::Play(SoundSystem::Sound::CRAFT);
+
+                        //
+                        // Update UI
+                        //
+
+                        // Assembler
+                        for (int row = 0; row < 3; row++)
+                        {
+                            for (int col = 0; col < 3; col++)
+                            {
+                                auto slot = inventory.assembler_input[row][col];
+                                auto &[slot_image, slot_amount] = _assembler_input_slots[row][col];
+                                slot_image.LoadImage(Storage::IMAGES / "items" / GetItemFile(slot.item), GL_NEAREST);
+                                if (slot.amount > 1)
+                                    slot_amount.SetText(std::to_string(slot.amount));
+                                else
+                                    slot_amount.SetText("");
+                            }
+                        }
+                        _assembler_output_slot.first.LoadImage(Storage::IMAGES / "items" / GetItemFile(inventory.assembler_output.item), GL_NEAREST);
+                        if (inventory.assembler_output.amount > 1)
+                            _assembler_output_slot.second.SetText(std::to_string(inventory.assembler_output.amount));
+                        else
+                            _assembler_output_slot.second.SetText("");
+
+                        // Held stack
+                        _held_item.LoadImage(Storage::IMAGES / "items" / GetItemFile(inventory.held_stack.item), GL_NEAREST);
+                        if (inventory.held_stack.amount > 1)
+                            _held_amount.SetText(std::to_string(inventory.held_stack.amount));
+                        else
+                            _held_amount.SetText("");
+
+                        // Inventory (if player shift-clicked)
+                        if (added_slot_idx != -1)
+                        {
+                            int row = added_slot_idx / 10;
+                            int col = added_slot_idx % 10;
+                            auto added_slot = inventory.inventory[row][col];
+                            auto &added_ui_slot = _inventory_slots[row][col];
+                            added_ui_slot.first.LoadImage(Storage::IMAGES / "items" / GetItemFile(inventory.inventory[row][col].item), GL_NEAREST);
+                            if (added_slot.amount > 1)
+                                added_ui_slot.second.SetText(std::to_string(added_slot.amount));
+                            else
+                                added_ui_slot.second.SetText("");
+                        }
                     }
                 }
             }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include "item.h"
 
 struct ItemStack
@@ -18,6 +20,8 @@ class Inventory
         bool IsCreative();
         bool HasSpaceForItem(ItemID item);
         ItemID GetSelectedItem();
+        std::vector<std::pair<ItemID, int>> GetRecipeMatch();
+        int Add(ItemStack stack);
 
     private:
         bool _is_creative;
