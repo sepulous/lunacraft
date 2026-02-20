@@ -1285,49 +1285,6 @@ void UIGame::Render()
 
 UIInventory::UIInventory()
 {
-    /*
-            * The inventory slots start at (477px, 56px) and are 85px by 85px (margin = 14px)
-                x_n = 477 + (85 + 14) * n  (n = 0...9)
-                y_m = 56 + (85 + 14) * m   (m = 0...4)
-
-            * The bottom left assembler slot is at (1122px, 682px) and is 76px by 76px (margin = 13px)
-                x_n = 1122 + (76 + 13) * n  (n = 0..2)
-                y_m = 682 + (76 + 13) * m   (m = 0..2)
-
-            ------
-
-            * The bottom left of the suit status text is (490px, 20px), and the health text starts at x=1006px
-
-            * The scanner slot is at (362px, 862px) and is 76px by 76px
-
-            * The jetpack slot is at (921px, 658px) and is 73px by 73px
-
-            * The battery slot is at (921px, 793px) and is 73px by 73px
-
-            * The helmet slot is at (921px, 906px) and is 73px by 73px
-
-
-            bool _toggled = false;
-
-            [X] UIImage _hotbar_base;
-            [X] UIImage _inventory_base;
-
-            [X] std::pair<UIImage, UIText> _hotbar_slots[10];
-            [X] std::pair<UIImage, UIText> _inventory_slots[40];
-
-            [X] std::pair<UIImage, UIText> _assembler_input_slots[9];
-            [X] std::pair<UIImage, UIText> _assembler_output_slot;
-
-            [X] std::pair<UIImage, UIText> _scanner_slot;
-            [X] UIText _scanner_text;
-
-            [X] UIImage _suit_status_bar;
-            [X] UIImage _health_bar;
-
-            [X] UIImage _hotbar_select;
-            [ ] UIImage _inventory_select;
-    */
-
     _hotbar_base.LoadImage(Storage::IMAGES / "ui" / "hotbar_base.png", GL_NEAREST);
     _hotbar_base.SetSize({VIRTUAL_UI_WIDTH, VIRTUAL_UI_HEIGHT});
     _hotbar_base.SetPosition({0, 0});
@@ -1367,9 +1324,6 @@ UIInventory::UIInventory()
     _hotbar_select.LoadImage(Storage::IMAGES / "ui" / "inventory_select.png");
     _hotbar_select.SetSize({88, 88});
     _hotbar_select.SetPosition({477, 54});
-
-    // _inventory_select.LoadImage(Storage::IMAGES / "ui" / "inventory_select.png");
-    // _inventory_select.SetSize({88, 88});
 
     _held_item.LoadImage(Storage::IMAGES / "items" / "none.png");
     _held_item.SetSize({85, 85});

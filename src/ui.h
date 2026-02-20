@@ -426,7 +426,6 @@ class UIInventory
         UIImage _health_bar;
 
         UIImage _hotbar_select;
-        // UIImage _inventory_select;
 
         UIImage _held_item;
         UIText _held_amount;
