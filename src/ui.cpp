@@ -1235,7 +1235,7 @@ UIGame::UIGame()
 {
     _crosshair.LoadImage(Storage::IMAGES / "ui" / "crosshair.png", GL_NEAREST);
     _crosshair.SetSize({50, 50});
-    _crosshair.SetPosition({937, 517});
+    _crosshair.SetPosition({935, 515});
 }
 
 UIPauseMenu &UIGame::GetPauseMenu()
