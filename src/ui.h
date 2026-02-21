@@ -398,6 +398,7 @@ class UIInventory
 {
     public:
         UIInventory();
+        void RebuildUI(const Inventory &inventory);
         void Update(Inventory &inventory);
         void Render();
         bool IsActive();

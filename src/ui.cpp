@@ -1406,64 +1406,61 @@ UIInventory::UIInventory()
     _spacesuit_slots[0].second.SetColor({1.0f, 1.0f, 1.0f, 1.0f});
 }
 
-void UIInventory::Update(Inventory &inventory)
+void UIInventory::RebuildUI(const Inventory &inventory)
 {
-    static bool init = false;
-    if (!init) // TODO: Add something like UIInventory::ForceRebuild() to ensure it's initially set up
+    // Hotbar and inventory slots
+    for (int row = 0; row < 5; row++)
     {
-        // Hotbar and inventory slots
-        for (int row = 0; row < 5; row++)
+        for (int col = 0; col < 10; col++)
         {
-            for (int col = 0; col < 10; col++)
-            {
-                auto slot = inventory.inventory[row][col];
-                auto &[slot_image, slot_amount] = _inventory_slots[row][col];
-                slot_image.LoadImage(Storage::IMAGES / "items" / GetItemFile(slot.item), GL_NEAREST);
-                if (slot.amount > 1)
-                    slot_amount.SetText(std::to_string(slot.amount));
-                else
-                    slot_amount.SetText("");
-            }
-        }
-
-        // Spacesuit slots
-        for (int i = 0; i < 3; i++)
-        {
-            auto slot = inventory.spacesuit[i];
-            auto &[slot_image, slot_amount] = _spacesuit_slots[i];
+            auto slot = inventory.inventory[row][col];
+            auto &[slot_image, slot_amount] = _inventory_slots[row][col];
             slot_image.LoadImage(Storage::IMAGES / "items" / GetItemFile(slot.item), GL_NEAREST);
             if (slot.amount > 1)
                 slot_amount.SetText(std::to_string(slot.amount));
             else
                 slot_amount.SetText("");
         }
-
-        // Assembler slots
-        for (int row = 0; row < 3; row++)
-        {
-            for (int col = 0; col < 3; col++)
-            {
-                auto slot = inventory.assembler_input[row][col];
-                auto &[slot_image, slot_amount] = _assembler_input_slots[row][col];
-                slot_image.LoadImage(Storage::IMAGES / "items" / GetItemFile(slot.item), GL_NEAREST);
-                if (slot.amount > 1)
-                    slot_amount.SetText(std::to_string(slot.amount));
-                else
-                    slot_amount.SetText("");
-            }
-        }
-        _assembler_output_slot.first.LoadImage(Storage::IMAGES / "items" / GetItemFile(inventory.assembler_output.item), GL_NEAREST);
-        if (inventory.assembler_output.amount > 1)
-            _assembler_output_slot.second.SetText(std::to_string(inventory.assembler_output.amount));
-        else
-            _assembler_output_slot.second.SetText("");
-
-        // Scanner slot
-        _scanner_slot.first.LoadImage(Storage::IMAGES / "items" / GetItemFile(inventory.scanner.item), GL_NEAREST);
-
-        init = true;
     }
 
+    // Spacesuit slots
+    for (int i = 0; i < 3; i++)
+    {
+        auto slot = inventory.spacesuit[i];
+        auto &[slot_image, slot_amount] = _spacesuit_slots[i];
+        slot_image.LoadImage(Storage::IMAGES / "items" / GetItemFile(slot.item), GL_NEAREST);
+        if (slot.amount > 1)
+            slot_amount.SetText(std::to_string(slot.amount));
+        else
+            slot_amount.SetText("");
+    }
+
+    // Assembler slots
+    for (int row = 0; row < 3; row++)
+    {
+        for (int col = 0; col < 3; col++)
+        {
+            auto slot = inventory.assembler_input[row][col];
+            auto &[slot_image, slot_amount] = _assembler_input_slots[row][col];
+            slot_image.LoadImage(Storage::IMAGES / "items" / GetItemFile(slot.item), GL_NEAREST);
+            if (slot.amount > 1)
+                slot_amount.SetText(std::to_string(slot.amount));
+            else
+                slot_amount.SetText("");
+        }
+    }
+    _assembler_output_slot.first.LoadImage(Storage::IMAGES / "items" / GetItemFile(inventory.assembler_output.item), GL_NEAREST);
+    if (inventory.assembler_output.amount > 1)
+        _assembler_output_slot.second.SetText(std::to_string(inventory.assembler_output.amount));
+    else
+        _assembler_output_slot.second.SetText("");
+
+    // Scanner slot
+    _scanner_slot.first.LoadImage(Storage::IMAGES / "items" / GetItemFile(inventory.scanner.item), GL_NEAREST);
+}
+
+void UIInventory::Update(Inventory &inventory)
+{
     glm::dvec2 mouse_position = Input::GetVirtualMousePosition(UIGetVirtualToWindow());
 
     // Update held item (UI)
