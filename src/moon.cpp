@@ -200,23 +200,36 @@ void Moon::Update(double delta_time, int old_render_distance)
     _chunk_manager.UploadReadyChunks();
 
     // Update block select
-    auto camera_pos = _player->GetCamera().position;
-    auto camera_forward = _player->GetCamera().forward;
+    const float PLAYER_REACH = 9.0f;
+    const int CAST_STEPS = 300;
+    auto camera = _player->GetCamera();
     bool block_select_active = false;
-    for (int i = 0; i < 18; i++)
+    for (int i = 0; i <= CAST_STEPS; i++)
     {
-        auto ray = camera_pos + (i*0.5f)*camera_forward;
-        auto voxel_g = GetNearestVoxel(ray);
-        auto voxel_l = GlobalToLocalVoxel(voxel_g);
-        auto chunk_coords = VoxelToChunk(voxel_g);
-        auto chunk = _chunk_manager.GetChunk(chunk_coords);
-        if (chunk->GetBlocks()[GetChunkIndex(voxel_l)] != BlockID::air)
+        // Instead of actually having four rays, just have a central one and displace from it
+        auto center_ray_pos = camera.position + i * (PLAYER_REACH / CAST_STEPS) * camera.forward;
+        glm::vec3 rays[] = {
+            center_ray_pos - 0.02f * camera.right,
+            center_ray_pos + 0.02f * camera.right,
+            center_ray_pos + 0.02f * camera.up,
+            center_ray_pos - 0.02f * camera.up
+        };
+
+        // Assuming one will hit before the others, we should be safe to just check one-by-one
+        for (auto &ray : rays)
         {
-            if (_block_select.GetPosition() != voxel_g)
-                _block_select.SetPosition(voxel_g);
-            block_select_active = true;
-            break;
+            auto ray_voxel = GetNearestVoxel(ray);
+            auto ray_chunk = _chunk_manager.GetChunk(VoxelToChunk(ray_voxel));
+            if (ray_chunk->GetBlocks()[GetChunkIndex(GlobalToLocalVoxel(ray_voxel))] != BlockID::air)
+            {
+                _block_select.SetPosition(ray_voxel);
+                block_select_active = true;
+                break;
+            }
         }
+
+        if (block_select_active)
+            break;
     }
     _block_select.SetActive(block_select_active);
 }
