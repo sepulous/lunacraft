@@ -4,6 +4,8 @@
 #include <thread>
 #include <cstdlib>
 
+#include <stb_image/stb_image.h>
+
 #include "moon.h"
 #include "storage.h"
 #include "options.h"
@@ -196,9 +198,30 @@ void Moon::Update(double delta_time, int old_render_distance)
 
     // Upload any new chunks that are ready to the GPU
     _chunk_manager.UploadReadyChunks();
+
+    // Update block select
+    auto camera_pos = _player->GetCamera().position;
+    auto camera_forward = _player->GetCamera().forward;
+    bool block_select_active = false;
+    for (int i = 0; i < 18; i++)
+    {
+        auto ray = camera_pos + (i*0.5f)*camera_forward;
+        auto voxel_g = GetNearestVoxel(ray);
+        auto voxel_l = GlobalToLocalVoxel(voxel_g);
+        auto chunk_coords = VoxelToChunk(voxel_g);
+        auto chunk = _chunk_manager.GetChunk(chunk_coords);
+        if (chunk->GetBlocks()[GetChunkIndex(voxel_l)] != BlockID::air)
+        {
+            if (_block_select.GetPosition() != voxel_g)
+                _block_select.SetPosition(voxel_g);
+            block_select_active = true;
+            break;
+        }
+    }
+    _block_select.SetActive(block_select_active);
 }
 
-void Moon::Render(glm::mat4 projection)
+void Moon::Render(const glm::mat4 &projection)
 {
     //
     // Render world
@@ -227,6 +250,8 @@ void Moon::Render(glm::mat4 projection)
     GetFrustumPlanes(view_projection, frustum);
     _chunk_manager.RenderChunks(frustum);
 
+    _block_select.Render(view_projection);
+
     //
     // Render skybox
     //
@@ -236,4 +261,115 @@ void Moon::Render(glm::mat4 projection)
     float skybox_angle = (_world_time + SECONDS_PER_LIGHT_PHASE) * (2 * 3.1416f / (LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE)); // The offset initializes moon on Phase 1
     _skybox.Update(view_projection, skybox_angle);
     _skybox.Render();
+}
+
+BlockSelect::BlockSelect()
+{
+    //
+    // Set up VAO/VBO
+    //
+    glGenVertexArrays(1, &_vao);
+    glBindVertexArray(_vao);
+
+    glGenBuffers(1, &_vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, _vbo);
+
+    float vertices[] = {
+        0.505f,  0.505f, -0.505f,  1.0f, 1.0f,
+        0.505f, -0.505f, -0.505f,  1.0f, 0.0f,
+        -0.505f, -0.505f, -0.505f,  0.0f, 0.0f,
+        -0.505f, -0.505f, -0.505f,  0.0f, 0.0f,
+        -0.505f,  0.505f, -0.505f,  0.0f, 1.0f,
+        0.505f,  0.505f, -0.505f,  1.0f, 1.0f,
+
+        -0.505f, -0.505f,  0.505f,  0.0f, 0.0f,
+         0.505f, -0.505f,  0.505f,  1.0f, 0.0f,
+         0.505f,  0.505f,  0.505f,  1.0f, 1.0f,
+         0.505f,  0.505f,  0.505f,  1.0f, 1.0f,
+        -0.505f,  0.505f,  0.505f,  0.0f, 1.0f,
+        -0.505f, -0.505f,  0.505f,  0.0f, 0.0f,
+
+        -0.505f,  0.505f,  0.505f,  1.0f, 0.0f,
+        -0.505f,  0.505f, -0.505f,  1.0f, 1.0f,
+        -0.505f, -0.505f, -0.505f,  0.0f, 1.0f,
+        -0.505f, -0.505f, -0.505f,  0.0f, 1.0f,
+        -0.505f, -0.505f,  0.505f,  0.0f, 0.0f,
+        -0.505f,  0.505f,  0.505f,  1.0f, 0.0f,
+
+         0.505f, -0.505f, -0.505f,  0.0f, 1.0f,
+         0.505f,  0.505f, -0.505f,  1.0f, 1.0f,
+         0.505f,  0.505f,  0.505f,  1.0f, 0.0f,
+         0.505f,  0.505f,  0.505f,  1.0f, 0.0f,
+         0.505f, -0.505f,  0.505f,  0.0f, 0.0f,
+         0.505f, -0.505f, -0.505f,  0.0f, 1.0f,
+
+        -0.505f, -0.505f, -0.505f,  0.0f, 1.0f,
+         0.505f, -0.505f, -0.505f,  1.0f, 1.0f,
+         0.505f, -0.505f,  0.505f,  1.0f, 0.0f,
+         0.505f, -0.505f,  0.505f,  1.0f, 0.0f,
+        -0.505f, -0.505f,  0.505f,  0.0f, 0.0f,
+        -0.505f, -0.505f, -0.505f,  0.0f, 1.0f,
+
+        0.505f,  0.505f,  0.505f,  1.0f, 0.0f,
+        0.505f,  0.505f, -0.505f,  1.0f, 1.0f,
+        -0.505f,  0.505f, -0.505f,  0.0f, 1.0f,
+        -0.505f,  0.505f, -0.505f,  0.0f, 1.0f,
+        -0.505f,  0.505f,  0.505f,  0.0f, 0.0f,
+        0.505f,  0.505f,  0.505f,  1.0f, 0.0f
+    };
+
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    //
+    // Set up texture
+    //
+    int width, height, nrChannels;
+    stbi_set_flip_vertically_on_load(true);
+    std::filesystem::path overlay_path = Storage::IMAGES / "block_select.png";
+    unsigned char *overlay_data = stbi_load(reinterpret_cast<const char *>(overlay_path.u8string().c_str()), &width, &height, &nrChannels, STBI_rgb_alpha);
+
+    glGenTextures(1, &_tex);
+    glBindTexture(GL_TEXTURE_2D, _tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, overlay_data);
+
+    stbi_image_free(overlay_data);
+}
+
+void BlockSelect::Render(const glm::mat4 &view_projection)
+{
+    auto &shader = ShaderManager::BLOCK_SELECT_SHADER;
+    shader.Use();
+    shader.SetMat4("u_view_projection", view_projection);
+    shader.SetVec3("u_position", _position);
+
+    if (_active)
+    {
+        glBindVertexArray(_vao);
+        glBindTexture(GL_TEXTURE_2D, _tex);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+    }
+}
+
+void BlockSelect::SetPosition(glm::ivec3 position)
+{
+    _position = position;
+}
+
+glm::ivec3 BlockSelect::GetPosition()
+{
+    return _position;
+}
+
+void BlockSelect::SetActive(bool active)
+{
+    _active = active;
 }

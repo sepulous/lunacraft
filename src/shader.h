@@ -36,6 +36,7 @@ class ShaderManager
         static Shader UI_IMAGE_SHADER;
         static Shader UI_TEXT_SHADER;
         static Shader BLOCK_SHADER;
+        static Shader BLOCK_SELECT_SHADER;
         static Shader SKYBOX_SHADER;
 
     public:

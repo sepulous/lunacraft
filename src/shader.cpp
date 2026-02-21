@@ -19,6 +19,7 @@
 Shader ShaderManager::UI_IMAGE_SHADER;
 Shader ShaderManager::UI_TEXT_SHADER;
 Shader ShaderManager::BLOCK_SHADER;
+Shader ShaderManager::BLOCK_SELECT_SHADER;
 Shader ShaderManager::SKYBOX_SHADER;
 
 void ShaderManager::CompileAllShaders()
@@ -26,6 +27,7 @@ void ShaderManager::CompileAllShaders()
     UI_IMAGE_SHADER.MakeProgram(Storage::SHADERS / "ui_image.vert", Storage::SHADERS / "ui_image.frag");
     UI_TEXT_SHADER.MakeProgram(Storage::SHADERS / "ui_text.vert", Storage::SHADERS / "ui_text.frag");
     BLOCK_SHADER.MakeProgram(Storage::SHADERS / "block.vert", Storage::SHADERS / "block.frag");
+    BLOCK_SELECT_SHADER.MakeProgram(Storage::SHADERS / "block_select.vert", Storage::SHADERS / "block_select.frag");
     SKYBOX_SHADER.MakeProgram(Storage::SHADERS / "skybox.vert", Storage::SHADERS / "skybox.frag");
 }
 
