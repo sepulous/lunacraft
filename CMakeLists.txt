@@ -71,7 +71,12 @@ add_executable(Lunacraft
 )
 
 # Include directories
-target_include_directories(Lunacraft PRIVATE include third_party/stb_truetype third_party/stb_image)
+target_include_directories(Lunacraft PRIVATE
+    third_party/stb_truetype
+    third_party/stb_image
+    third_party/soundlib
+    third_party/glm
+)
 
 # Link dependencies
 target_link_libraries(Lunacraft

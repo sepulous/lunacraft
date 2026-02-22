@@ -6,8 +6,8 @@
 #include <unordered_map>
 
 #include <glm/glm.hpp>
+#include <soundlib/soundlib.h>
 
-#include "soundlib.h"
 #include "options.h"
 
 class SoundSystem
