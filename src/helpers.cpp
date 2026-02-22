@@ -146,8 +146,8 @@ void LoadChunkFromDisk(std::filesystem::path chunk_file_path, BlockID *blocks)
         while (entry.count > 0)
         {
             blocks[block_index] = entry.block;
-            entry.count--;
             block_index++;
+            entry.count--;
         }
     }
 }
@@ -180,6 +180,7 @@ void WriteChunkToDisk(std::filesystem::path chunk_file_path, BlockID *blocks)
             }
         }
     }
+    entries.emplace_back(count, block);
 
     std::ofstream chunk_file(chunk_file_path, std::ios::binary);
     chunk_file.write(reinterpret_cast<const char *>(entries.data()), entries.size() * sizeof(RLEEntry));
