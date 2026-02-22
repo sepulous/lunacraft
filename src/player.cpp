@@ -15,7 +15,7 @@ Player::Player()
     _camera.position = _position + glm::vec3(0, 0.9f, 0);
 }
 
-void Player::Update()
+void Player::Update(float delta_time)
 {
     _input_direction = glm::vec3(0);
 
@@ -34,6 +34,32 @@ void Player::Update()
 
     if (glm::length(_input_direction) > 0)
         _input_direction = glm::normalize(_input_direction);
+
+    // Regen health
+    if (_suit_status > 0 && _time_since_last_health_update > 0.5f)
+    {
+        _health++;
+        if (_health > 100)
+            _health = 100;
+        _time_since_last_health_update = 0;
+    }
+    else
+    {
+        _time_since_last_health_update += delta_time;
+    }
+
+    // Regen suit status
+    if (CanRegenSuit() && _time_since_last_suit_update > GetSuitRegenInterval())
+    {
+        _suit_status++;
+        if (_suit_status > 100)
+            _suit_status = 100;
+        _time_since_last_suit_update = 0;
+    }
+    else
+    {
+        _time_since_last_suit_update += delta_time;
+    }
 
     _camera.position = _position + glm::vec3(0, 0.9f, 0);
 }
@@ -54,7 +80,8 @@ void Player::FixedUpdate()
     // The friction and maximum speed depend on whether the player is on ice.
     //
 
-    float max_move_speed = IsOnIce() ? 8.0f : 6.0f;
+    //float max_move_speed = IsOnIce() ? 8.0f : 6.0f;
+    float max_move_speed = GetMaxMoveSpeed();
     float friction = IsOnIce() ? 4.0f : 10.0f;
     float alpha = friction * 8.0f;
     float beta = alpha / max_move_speed;
@@ -177,4 +204,45 @@ glm::vec3 Player::GetForward()
 glm::vec3 Player::GetRight()
 {
     return glm::cross(GetForward(), glm::vec3{0, 1, 0});
+}
+
+// In blocks/second
+float Player::GetMaxMoveSpeed()
+{
+    float max_speed;
+
+    auto battery_item = _inventory.spacesuit[1].item;
+    if (battery_item == ItemID::battery)
+        max_speed = 4.74f;
+    else if (battery_item == ItemID::power_crystal)
+        max_speed = 6.4f;
+    else if (battery_item == ItemID::energy_orb)
+        max_speed = 8.5f;
+    else
+        max_speed = 2.82f;
+
+    if (IsOnIce())
+        max_speed *= 1.2f;
+
+    return max_speed;
+}
+
+bool Player::CanRegenSuit()
+{
+    auto battery_item = _inventory.spacesuit[1].item;
+    return battery_item == ItemID::battery || battery_item == ItemID::power_crystal || battery_item == ItemID::energy_orb;
+}
+
+// In seconds
+float Player::GetSuitRegenInterval()
+{
+    auto battery_item = _inventory.spacesuit[1].item;
+    if (battery_item == ItemID::battery)
+        return 3.3f;
+    else if (battery_item == ItemID::power_crystal)
+        return 1.35f;
+    else if (battery_item == ItemID::energy_orb)
+        return 0.65f;
+    else
+        return std::numeric_limits<float>::max();
 }

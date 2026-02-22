@@ -16,7 +16,7 @@ class Entity
 
     public:
         virtual ~Entity() = default;
-        virtual void Update() = 0;
+        virtual void Update(float delta_time) = 0;
         virtual void FixedUpdate() = 0;
 
         AABB &GetAABB() noexcept;

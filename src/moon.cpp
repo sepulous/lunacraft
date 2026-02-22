@@ -179,7 +179,7 @@ void Moon::Update(double delta_time, int old_render_distance)
     _entity_manager.RunPhysics(physics_steps, _accumulator / FIXED_DELTA_TIME);
 
     // Non-physics updates
-    _entity_manager.Update();
+    _entity_manager.Update(delta_time);
 
     // Update lighting
     int light_phase = ((int)(_world_time + SECONDS_PER_LIGHT_PHASE) / SECONDS_PER_LIGHT_PHASE) % LIGHT_PHASES; // The offset initializes moon on Phase 1

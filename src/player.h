@@ -26,12 +26,14 @@ class Player : public Entity
         int _suit_status = 100;
         bool _was_grounded = false;
         float _fall_time = 0;
+        float _time_since_last_health_update = 0;
+        float _time_since_last_suit_update = 0;
 
     public:
         Player();
         ~Player() = default;
 
-        void Update() override;
+        void Update(float delta_time) override;
         void FixedUpdate() override;
 
         PlayerData GetPlayerData();
@@ -54,4 +56,9 @@ class Player : public Entity
 
         glm::vec3 GetForward();
         glm::vec3 GetRight();
+
+    private:
+        float GetMaxMoveSpeed();
+        bool CanRegenSuit();
+        float GetSuitRegenInterval();
 };

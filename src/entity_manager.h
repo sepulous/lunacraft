@@ -17,6 +17,6 @@ class EntityManager
         void LinkChunkManager(ChunkManager *chunk_manager);
         void AddEntity(Entity *entity);
         void FixedUpdate();
-        void Update();
+        void Update(float delta_time);
         void RunPhysics(int steps, float interp);
 };

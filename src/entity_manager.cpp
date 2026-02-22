@@ -26,10 +26,10 @@ void EntityManager::FixedUpdate()
         entity->FixedUpdate();
 }
 
-void EntityManager::Update()
+void EntityManager::Update(float delta_time)
 {
     for (Entity *entity : _entities)
-        entity->Update();
+        entity->Update(delta_time);
 }
 
 void EntityManager::RunPhysics(int steps, float interp)
