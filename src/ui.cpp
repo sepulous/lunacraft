@@ -1406,7 +1406,7 @@ UIInventory::UIInventory()
     _spacesuit_slots[0].second.SetColor({1.0f, 1.0f, 1.0f, 1.0f});
 }
 
-void UIInventory::RebuildUI(const Inventory &inventory)
+void UIInventory::RebuildUI(const Inventory &inventory, float suit_status, float health)
 {
     // Hotbar and inventory slots
     for (int row = 0; row < 5; row++)
@@ -1457,15 +1457,28 @@ void UIInventory::RebuildUI(const Inventory &inventory)
 
     // Scanner slot
     _scanner_slot.first.LoadImage(Storage::IMAGES / "items" / GetItemFile(inventory.scanner.item), GL_NEAREST);
+
+    // Suit status and health bar
+    _suit_status_bar.SetCrop({0.0f, 0.0f, suit_status, 1.0f});
+    _suit_status_bar.SetSize({186 * suit_status, 18});
+    _health_bar.SetCrop({0.0f, 0.0f, health, 1.0f});
+    _health_bar.SetSize({186 * health, 18});
 }
 
-void UIInventory::Update(Inventory &inventory)
+void UIInventory::Update(Inventory &inventory, float suit_status, float health)
 {
     glm::dvec2 mouse_position = Input::GetVirtualMousePosition(UIGetVirtualToWindow());
 
     // Update held item (UI)
     _held_item.SetPosition({mouse_position.x - (85 / 2), mouse_position.y - (85 / 2)});
     _held_amount.SetPosition(_held_item.GetPosition() + glm::vec2{60, 10});
+
+    // Update suit status and health
+    // Suit status and health bar
+    _suit_status_bar.SetCrop({0.0f, 0.0f, suit_status, 1.0f});
+    _suit_status_bar.SetSize({186 * suit_status, 18});
+    _health_bar.SetCrop({0.0f, 0.0f, health, 1.0f});
+    _health_bar.SetSize({186 * health, 18});
 
     // Update inventory
     if (!_active)
@@ -1941,6 +1954,7 @@ UIImage::UIImage(GLint filtering)
 
     _position = glm::vec2(0);
     _size = glm::vec2(0);
+    _crop = glm::vec4(0.0f, 0.0f, 1.0f, 1.0f);
 }
 
 UIImage::UIImage(std::filesystem::path image_path, glm::vec2 position, glm::vec2 size, GLint filtering)
@@ -2055,9 +2069,16 @@ glm::vec2 UIImage::GetSize()
     return _size;
 }
 
+void UIImage::SetCrop(glm::vec4 crop)
+{
+    _crop = crop;
+}
+
 void UIImage::Render()
 {
-    ShaderManager::UI_IMAGE_SHADER.Use();
+    auto &shader = ShaderManager::UI_IMAGE_SHADER;
+    shader.Use();
+    shader.SetVec4("u_crop", _crop);
     glBindVertexArray(_vao);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, _texture);

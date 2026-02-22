@@ -50,6 +50,7 @@ class UIImage
         GLuint _texture;
         glm::vec2 _position;
         glm::vec2 _size;
+        glm::vec4 _crop;
         float _aspect_ratio;
         
     public:
@@ -60,6 +61,7 @@ class UIImage
         glm::vec2 GetPosition();
         void SetSize(glm::vec2 size, bool preserve_aspect_ratio = false);
         glm::vec2 GetSize();
+        void SetCrop(glm::vec4 crop);
         void Render();
 };
 
@@ -398,8 +400,8 @@ class UIInventory
 {
     public:
         UIInventory();
-        void RebuildUI(const Inventory &inventory);
-        void Update(Inventory &inventory);
+        void RebuildUI(const Inventory &inventory, float suit_status, float health);
+        void Update(Inventory &inventory, float suit_status, float health);
         void Render();
         bool IsActive();
         void SetActive(bool active);
