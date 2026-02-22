@@ -209,10 +209,10 @@ void Moon::Update(double delta_time, int old_render_distance)
         // Instead of actually having four rays, just have a central one and displace from it
         auto center_ray_pos = camera.position + i * (PLAYER_REACH / CAST_STEPS) * camera.forward;
         glm::vec3 rays[] = {
-            center_ray_pos - 0.02f * camera.right,
-            center_ray_pos + 0.02f * camera.right,
-            center_ray_pos + 0.02f * camera.up,
-            center_ray_pos - 0.02f * camera.up
+            center_ray_pos - 0.01f * camera.right,
+            center_ray_pos + 0.01f * camera.right,
+            center_ray_pos + 0.01f * camera.up,
+            center_ray_pos - 0.01f * camera.up
         };
 
         // Assuming one will hit before the others, we should be safe to just check one-by-one
@@ -288,12 +288,12 @@ BlockSelect::BlockSelect()
     glBindBuffer(GL_ARRAY_BUFFER, _vbo);
 
     float vertices[] = {
-        0.505f,  0.505f, -0.505f,  1.0f, 1.0f,
-        0.505f, -0.505f, -0.505f,  1.0f, 0.0f,
+         0.505f,  0.505f, -0.505f,  1.0f, 1.0f,
+         0.505f, -0.505f, -0.505f,  1.0f, 0.0f,
         -0.505f, -0.505f, -0.505f,  0.0f, 0.0f,
         -0.505f, -0.505f, -0.505f,  0.0f, 0.0f,
         -0.505f,  0.505f, -0.505f,  0.0f, 1.0f,
-        0.505f,  0.505f, -0.505f,  1.0f, 1.0f,
+         0.505f,  0.505f, -0.505f,  1.0f, 1.0f,
 
         -0.505f, -0.505f,  0.505f,  0.0f, 0.0f,
          0.505f, -0.505f,  0.505f,  1.0f, 0.0f,
@@ -323,12 +323,12 @@ BlockSelect::BlockSelect()
         -0.505f, -0.505f,  0.505f,  0.0f, 0.0f,
         -0.505f, -0.505f, -0.505f,  0.0f, 1.0f,
 
-        0.505f,  0.505f,  0.505f,  1.0f, 0.0f,
-        0.505f,  0.505f, -0.505f,  1.0f, 1.0f,
+         0.505f,  0.505f,  0.505f,  1.0f, 0.0f,
+         0.505f,  0.505f, -0.505f,  1.0f, 1.0f,
         -0.505f,  0.505f, -0.505f,  0.0f, 1.0f,
         -0.505f,  0.505f, -0.505f,  0.0f, 1.0f,
         -0.505f,  0.505f,  0.505f,  0.0f, 0.0f,
-        0.505f,  0.505f,  0.505f,  1.0f, 0.0f
+         0.505f,  0.505f,  0.505f,  1.0f, 0.0f
     };
 
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
