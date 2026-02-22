@@ -57,6 +57,9 @@ Inventory::Inventory(bool is_creative)
         inventory[0][4] = {ItemID::chronobooster, 1};
         inventory[0][5] = {ItemID::chronowinder, 1};
         inventory[0][6] = {ItemID::camera, 1};
+
+        spacesuit[0] = {ItemID::jetpack_t3, 1};
+        spacesuit[1] = {ItemID::energy_orb, 1};
     }
     else // Default explore loadout
     {
@@ -65,6 +68,9 @@ Inventory::Inventory(bool is_creative)
         inventory[0][3] = {ItemID::medkit, 1};
         inventory[0][4] = {ItemID::disk, 1};
         inventory[0][9] = {ItemID::camera, 1};
+
+        spacesuit[0] = {ItemID::jetpack_t1, 1};
+        spacesuit[1] = {ItemID::battery, 1};
     }
 
     _is_creative = is_creative;
