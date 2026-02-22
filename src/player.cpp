@@ -6,7 +6,7 @@
 
 Player::Player()
 {
-    _position = glm::vec3(CHUNK_SIZE / 2.0f, 120.0f + 0.5f + 0.9f, CHUNK_SIZE / 2.0f);
+    _position = glm::vec3(CHUNK_SIZE / 2.0f, 114.0f + 0.5f + 0.9f, CHUNK_SIZE / 2.0f);
     _prev_position = _position;
     _next_position = _position;
     _velocity = glm::vec3(0);
@@ -70,7 +70,7 @@ void Player::FixedUpdate()
     // Jump
     if (_is_jumping && _is_grounded)
     {
-        _velocity.y = 6.0f;
+        _velocity.y = 3.5f;
         _is_jumping = false;
     }
 
