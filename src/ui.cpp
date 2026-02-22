@@ -1596,6 +1596,9 @@ void UIInventory::Update(Inventory &inventory, float suit_status, float health)
                                     inventory.held_stack = {ItemID::none, 0};
                             }
                         }
+
+                        if (clicked_slot == &inventory.scanner)
+                            SoundSystem::Play(SoundSystem::Sound::DING);
                     }
                     else // Add/swap
                     {
@@ -1622,6 +1625,9 @@ void UIInventory::Update(Inventory &inventory, float suit_status, float health)
                             ItemStack clicked_slot_copy = *clicked_slot;
                             *clicked_slot = inventory.held_stack;
                             inventory.held_stack = clicked_slot_copy;
+
+                            if (clicked_slot == &inventory.scanner)
+                                SoundSystem::Play(SoundSystem::Sound::DING);
                         }
                     }
 
