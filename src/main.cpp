@@ -304,7 +304,7 @@ int main()
 
             // Update inventory
             auto player = Moon::GetCurrentMoon()->GetPlayer();
-            ui_inventory.Update(player->GetInventory(), (float)player->GetSuitStatus() / 100.0f, (float)player->GetHealth() / 100.0f);
+            ui_inventory.Update(player->GetInventory(), (float)player->GetSuitStatus() / 100.0f, (float)player->GetHealth() / 100.0f, (float)player->GetJetpackEnergy() / (float)player->GetMaxJetpackEnergy());
 
             // Handle quit/resume buttons (this combines Update and Input; let's try to do better)
             if (ui_pause_menu.IsActive())
@@ -403,12 +403,14 @@ void LoadMoon(int moon_id, MoonSettings moon_settings)
         player->SetNextPosition(player_data.position);
         player->SetHealth(player_data.health);
         player->SetSuitStatus(player_data.suit_status);
+        player->SetJetpackEnergy(player_data.jetpack_energy);
         player->SetCameraRotation({player_data.camera_rotation.x, player_data.camera_rotation.y});
         player->SetInventory(player_data.inventory);
     }
     else
     {
         player->SetInventory(Inventory{moon_settings.is_creative});
+        player->SetJetpackEnergy(player->GetMaxJetpackEnergy());
         PlayerData player_data = player->GetPlayerData();
         std::ofstream player_data_file(player_data_path, std::ios::binary);
         player_data_file.write(reinterpret_cast<char *>(&player_data), sizeof(PlayerData));

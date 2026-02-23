@@ -401,7 +401,7 @@ class UIInventory
     public:
         UIInventory();
         void RebuildUI(const Inventory &inventory, float suit_status, float health);
-        void Update(Inventory &inventory, float suit_status, float health);
+        void Update(Inventory &inventory, float suit_status, float health, float jetpack_level);
         void Render();
         bool IsActive();
         void SetActive(bool active);
@@ -432,6 +432,10 @@ class UIInventory
 
         UIImage _held_item;
         UIText _held_amount;
+
+        UIImage _jetpack_icon;
+        UIImage _jetpack_bar_bg;
+        UIImage _jetpack_bar;
 
         ItemStack *GetSlotUnderMouse(glm::dvec2 mouse_pos, Inventory &inventory, std::pair<UIImage, UIText> **out_slot);
 };

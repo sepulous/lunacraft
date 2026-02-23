@@ -1329,6 +1329,19 @@ UIInventory::UIInventory()
     _held_item.SetSize({85, 85});
     _held_amount.SetFontSize(0.3f);
     _held_amount.SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+
+    _jetpack_icon.LoadImage(Storage::IMAGES / "items" / "jetpack_t1.png", GL_NEAREST);
+    _jetpack_icon.SetPosition({1488, 18});
+    _jetpack_icon.SetSize({32, 32});
+
+    _jetpack_bar_bg.LoadImage(Storage::IMAGES / "ui" / "jetpack_bar_bg.png", GL_NEAREST);
+    _jetpack_bar_bg.SetPosition({1490, 56});
+    _jetpack_bar_bg.SetSize({24, 100});
+
+    _jetpack_bar.LoadImage(Storage::IMAGES / "ui" / "jetpack_bar.png", GL_NEAREST);
+    _jetpack_bar.SetPosition({1490, 56});
+    _jetpack_bar.SetSize({24, 100});
+
     
     //
     // Hotbar and inventory slots
@@ -1465,7 +1478,7 @@ void UIInventory::RebuildUI(const Inventory &inventory, float suit_status, float
     _health_bar.SetSize({186 * health, 18});
 }
 
-void UIInventory::Update(Inventory &inventory, float suit_status, float health)
+void UIInventory::Update(Inventory &inventory, float suit_status, float health, float jetpack_level)
 {
     glm::dvec2 mouse_position = Input::GetVirtualMousePosition(UIGetVirtualToWindow());
 
@@ -1474,11 +1487,13 @@ void UIInventory::Update(Inventory &inventory, float suit_status, float health)
     _held_amount.SetPosition(_held_item.GetPosition() + glm::vec2{60, 10});
 
     // Update suit status and health
-    // Suit status and health bar
     _suit_status_bar.SetCrop({0.0f, 0.0f, suit_status, 1.0f});
     _suit_status_bar.SetSize({186 * suit_status, 18});
     _health_bar.SetCrop({0.0f, 0.0f, health, 1.0f});
     _health_bar.SetSize({186 * health, 18});
+
+    // Update jetpack level
+    _jetpack_bar.SetSize({24, 100 * jetpack_level});
 
     // Update inventory
     if (!_active)
@@ -1801,6 +1816,11 @@ void UIInventory::Render()
     _health_text.Render();
     _health_bar.Render();
     _hotbar_select.Render();
+
+    // Jetpack
+    _jetpack_icon.Render();
+    _jetpack_bar_bg.Render();
+    _jetpack_bar.Render();
     
     // Hotbar slots
     for (int col = 0; col < 10; col++)

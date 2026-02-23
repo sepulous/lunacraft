@@ -10,6 +10,7 @@ struct PlayerData
 {
     int health;
     int suit_status;
+    int jetpack_energy;
     glm::vec3 position;
     glm::vec2 camera_rotation; // {pitch, yaw}
     Inventory inventory;
@@ -24,10 +25,14 @@ class Player : public Entity
         glm::vec3 _input_direction;
         int _health = 100;
         int _suit_status = 100;
+        int _jetpack_energy = 20;
         bool _was_grounded = false;
         float _fall_time = 0;
+        bool _is_flying = false;
         float _time_since_last_health_update = 0;
         float _time_since_last_suit_update = 0;
+        float _time_since_last_jetpack_update = 0;
+        float _time_since_started_flying = 0;
 
     public:
         Player();
@@ -46,6 +51,10 @@ class Player : public Entity
 
         void SetSuitStatus(int suit_status);
         int GetSuitStatus();
+
+        void SetJetpackEnergy(int energy);
+        int GetJetpackEnergy();
+        int GetMaxJetpackEnergy();
 
         Inventory &GetInventory();
         void SetInventory(Inventory inventory);

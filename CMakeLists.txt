@@ -79,8 +79,7 @@ target_include_directories(Lunacraft PRIVATE
 )
 
 # Link dependencies
-target_link_libraries(Lunacraft
-    PRIVATE
+target_link_libraries(Lunacraft PRIVATE
     glad
     glfw
     OpenGL::GL

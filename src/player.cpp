@@ -38,9 +38,7 @@ void Player::Update(float delta_time)
     // Regen health
     if (_suit_status > 0 && _time_since_last_health_update > 0.5f)
     {
-        _health++;
-        if (_health > 100)
-            _health = 100;
+        _health = glm::clamp(_health + 1, 0, 100);
         _time_since_last_health_update = 0;
     }
     else
@@ -51,14 +49,41 @@ void Player::Update(float delta_time)
     // Regen suit status
     if (CanRegenSuit() && _time_since_last_suit_update > GetSuitRegenInterval())
     {
-        _suit_status++;
-        if (_suit_status > 100)
-            _suit_status = 100;
+        _suit_status = glm::clamp(_suit_status + 1, 0, 100);
         _time_since_last_suit_update = 0;
     }
     else
     {
         _time_since_last_suit_update += delta_time;
+    }
+
+    // Decide whether we're flying
+    if (Input::IsKeyHeld(GLFW_KEY_SPACE) && _jetpack_energy > 0)
+    {
+        _time_since_started_flying += delta_time;
+        if (_time_since_started_flying > 0.5f)
+            _is_flying = true;
+    }
+    else if (Input::IsKeyReleased(GLFW_KEY_SPACE) || _jetpack_energy < 1)
+    {
+        _time_since_started_flying = 0;
+        _is_flying = false;
+    }
+
+    // Deplete/regen jetpack energy
+    if (_is_flying && _time_since_last_jetpack_update > 0.055f)
+    {
+        _jetpack_energy = glm::clamp(_jetpack_energy - 1, 0, GetMaxJetpackEnergy());
+        _time_since_last_jetpack_update = 0;
+    }
+    else if (!_is_flying && _time_since_last_jetpack_update > 1.0f)
+    {
+        _jetpack_energy = glm::clamp(_jetpack_energy + 1, 0, GetMaxJetpackEnergy());
+        _time_since_last_jetpack_update = 0;
+    }
+    else
+    {
+        _time_since_last_jetpack_update += delta_time;
     }
 
     _camera.position = _position + glm::vec3(0, 0.9f, 0);
@@ -75,12 +100,11 @@ void Player::FixedUpdate()
     //         dv/dt = αI - βv    where I is the normalized input direction
     //
     // Since α/β is the terminal speed of the player when only moving along one axis,
-    // we must have this ratio equal to the maximum speed we choose.
+    // we must have this ratio equal to the maximum move speed we want.
     //
     // The friction and maximum speed depend on whether the player is on ice.
     //
 
-    //float max_move_speed = IsOnIce() ? 8.0f : 6.0f;
     float max_move_speed = GetMaxMoveSpeed();
     float friction = IsOnIce() ? 4.0f : 10.0f;
     float alpha = friction * 8.0f;
@@ -94,11 +118,19 @@ void Player::FixedUpdate()
     if (glm::abs(_velocity.z) < 0.01f)
         _velocity.z = 0;
 
-    // Jump
+    //
+    // Jumping/flying
+    //
+
     if (_is_jumping && _is_grounded)
     {
         _velocity.y = 3.5f;
         _is_jumping = false;
+    }
+
+    if (_is_flying)
+    {
+        _velocity.y = (4.0f * FIXED_DELTA_TIME) + 6.0f; // First term counteracts gravity
     }
 
     // Play land sound when landing
@@ -135,6 +167,7 @@ PlayerData Player::GetPlayerData()
     PlayerData player_data;
     player_data.health = _health;
     player_data.suit_status = _suit_status;
+    player_data.jetpack_energy = _jetpack_energy;
     player_data.position = _position;
     player_data.camera_rotation = GetCameraRotation();
     player_data.inventory = _inventory;
@@ -245,4 +278,27 @@ float Player::GetSuitRegenInterval()
         return 0.65f;
     else
         return std::numeric_limits<float>::max();
+}
+
+void Player::SetJetpackEnergy(int energy)
+{
+    _jetpack_energy = energy;
+}
+
+int Player::GetJetpackEnergy()
+{
+    return _jetpack_energy;
+}
+
+int Player::GetMaxJetpackEnergy()
+{
+    auto jetpack_item = _inventory.spacesuit[0].item;
+    if (jetpack_item == ItemID::jetpack_t1)
+        return 20;
+    else if (jetpack_item == ItemID::jetpack_t2)
+        return 40;
+    else if (jetpack_item == ItemID::jetpack_t3)
+        return 75;
+    else
+        return 0;
 }
