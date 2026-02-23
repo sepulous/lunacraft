@@ -62,7 +62,7 @@ class Moon
         MoonSettings GetSettings();
         double GetWorldTime();
         glm::vec3 GetSunlightDirection();
-        void Update(double delta_time, int old_render_distance);
+        void Update(double delta_time);
         void Render(const glm::mat4 &projection);
 
         static Moon *GetCurrentMoon();

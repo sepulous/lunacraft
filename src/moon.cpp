@@ -160,7 +160,7 @@ glm::vec3 Moon::GetSunlightDirection()
     }
 }
 
-void Moon::Update(double delta_time, int old_render_distance)
+void Moon::Update(double delta_time)
 {
     _world_time += delta_time;
     _accumulator += delta_time;

@@ -220,7 +220,6 @@ int main()
             UIPauseMenu &ui_pause_menu = ui_game.GetPauseMenu();
             UIDebugMenu &ui_debug_menu = ui_game.GetDebugMenu();
             UIInventory &ui_inventory = ui_game.GetInventoryUI();
-            int old_render_distance = OptionsManager::GetOptions().render_distance;
 
             //
             // Input
@@ -349,7 +348,7 @@ int main()
                     moon->GetPlayer()->UpdateCamera();
                     moon->GetPlayer()->SetCameraSensitivity(0.05f * OptionsManager::GetOptions().sensitivity);
                 }
-                moon->Update(delta_time, old_render_distance);
+                moon->Update(delta_time);
             }
 
             //
