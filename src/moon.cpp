@@ -282,9 +282,7 @@ void Moon::Render(const glm::mat4 &projection)
 
 SelectionBlock::SelectionBlock()
 {
-    _mesh.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
-    _mesh.SetVertexAttribs({3, 2});
-    _mesh.SetVertices({
+    float vertices[] = {
          0.505f,  0.505f, -0.505f,  1.0f, 1.0f,
          0.505f, -0.505f, -0.505f,  1.0f, 0.0f,
         -0.505f, -0.505f, -0.505f,  0.0f, 0.0f,
@@ -325,8 +323,11 @@ SelectionBlock::SelectionBlock()
         -0.505f,  0.505f, -0.505f,  0.0f, 1.0f,
         -0.505f,  0.505f, -0.505f,  0.0f, 1.0f,
         -0.505f,  0.505f,  0.505f,  0.0f, 0.0f,
-         0.505f,  0.505f,  0.505f,  1.0f, 0.0f
-    });
+         0.505f,  0.505f,  0.505f,  1.0f, 0.0f,
+    };
+
+    _mesh.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
+    _mesh.SetVertexData(vertices, sizeof(vertices) / (5 * sizeof(float)));
     _mesh.SetTexture(Storage::IMAGES / "selection_block.png");
 }
 

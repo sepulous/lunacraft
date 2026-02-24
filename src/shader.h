@@ -1,17 +1,24 @@
 #pragma once
 
 #include <filesystem>
+#include <vector>
 
+#include <glad/glad.h>
 #include <glm/glm.hpp>
+
+using VertexAttribs = std::vector<std::pair<size_t, int>>;
 
 class Shader
 {
     private:
         GLuint _id;
+        std::filesystem::path _vertex_shader_path;
+        std::filesystem::path _fragment_shader_path;
+        VertexAttribs _vertex_attribs;
 
     public:
         Shader();
-        Shader(std::filesystem::path vertex_shader_path, std::filesystem::path fragment_shader_path);
+        Shader(const std::filesystem::path &fragment_shader_path, const std::filesystem::path &vertex_shader_path, const VertexAttribs &vertex_attribs);
 
         Shader(const Shader&) = delete;
         Shader &operator=(const Shader&) = delete;
@@ -19,15 +26,19 @@ class Shader
         Shader(Shader&&) = delete;
         Shader &operator=(Shader&&) = delete;
 
-        void MakeProgram(std::filesystem::path vertex_shader_path, std::filesystem::path fragment_shader_path);
+        void SetFragmentShader(const std::filesystem::path &fragment_shader_path);
+        void SetVertexShader(const std::filesystem::path &vertex_shader_path, const VertexAttribs &vertex_attribs);
+        void Compile();
         void Use();
         GLuint GetID();
+        VertexAttribs GetVertexAttribs();
         void SetInt(const char *name, int value);
         void SetFloat(const char *name, float value);
-        void SetVec3(const char *name, const glm::vec3& vec);
-        void SetVec4(const char *name, const glm::vec4& vec);
-        void SetMat3(const char *name, const glm::mat3& mat);
-        void SetMat4(const char *name, const glm::mat4& mat);
+        void SetVec2(const char *name, const glm::vec2 &vec);
+        void SetVec3(const char *name, const glm::vec3 &vec);
+        void SetVec4(const char *name, const glm::vec4 &vec);
+        void SetMat3(const char *name, const glm::mat3 &mat);
+        void SetMat4(const char *name, const glm::mat4 &mat);
 };
 
 class ShaderManager

@@ -24,32 +24,83 @@ Shader ShaderManager::SKYBOX_SHADER;
 
 void ShaderManager::CompileAllShaders()
 {
-    UI_IMAGE_SHADER.MakeProgram(Storage::SHADERS / "ui_image.vert", Storage::SHADERS / "ui_image.frag");
-    UI_TEXT_SHADER.MakeProgram(Storage::SHADERS / "ui_text.vert", Storage::SHADERS / "ui_text.frag");
-    BLOCK_SHADER.MakeProgram(Storage::SHADERS / "block.vert", Storage::SHADERS / "block.frag");
-    SIMPLE_UNLIT_SHADER.MakeProgram(Storage::SHADERS / "simple_unlit.vert", Storage::SHADERS / "simple_unlit.frag");
-    SKYBOX_SHADER.MakeProgram(Storage::SHADERS / "skybox.vert", Storage::SHADERS / "skybox.frag");
+    UI_IMAGE_SHADER.SetFragmentShader(Storage::SHADERS / "ui_image.frag");
+    UI_IMAGE_SHADER.SetVertexShader(Storage::SHADERS / "ui_image.vert", {
+        {4, GL_FLOAT}
+    });
+    UI_IMAGE_SHADER.Compile();
+
+    ///////////////////
+
+    UI_TEXT_SHADER.SetFragmentShader(Storage::SHADERS / "ui_text.frag");
+    UI_TEXT_SHADER.SetVertexShader(Storage::SHADERS / "ui_text.vert", {
+        {4, GL_FLOAT}
+    });
+    UI_TEXT_SHADER.Compile();
+
+    ///////////////////
+
+    BLOCK_SHADER.SetFragmentShader(Storage::SHADERS / "block.frag");
+    BLOCK_SHADER.SetVertexShader(Storage::SHADERS / "block.vert", {
+        {3, GL_FLOAT},
+        {4, GL_FLOAT},
+        {3, GL_FLOAT},
+        {3, GL_FLOAT},
+    });
+    BLOCK_SHADER.Compile();
+
+    ///////////////////
+
+    SIMPLE_UNLIT_SHADER.SetFragmentShader(Storage::SHADERS / "simple_unlit.frag");
+    SIMPLE_UNLIT_SHADER.SetVertexShader(Storage::SHADERS / "simple_unlit.vert", {
+        {3, GL_FLOAT},
+        {2, GL_FLOAT},
+    });
+    SIMPLE_UNLIT_SHADER.Compile();
+
+    ///////////////////
+
+    SKYBOX_SHADER.SetFragmentShader(Storage::SHADERS / "skybox.frag");
+    SKYBOX_SHADER.SetVertexShader(Storage::SHADERS / "skybox.vert", {
+        {3, GL_FLOAT},
+    });
+    SKYBOX_SHADER.Compile();
 }
 
 //
 // Shaders
 //
 
-Shader::Shader(std::filesystem::path vertex_shader_path, std::filesystem::path fragment_shader_path)
+Shader::Shader(const std::filesystem::path &fragment_shader_path, const std::filesystem::path &vertex_shader_path, const VertexAttribs &vertex_attribs)
 {
-    MakeProgram(vertex_shader_path, fragment_shader_path);
+    _fragment_shader_path = fragment_shader_path;
+    _vertex_shader_path = vertex_shader_path;
+    _vertex_attribs = vertex_attribs;
 }
 
 Shader::Shader() {}
 
-void Shader::MakeProgram(std::filesystem::path vertex_shader_path, std::filesystem::path fragment_shader_path)
+void Shader::SetFragmentShader(const std::filesystem::path &fragment_shader_path)
+{
+    _fragment_shader_path = fragment_shader_path;
+}
+
+void Shader::SetVertexShader(const std::filesystem::path &vertex_shader_path, const VertexAttribs &vertex_attribs)
+{
+    _vertex_shader_path = vertex_shader_path;
+    _vertex_attribs = vertex_attribs;
+}
+
+void Shader::Compile()
 {
     int success;
     char error_log[512];
 
+    //
     // Vertex shader
+    //
     GLuint vertex_shader_id = glCreateShader(GL_VERTEX_SHADER);
-    std::ifstream vertex_shader_file(vertex_shader_path);
+    std::ifstream vertex_shader_file(_vertex_shader_path);
     std::string vertex_shader_source((std::istreambuf_iterator<char>(vertex_shader_file)), std::istreambuf_iterator<char>());
     const char *vertex_shader_source_cstr = vertex_shader_source.c_str();
     glShaderSource(vertex_shader_id, 1, &vertex_shader_source_cstr, NULL);
@@ -63,9 +114,11 @@ void Shader::MakeProgram(std::filesystem::path vertex_shader_path, std::filesyst
         std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << error_log << std::endl;
     }
 
+    //
     // Fragment shader
+    //
     GLuint fragment_shader_id = glCreateShader(GL_FRAGMENT_SHADER);
-    std::ifstream fragment_shader_file(fragment_shader_path);
+    std::ifstream fragment_shader_file(_fragment_shader_path);
     std::string fragment_shader_source((std::istreambuf_iterator<char>(fragment_shader_file)), std::istreambuf_iterator<char>());
     const char *fragment_shader_source_cstr = fragment_shader_source.c_str();
     glShaderSource(fragment_shader_id, 1, &fragment_shader_source_cstr, NULL);
@@ -79,7 +132,9 @@ void Shader::MakeProgram(std::filesystem::path vertex_shader_path, std::filesyst
         std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << error_log << std::endl;
     }
 
+    //
     // Create shader program
+    //
     _id = glCreateProgram();
     glAttachShader(_id, vertex_shader_id);
     glAttachShader(_id, fragment_shader_id);
@@ -106,6 +161,11 @@ GLuint Shader::GetID()
     return _id;
 }
 
+VertexAttribs Shader::GetVertexAttribs()
+{
+    return _vertex_attribs;
+}
+
 void Shader::SetInt(const char *name, int value)
 {
     glUniform1i(glGetUniformLocation(_id, name), value);
@@ -114,6 +174,11 @@ void Shader::SetInt(const char *name, int value)
 void Shader::SetFloat(const char *name, float value)
 {
     glUniform1f(glGetUniformLocation(_id, name), value);
+}
+
+void Shader::SetVec2(const char *name, const glm::vec2& vec)
+{
+    glUniform2f(glGetUniformLocation(_id, name), vec.x, vec.y);
 }
 
 void Shader::SetVec3(const char *name, const glm::vec3& vec)

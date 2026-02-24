@@ -20,6 +20,9 @@ Mesh::~Mesh()
 
 void Mesh::SetShader(Shader &shader)
 {
+    if (_shader != nullptr && _shader->GetID() != shader.GetID())
+        _setup_attribs = false;
+
     _shader = &shader;
 }
 
@@ -28,47 +31,41 @@ Shader *Mesh::GetShader()
     return _shader;
 }
 
-void Mesh::SetVertexAttribs(const std::vector<size_t> &attrib_counts)
+void Mesh::SetVertexData(void *vertex_data, size_t vertex_count, int usage)
 {
     glBindVertexArray(_vao);
     glBindBuffer(GL_ARRAY_BUFFER, _vbo);
 
-    // Determine stride and floats/vertex
-    size_t stride = 0;
-    _floats_per_vertex = 0;
-    for (size_t count : attrib_counts)
+    // Set up vertex attributes, if necessary
+    if (!_setup_attribs)
     {
-        stride += count * sizeof(float);
-        _floats_per_vertex += count;
+        auto vertex_attribs = _shader->GetVertexAttribs();
+
+        // Determine bytes/vertex
+        _bytes_per_vertex = 0;
+        for (auto &[count, type] : vertex_attribs)
+            _bytes_per_vertex += count * GetTypeSize(type);
+
+        // Set up attributes
+        size_t offset = 0;
+        for (int i = 0; i < vertex_attribs.size(); i++)
+        {
+            auto &[count, type] = vertex_attribs[i];
+            glVertexAttribPointer(i, count, type, false, _bytes_per_vertex, (void*)offset);
+            glEnableVertexAttribArray(i);
+            offset += count * GetTypeSize(type);
+        }
+
+        _setup_attribs = true;
     }
 
-    // Set up attributes
-    size_t offset = 0;
-    for (int i = 0; i < attrib_counts.size(); i++)
-    {
-        size_t count = attrib_counts[i];
-        glVertexAttribPointer(i, count, GL_FLOAT, false, stride, (void*)offset);
-        glEnableVertexAttribArray(i);
-        offset += count * sizeof(float);
-    }
-}
+    bool must_reallocate = vertex_count > _vertex_count;
+    _vertex_count = vertex_count;
 
-void Mesh::SetVertices(const std::vector<float> &vertices)
-{
-    bool must_reallocate = vertices.size() > _vertices.size();
-    _vertices = vertices;
-
-    glBindVertexArray(_vao);
-    glBindBuffer(GL_ARRAY_BUFFER, _vbo);
     if (must_reallocate)
-        glBufferData(GL_ARRAY_BUFFER, _vertices.size() * sizeof(float), _vertices.data(), GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, vertex_count * _bytes_per_vertex, vertex_data, usage);
     else
-        glBufferSubData(GL_ARRAY_BUFFER, 0, _vertices.size() * sizeof(float), _vertices.data());
-}
-
-std::vector<float> &Mesh::GetVertices()
-{
-    return _vertices;
+        glBufferSubData(GL_ARRAY_BUFFER, 0, vertex_count * _bytes_per_vertex, vertex_data);
 }
 
 void Mesh::SetTexture(const std::filesystem::path &texture_path, GLenum filtering)
@@ -105,5 +102,23 @@ void Mesh::Render(const glm::mat4 &mvp_matrix)
     _shader->SetMat4("u_mvp_matrix", mvp_matrix);
     glBindVertexArray(_vao);
     glBindTexture(GL_TEXTURE_2D, _tex);
-    glDrawArrays(GL_TRIANGLES, 0, _vertices.size() / _floats_per_vertex);
+    glDrawArrays(GL_TRIANGLES, 0, _vertex_count);
+}
+
+size_t Mesh::GetTypeSize(int type)
+{
+    if (type == GL_INT)
+        return sizeof(int);
+    else if (type == GL_UNSIGNED_INT)
+        return sizeof(unsigned);
+    else if (type == GL_FLOAT)
+        return sizeof(float);
+    else if (type == GL_DOUBLE)
+        return sizeof(double);
+    else if (type == GL_BYTE)
+        return sizeof(char);
+    else if (type == GL_UNSIGNED_BYTE)
+        return sizeof(unsigned char);
+    else
+        return sizeof(bool);
 }
