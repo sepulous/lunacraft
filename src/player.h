@@ -5,6 +5,7 @@
 #include "entity.h"
 #include "camera.h"
 #include "inventory.h"
+#include "mesh.h"
 
 struct PlayerData
 {
@@ -33,6 +34,13 @@ class Player : public Entity
         float _time_since_last_suit_update = 0;
         float _time_since_last_jetpack_update = 0;
         float _time_since_started_flying = 0;
+        Mesh _arm_mesh;
+        Mesh _pistol_base_mesh;
+        Mesh _pistol_slide_mesh;
+        Mesh _drill_base_mesh;
+        Mesh _drill_bit_mesh;
+        Mesh _sprite_mesh;
+        Mesh _block_mesh;
 
     public:
         Player();
@@ -65,6 +73,8 @@ class Player : public Entity
 
         glm::vec3 GetForward();
         glm::vec3 GetRight();
+
+        void RenderArm(const glm::mat4 &vp_matrix);
 
     private:
         float GetMaxMoveSpeed();

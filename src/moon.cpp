@@ -265,6 +265,10 @@ void Moon::Render(const glm::mat4 &projection)
 
     _selection_block.Render(view_projection);
 
+    //glDisable(GL_DEPTH_TEST);
+    _player->RenderArm(view_projection);
+    //glEnable(GL_DEPTH_TEST);
+
     //
     // Render skybox
     //

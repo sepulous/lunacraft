@@ -27,4 +27,5 @@ struct Camera
 
     void SetSensitivity(float sensitivity) { this->sensitivity = sensitivity; }
     float GetSensitivity() { return sensitivity; }
+    glm::mat4 GetViewMatrix() { return glm::lookAt(position, position + forward, up); }
 };

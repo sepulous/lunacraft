@@ -3,6 +3,7 @@
 #include "constants.h"
 #include "sound_system.h"
 #include "input.h"
+#include "storage.h"
 
 Player::Player()
 {
@@ -13,6 +14,81 @@ Player::Player()
     _aabb.center = _position;
     _aabb.extents = glm::vec3(0.4f, 0.9f, 0.4f);
     _camera.position = _position + glm::vec3(0, 0.9f, 0);
+
+    // Arm mesh
+    float arm_vertices[] = {
+        // Side
+        0.25f, -0.25f, 0.0f, 0.0f, 0.0f,
+        0.25f,  0.25f, 0.0f, 0.5f, 0.0f,
+        0.25f,  0.25f, 1.5f, 0.5f, 1.0f,
+        0.25f,  0.25f, 1.5f, 0.5f, 1.0f,
+        0.25f, -0.25f, 1.5f, 0.0f, 1.0f,
+        0.25f, -0.25f, 0.0f, 0.0f, 0.0f,
+
+        // Top
+         0.25f, 0.25f, 1.5f, 0.5f, 1.0f,
+         0.25f, 0.25f, 0.0f, 0.5f, 0.0f,
+        -0.25f, 0.25f, 0.0f, 1.0f, 0.0f,
+        -0.25f, 0.25f, 0.0f, 1.0f, 0.0f,
+        -0.25f, 0.25f, 1.5f, 1.0f, 1.0f,
+         0.25f, 0.25f, 1.5f, 0.5f, 1.0f,
+    };
+    _arm_mesh.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
+    _arm_mesh.SetVertexData(arm_vertices, sizeof(arm_vertices) / (5 * sizeof(float)));
+    _arm_mesh.SetTexture(Storage::IMAGES / "player_arm.png");
+
+    // Drill base mesh
+    float drill_uv_cutoff = 8.0f / 32.0f;
+    float drill_base_vertices[] = {
+        // Back
+        -1.0f, -1.0f, -0.0f, 0.0f, drill_uv_cutoff,
+         1.0f, -1.0f, -1.0f, 0.0f, 0.0f,
+         1.0f,  1.0f, -1.0f, 1.0f, 0.0f,
+         1.0f,  1.0f, -1.0f, 1.0f, 0.0f,
+        -1.0f,  1.0f, -1.0f, 1.0f, drill_uv_cutoff,
+        -1.0f, -1.0f, -1.0f, 0.0f, drill_uv_cutoff,
+
+        // Side
+        -1.0f, -1.0f, -1.0f, 1.0f, drill_uv_cutoff,
+        -1.0f,  1.0f, -1.0f, 0.0f, drill_uv_cutoff,
+        -1.0f,  1.0f,  1.0f, 0.0f, 0.0f,
+        -1.0f,  1.0f,  1.0f, 0.0f, 0.0f,
+        -1.0f, -1.0f,  1.0f, 1.0f, 0.0f,
+        -1.0f, -1.0f, -1.0f, 1.0f, drill_uv_cutoff,
+
+        // Top
+         1.0f, 1.0f, -1.0f, 0.0f, drill_uv_cutoff,
+         1.0f, 1.0f,  1.0f, 0.0f, 0.0f,
+        -1.0f, 1.0f,  1.0f, 1.0f, 0.0f,
+        -1.0f, 1.0f,  1.0f, 1.0f, 0.0f,
+        -1.0f, 1.0f, -1.0f, 1.0f, drill_uv_cutoff,
+         1.0f, 1.0f, -1.0f, 0.0f, drill_uv_cutoff,
+    };
+    _drill_base_mesh.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
+    _drill_base_mesh.SetVertexData(drill_base_vertices, sizeof(drill_base_vertices) / (5 * sizeof(float)));
+    _drill_base_mesh.SetTexture(Storage::IMAGES / "player_drill.png");
+
+    // Drill bit mesh
+    float drill_bit_vertices[] = {
+        // Side
+        -1.0f, -1.0f, -6.0f, 0.0f, drill_uv_cutoff,
+        -1.0f,  1.0f, -6.0f, 1.0f, drill_uv_cutoff,
+        -1.0f,  1.0f,  6.0f, 1.0f, 1.0f,
+        -1.0f,  1.0f,  6.0f, 1.0f, 1.0f,
+        -1.0f, -1.0f,  6.0f, 0.0f, 1.0f,
+        -1.0f, -1.0f, -6.0f, 0.0f, drill_uv_cutoff,
+
+        // Top
+        -1.0f, 1.0f, -6.0f, 0.0f, drill_uv_cutoff,
+         1.0f, 1.0f, -6.0f, 1.0f, drill_uv_cutoff,
+         1.0f, 1.0f,  6.0f, 1.0f, 1.0f,
+         1.0f, 1.0f,  6.0f, 1.0f, 1.0f,
+        -1.0f, 1.0f,  6.0f, 0.0f, 1.0f,
+        -1.0f, 1.0f, -6.0f, 0.0f, drill_uv_cutoff,
+    };
+    _drill_bit_mesh.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
+    _drill_bit_mesh.SetVertexData(drill_bit_vertices, sizeof(drill_bit_vertices) / (5 * sizeof(float)));
+    _drill_bit_mesh.SetTexture(Storage::IMAGES / "player_drill.png");
 }
 
 void Player::Update(float delta_time)
@@ -237,6 +313,49 @@ glm::vec3 Player::GetForward()
 glm::vec3 Player::GetRight()
 {
     return glm::cross(GetForward(), glm::vec3{0, 1, 0});
+}
+
+void Player::RenderArm(const glm::mat4 &vp_matrix)
+{
+    auto inv_view = glm::inverse(_camera.GetViewMatrix()); // To do this in camera space
+
+    // Arm
+    auto arm_model_matrix = glm::mat4(1.0);
+    arm_model_matrix = glm::translate(arm_model_matrix, {0.48f, -0.35f, -0.35f});
+    arm_model_matrix = glm::scale(arm_model_matrix, {-0.45f, 0.45f, -0.45f});
+    _arm_mesh.Render(vp_matrix * inv_view * arm_model_matrix);
+
+    ItemID selected_item = _inventory.inventory[0][_inventory.selected_hotbar_slot].item;
+    if (selected_item != ItemID::none)
+    {
+        if (selected_item == ItemID::slug_pistol_t1 || selected_item == ItemID::slug_pistol_t2 || selected_item == ItemID::slug_pistol_t3)
+        {
+            // _pistol_base_mesh.Render(render_matrix);
+            // _pistol_slide_mesh.Render(render_matrix);
+        }
+        else if (selected_item == ItemID::drill_t1 || selected_item == ItemID::drill_t2 || selected_item == ItemID::drill_t3)
+        {
+            // Drill base
+            auto drill_base_model_matrix = glm::mat4(1.0);
+            drill_base_model_matrix = glm::translate(drill_base_model_matrix, {0.5f, -0.35f, -1.0f});
+            drill_base_model_matrix = glm::scale(drill_base_model_matrix, {0.15f, 0.15f, -0.15f});
+            _drill_base_mesh.Render(vp_matrix * inv_view * drill_base_model_matrix);
+
+            // Drill bit
+            auto drill_bit_model_matrix = glm::mat4(1.0);
+            drill_bit_model_matrix = glm::translate(drill_bit_model_matrix, {0.5f, -0.35f, -1.5f});
+            drill_bit_model_matrix = glm::scale(drill_bit_model_matrix, {0.05f, 0.05f, -0.05f});
+            _drill_bit_mesh.Render(vp_matrix * inv_view * drill_bit_model_matrix);
+        }
+        else if (ItemIsSprite(selected_item))
+        {
+            // _sprite_mesh.Render(render_matrix);
+        }
+        else
+        {
+            // _block_mesh.Render(render_matrix);
+        }
+    }
 }
 
 // In blocks/second
