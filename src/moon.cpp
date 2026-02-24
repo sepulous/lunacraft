@@ -222,7 +222,7 @@ void Moon::Update(double delta_time)
             auto ray_chunk = _chunk_manager.GetChunk(VoxelToChunk(ray_voxel));
             if (ray_chunk->GetBlocks()[GetChunkIndex(GlobalToLocalVoxel(ray_voxel))] != BlockID::air)
             {
-                _block_select.SetPosition(ray_voxel);
+                _selection_block.SetPosition(ray_voxel);
                 block_select_active = true;
                 break;
             }
@@ -231,7 +231,7 @@ void Moon::Update(double delta_time)
         if (block_select_active)
             break;
     }
-    _block_select.SetActive(block_select_active);
+    _selection_block.SetActive(block_select_active);
 }
 
 void Moon::Render(const glm::mat4 &projection)
@@ -263,7 +263,7 @@ void Moon::Render(const glm::mat4 &projection)
     GetFrustumPlanes(view_projection, frustum);
     _chunk_manager.RenderChunks(frustum);
 
-    _block_select.Render(view_projection);
+    _selection_block.Render(view_projection);
 
     //
     // Render skybox
@@ -276,18 +276,15 @@ void Moon::Render(const glm::mat4 &projection)
     _skybox.Render();
 }
 
-BlockSelect::BlockSelect()
+//
+// Selection block
+//
+
+SelectionBlock::SelectionBlock()
 {
-    //
-    // Set up VAO/VBO
-    //
-    glGenVertexArrays(1, &_vao);
-    glBindVertexArray(_vao);
-
-    glGenBuffers(1, &_vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, _vbo);
-
-    float vertices[] = {
+    _mesh.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
+    _mesh.SetVertexAttribs({3, 2});
+    _mesh.SetVertices({
          0.505f,  0.505f, -0.505f,  1.0f, 1.0f,
          0.505f, -0.505f, -0.505f,  1.0f, 0.0f,
         -0.505f, -0.505f, -0.505f,  0.0f, 0.0f,
@@ -329,60 +326,30 @@ BlockSelect::BlockSelect()
         -0.505f,  0.505f, -0.505f,  0.0f, 1.0f,
         -0.505f,  0.505f,  0.505f,  0.0f, 0.0f,
          0.505f,  0.505f,  0.505f,  1.0f, 0.0f
-    };
-
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-
-    //
-    // Set up texture
-    //
-    int width, height, nrChannels;
-    stbi_set_flip_vertically_on_load(true);
-    std::filesystem::path overlay_path = Storage::IMAGES / "block_select.png";
-    unsigned char *overlay_data = stbi_load(reinterpret_cast<const char *>(overlay_path.u8string().c_str()), &width, &height, &nrChannels, STBI_rgb_alpha);
-
-    glGenTextures(1, &_tex);
-    glBindTexture(GL_TEXTURE_2D, _tex);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, overlay_data);
-
-    stbi_image_free(overlay_data);
+    });
+    _mesh.SetTexture(Storage::IMAGES / "selection_block.png");
 }
 
-void BlockSelect::Render(const glm::mat4 &view_projection)
-{
-    auto &shader = ShaderManager::BLOCK_SELECT_SHADER;
-    shader.Use();
-    shader.SetMat4("u_view_projection", view_projection);
-    shader.SetVec3("u_position", _position);
-
-    if (_active)
-    {
-        glBindVertexArray(_vao);
-        glBindTexture(GL_TEXTURE_2D, _tex);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-    }
-}
-
-void BlockSelect::SetPosition(glm::ivec3 position)
+void SelectionBlock::SetPosition(const glm::ivec3 &position)
 {
     _position = position;
 }
 
-glm::ivec3 BlockSelect::GetPosition()
+glm::ivec3 SelectionBlock::GetPosition()
 {
     return _position;
 }
 
-void BlockSelect::SetActive(bool active)
+void SelectionBlock::SetActive(bool active)
 {
     _active = active;
+}
+
+void SelectionBlock::Render(const glm::mat4 &view_projection)
+{
+    if (_active)
+    {
+        auto mvp_matrix = glm::translate(view_projection, glm::vec3{_position});
+        _mesh.Render(mvp_matrix);
+    }
 }

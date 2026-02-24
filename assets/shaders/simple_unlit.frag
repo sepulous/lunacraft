@@ -2,9 +2,9 @@
 
 in vec2 v_uv;
 
-out vec4 out_color;
-
 uniform sampler2D u_texture;
+
+out vec4 out_color;
 
 void main()
 {
