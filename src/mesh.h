@@ -23,8 +23,8 @@ class Mesh
         void SetVertices(const std::vector<float> &vertices);
         std::vector<float> &GetVertices();
 
-        void SetTexture(const std::filesystem::path &texture_path, int filtering = GL_NEAREST);
-        void SetTexture(unsigned char *texture_data, size_t width, size_t height, int filtering = GL_NEAREST);
+        void SetTexture(const std::filesystem::path &texture_path, GLenum filtering = GL_NEAREST);
+        void SetTexture(unsigned char *texture_data, size_t width, size_t height, int num_channels = 4, GLenum filtering = GL_NEAREST);
 
         void Render(const glm::mat4 &mvp_matrix);
 

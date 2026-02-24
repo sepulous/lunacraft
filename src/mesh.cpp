@@ -58,9 +58,10 @@ void Mesh::SetVertices(const std::vector<float> &vertices)
     bool must_reallocate = vertices.size() > _vertices.size();
     _vertices = vertices;
 
+    glBindVertexArray(_vao);
     glBindBuffer(GL_ARRAY_BUFFER, _vbo);
     if (must_reallocate)
-        glBufferData(GL_ARRAY_BUFFER, _vertices.size() * sizeof(float), _vertices.data(), GL_DYNAMIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, _vertices.size() * sizeof(float), _vertices.data(), GL_STATIC_DRAW);
     else
         glBufferSubData(GL_ARRAY_BUFFER, 0, _vertices.size() * sizeof(float), _vertices.data());
 }
@@ -70,30 +71,32 @@ std::vector<float> &Mesh::GetVertices()
     return _vertices;
 }
 
-void Mesh::SetTexture(const std::filesystem::path &texture_path, int filtering)
+void Mesh::SetTexture(const std::filesystem::path &texture_path, GLenum filtering)
 {
-    int width, height, nrChannels;
+    int width, height, num_channels;
     stbi_set_flip_vertically_on_load(true);
-    unsigned char *texture_data = stbi_load(reinterpret_cast<const char *>(texture_path.u8string().c_str()), &width, &height, &nrChannels, 0);
+    unsigned char *texture_data = stbi_load(reinterpret_cast<const char *>(texture_path.u8string().c_str()), &width, &height, &num_channels, 0);
 
     glBindTexture(GL_TEXTURE_2D, _tex);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filtering);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filtering);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture_data);
+    GLenum format = (num_channels == 4) ? GL_RGBA : GL_RGB;
+    glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, texture_data);
 
     stbi_image_free(texture_data);
 }
 
-void Mesh::SetTexture(unsigned char *texture_data, size_t width, size_t height, int filtering)
+void Mesh::SetTexture(unsigned char *texture_data, size_t width, size_t height, int num_channels, GLenum filtering)
 {
     glBindTexture(GL_TEXTURE_2D, _tex);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filtering);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filtering);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture_data);
+    GLenum format = (num_channels == 4) ? GL_RGBA : GL_RGB;
+    glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, texture_data);
 }
 
 void Mesh::Render(const glm::mat4 &mvp_matrix)
