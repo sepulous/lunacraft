@@ -204,7 +204,7 @@ void Chunk::UploadVertices()
     }
     else
     {
-        glBufferData(GL_ARRAY_BUFFER, _opaque_vertices.size() * sizeof(BlockVertex), _opaque_vertices.data(), GL_DYNAMIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, _opaque_vertices.size() * sizeof(BlockVertex), _opaque_vertices.data(), GL_STATIC_DRAW);
         _reserved_opaque_vertex_count = _opaque_vertices.size();
     }
 
@@ -216,7 +216,7 @@ void Chunk::UploadVertices()
     }
     else
     {
-        glBufferData(GL_ARRAY_BUFFER, _transparent_vertices.size() * sizeof(BlockVertex), _transparent_vertices.data(), GL_DYNAMIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, _transparent_vertices.size() * sizeof(BlockVertex), _transparent_vertices.data(), GL_STATIC_DRAW);
         _reserved_transparent_vertex_count = _transparent_vertices.size();
     }
 
