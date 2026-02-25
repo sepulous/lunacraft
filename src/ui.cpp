@@ -24,6 +24,7 @@
 #include "inventory.h"
 #include "sound_system.h"
 #include "player.h"
+#include "item.h"
 
 #include <stb_image/stb_image.h>
 #include <stb_truetype/stb_truetype.h>
@@ -1420,7 +1421,7 @@ UIInventory::UIInventory()
     _spacesuit_slots[0].second.SetColor({1.0f, 1.0f, 1.0f, 1.0f});
 }
 
-void UIInventory::RebuildUI(Player *player)
+void UIInventory::RebuildUI(Player *player, bool force)
 {
     auto &inventory = player->GetInventory();
     float suit_status = (float)player->GetSuitStatus() / 100.0f;
@@ -1430,10 +1431,11 @@ void UIInventory::RebuildUI(Player *player)
     for (int col = 0; col < 10; col++)
     {
         auto &slot = inventory.inventory[0][col];
-        if (slot.changed)
+        if (force || slot.changed)
         {
             auto &[slot_image, slot_amount] = _inventory_slots[0][col];
-            slot_image.LoadImage(Storage::IMAGES / "items" / GetItemFile(slot.item), GL_NEAREST);
+            auto icon = GetItemIcon(slot.item);
+            slot_image.LoadImage(icon.bytes, icon.width, icon.height, icon.num_channels, GL_NEAREST);
             if (slot.amount > 1)
                 slot_amount.SetText(std::to_string(slot.amount));
             else
@@ -1451,10 +1453,11 @@ void UIInventory::RebuildUI(Player *player)
             for (int col = 0; col < 10; col++)
             {
                 auto &slot = inventory.inventory[row][col];
-                if (slot.changed)
+                if (force || slot.changed)
                 {
                     auto &[slot_image, slot_amount] = _inventory_slots[row][col];
-                    slot_image.LoadImage(Storage::IMAGES / "items" / GetItemFile(slot.item), GL_NEAREST);
+                    auto icon = GetItemIcon(slot.item);
+                    slot_image.LoadImage(icon.bytes, icon.width, icon.height, icon.num_channels, GL_NEAREST);
                     if (slot.amount > 1)
                         slot_amount.SetText(std::to_string(slot.amount));
                     else
@@ -1469,10 +1472,11 @@ void UIInventory::RebuildUI(Player *player)
         for (int i = 0; i < 3; i++)
         {
             auto &slot = inventory.spacesuit[i];
-            if (slot.changed)
+            if (force || slot.changed)
             {
                 auto &[slot_image, slot_amount] = _spacesuit_slots[i];
-                slot_image.LoadImage(Storage::IMAGES / "items" / GetItemFile(slot.item), GL_NEAREST);
+                auto icon = GetItemIcon(slot.item);
+                slot_image.LoadImage(icon.bytes, icon.width, icon.height, icon.num_channels, GL_NEAREST);
                 if (slot.amount > 1)
                     slot_amount.SetText(std::to_string(slot.amount));
                 else
@@ -1488,10 +1492,11 @@ void UIInventory::RebuildUI(Player *player)
             for (int col = 0; col < 3; col++)
             {
                 auto &slot = inventory.assembler_input[row][col];
-                if (slot.changed)
+                if (force || slot.changed)
                 {
                     auto &[slot_image, slot_amount] = _assembler_input_slots[row][col];
-                    slot_image.LoadImage(Storage::IMAGES / "items" / GetItemFile(slot.item), GL_NEAREST);
+                    auto icon = GetItemIcon(slot.item);
+                    slot_image.LoadImage(icon.bytes, icon.width, icon.height, icon.num_channels, GL_NEAREST);
                     if (slot.amount > 1)
                         slot_amount.SetText(std::to_string(slot.amount));
                     else
@@ -1502,27 +1507,32 @@ void UIInventory::RebuildUI(Player *player)
             }
         }
 
-        if (inventory.assembler_output.changed)
+        if (force || inventory.assembler_output.changed)
         {
-            _assembler_output_slot.first.LoadImage(Storage::IMAGES / "items" / GetItemFile(inventory.assembler_output.item), GL_NEAREST);
+            auto icon = GetItemIcon(inventory.assembler_output.item);
+            _assembler_output_slot.first.LoadImage(icon.bytes, icon.width, icon.height, icon.num_channels, GL_NEAREST);
             if (inventory.assembler_output.amount > 1)
                 _assembler_output_slot.second.SetText(std::to_string(inventory.assembler_output.amount));
             else
                 _assembler_output_slot.second.SetText("");
+
+            inventory.assembler_output.changed = false;
         }
 
         // Scanner slot
-        if (inventory.scanner.changed)
+        if (force || inventory.scanner.changed)
         {
-            _scanner_slot.first.LoadImage(Storage::IMAGES / "items" / GetItemFile(inventory.scanner.item), GL_NEAREST);
+            auto icon = GetItemIcon(inventory.scanner.item);
+            _scanner_slot.first.LoadImage(icon.bytes, icon.width, icon.height, icon.num_channels, GL_NEAREST);
+            inventory.scanner.changed = false;
         }
-
-        // Suit status and health bar
-        _suit_status_bar.SetCrop({0.0f, 0.0f, suit_status, 1.0f});
-        _suit_status_bar.SetSize({186 * suit_status, 18});
-        _health_bar.SetCrop({0.0f, 0.0f, health, 1.0f});
-        _health_bar.SetSize({186 * health, 18});
     }
+
+    // Suit status and health bar
+    _suit_status_bar.SetCrop({0.0f, 0.0f, suit_status, 1.0f});
+    _suit_status_bar.SetSize({186 * suit_status, 18});
+    _health_bar.SetCrop({0.0f, 0.0f, health, 1.0f});
+    _health_bar.SetSize({186 * health, 18});
 }
 
 void UIInventory::Update(Player *player)
@@ -1608,7 +1618,8 @@ void UIInventory::Update(Player *player)
                         *clicked_slot = {ItemID::none, 0};
 
                         // Update slot UI
-                        ui_slot->first.LoadImage(Storage::IMAGES / "items" / "none.png", GL_NEAREST);
+                        auto slot_icon = GetItemIcon(ItemID::none);
+                        ui_slot->first.LoadImage(slot_icon.bytes, slot_icon.width, slot_icon.height, slot_icon.num_channels, GL_NEAREST);
                         ui_slot->second.SetText("");
                     }
                     else
@@ -1623,7 +1634,8 @@ void UIInventory::Update(Player *player)
                         // Update slot UI
                         if (clicked_slot->amount == 0)
                         {
-                            ui_slot->first.LoadImage(Storage::IMAGES / "items" / "none.png", GL_NEAREST);
+                            auto slot_icon = GetItemIcon(ItemID::none);
+                            ui_slot->first.LoadImage(slot_icon.bytes, slot_icon.width, slot_icon.height, slot_icon.num_channels, GL_NEAREST);
                             ui_slot->second.SetText("");
                         }
                         else
@@ -1633,7 +1645,8 @@ void UIInventory::Update(Player *player)
                     }
 
                     // Update held stack UI
-                    _held_item.LoadImage(Storage::IMAGES / "items" / GetItemFile(inventory.held_stack.item), GL_NEAREST);
+                    auto held_item_icon = GetItemIcon(inventory.held_stack.item);
+                    _held_item.LoadImage(held_item_icon.bytes, held_item_icon.width, held_item_icon.height, held_item_icon.num_channels, GL_NEAREST);
                     if (inventory.held_stack.amount > 1)
                         _held_amount.SetText(std::to_string(inventory.held_stack.amount));
                     else
@@ -1701,14 +1714,16 @@ void UIInventory::Update(Player *player)
                     }
 
                     // Update slot UI
-                    ui_slot->first.LoadImage(Storage::IMAGES / "items" / GetItemFile(clicked_slot->item), GL_NEAREST);
+                    auto slot_icon = GetItemIcon(clicked_slot->item);
+                    ui_slot->first.LoadImage(slot_icon.bytes, slot_icon.width, slot_icon.height, slot_icon.num_channels, GL_NEAREST);
                     if (clicked_slot->amount > 1)
                         ui_slot->second.SetText(std::to_string(clicked_slot->amount));
                     else
                         ui_slot->second.SetText("");
 
                     // Update held stack UI
-                    _held_item.LoadImage(Storage::IMAGES / "items" / GetItemFile(inventory.held_stack.item), GL_NEAREST);
+                    auto held_item_icon = GetItemIcon(inventory.held_stack.item);
+                    _held_item.LoadImage(held_item_icon.bytes, held_item_icon.width, held_item_icon.height, held_item_icon.num_channels, GL_NEAREST);
                     if (inventory.held_stack.amount > 1)
                         _held_amount.SetText(std::to_string(inventory.held_stack.amount));
                     else
@@ -1744,7 +1759,8 @@ void UIInventory::Update(Player *player)
                 else
                     inventory.assembler_output = {recipe[0].first, recipe[0].second};
 
-                _assembler_output_slot.first.LoadImage(Storage::IMAGES / "items" / GetItemFile(inventory.assembler_output.item), GL_NEAREST);
+                auto icon = GetItemIcon(inventory.assembler_output.item);
+                _assembler_output_slot.first.LoadImage(icon.bytes, icon.width, icon.height, icon.num_channels, GL_NEAREST);
                 if (inventory.assembler_output.amount > 1)
                     _assembler_output_slot.second.SetText(std::to_string(inventory.assembler_output.amount));
                 else
@@ -1818,14 +1834,16 @@ void UIInventory::Update(Player *player)
                             {
                                 auto slot = inventory.assembler_input[row][col];
                                 auto &[slot_image, slot_amount] = _assembler_input_slots[row][col];
-                                slot_image.LoadImage(Storage::IMAGES / "items" / GetItemFile(slot.item), GL_NEAREST);
+                                auto item_icon = GetItemIcon(slot.item);
+                                slot_image.LoadImage(item_icon.bytes, item_icon.width, item_icon.height, item_icon.num_channels, GL_NEAREST);
                                 if (slot.amount > 1)
                                     slot_amount.SetText(std::to_string(slot.amount));
                                 else
                                     slot_amount.SetText("");
                             }
                         }
-                        _assembler_output_slot.first.LoadImage(Storage::IMAGES / "items" / GetItemFile(inventory.assembler_output.item), GL_NEAREST);
+                        auto output_icon = GetItemIcon(inventory.assembler_output.item);
+                        _assembler_output_slot.first.LoadImage(output_icon.bytes, output_icon.width, output_icon.height, output_icon.num_channels, GL_NEAREST);
                         if (inventory.assembler_output.amount > 1)
                             _assembler_output_slot.second.SetText(std::to_string(inventory.assembler_output.amount));
                         else
@@ -1845,7 +1863,8 @@ void UIInventory::Update(Player *player)
                             int col = added_slot_idx % 10;
                             auto added_slot = inventory.inventory[row][col];
                             auto &added_ui_slot = _inventory_slots[row][col];
-                            added_ui_slot.first.LoadImage(Storage::IMAGES / "items" / GetItemFile(inventory.inventory[row][col].item), GL_NEAREST);
+                            auto icon = GetItemIcon(inventory.inventory[row][col].item);
+                            added_ui_slot.first.LoadImage(icon.bytes, icon.width, icon.height, icon.num_channels, GL_NEAREST);
                             if (added_slot.amount > 1)
                                 added_ui_slot.second.SetText(std::to_string(added_slot.amount));
                             else
@@ -2040,6 +2059,12 @@ void UIImage::LoadImage(std::filesystem::path image_path, GLint filtering)
     stbi_image_free(image_data);
 
     _aspect_ratio = (float)image_width / (float)image_height;
+}
+
+void UIImage::LoadImage(unsigned char *bytes, int width, int height, int num_channels, GLint filtering)
+{
+    _quad.SetTexture(bytes, width, height, num_channels, filtering);
+    _aspect_ratio = (float)width / (float)height;
 }
 
 void UIImage::SetPosition(glm::vec2 position)

@@ -1,7 +1,11 @@
 
 #include <unordered_map>
+#include <filesystem>
+
+#include <stb_image/stb_image.h>
 
 #include "item.h"
+#include "storage.h"
 
 bool ItemIsSprite(ItemID item)
 {
@@ -145,6 +149,36 @@ std::string GetItemFile(ItemID item)
     }();
 
     return ITEM_FILE_MAP[item];
+}
+
+ItemIcon GetItemIcon(ItemID item)
+{
+    static auto map = []()
+    {
+        std::unordered_map<ItemID, ItemIcon> _map;
+
+        uint8_t i = 0;
+        for (uint8_t i = 0; i <= (uint8_t)ItemID::chronowinder; i++)
+        {
+            ItemID _item = (ItemID)i;
+
+            int width, height, num_channels;
+            stbi_set_flip_vertically_on_load(true);
+            std::filesystem::path image_path = Storage::IMAGES / "items" / GetItemFile(_item);
+            unsigned char *image_data = stbi_load(reinterpret_cast<const char *>(image_path.u8string().c_str()), &width, &height, &num_channels, 0);
+
+            _map[_item] = {
+                .bytes = image_data,
+                .width = width,
+                .height = height,
+                .num_channels = num_channels
+            };
+        }
+
+        return _map;
+    }();
+
+    return map[item];
 }
 
 std::unordered_map<ScannerDataType, std::string> GetItemScannerData(ItemID item)

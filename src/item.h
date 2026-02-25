@@ -104,7 +104,13 @@ enum class ItemID : uint8_t
 };
 
 enum class ScannerDataType {TYPE, COMPOSITION, VALUE};
+struct ItemIcon
+{
+    unsigned char *bytes;
+    int width, height, num_channels;
+};
 
 std::string GetItemFile(ItemID item);
 std::unordered_map<ScannerDataType, std::string> GetItemScannerData(ItemID item);
 bool ItemIsSprite(ItemID item);
+ItemIcon GetItemIcon(ItemID item);

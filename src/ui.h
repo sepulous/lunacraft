@@ -56,6 +56,7 @@ class UIImage
     public:
         UIImage(GLint filtering = GL_LINEAR);
         void LoadImage(std::filesystem::path image_path, GLint filtering = GL_LINEAR);
+        void LoadImage(unsigned char *bytes, int width, int height, int num_channels, GLint filtering = GL_LINEAR);
         void SetPosition(glm::vec2 position);
         glm::vec2 GetPosition();
         void SetSize(glm::vec2 size, bool preserve_aspect_ratio = false);
@@ -399,7 +400,7 @@ class UIInventory
 {
     public:
         UIInventory();
-        void RebuildUI(Player *player);
+        void RebuildUI(Player *player, bool force = false);
         void Update(Player *player);
         void Render();
         bool IsActive();
