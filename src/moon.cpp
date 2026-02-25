@@ -355,6 +355,8 @@ void SelectionBlock::Render(const glm::mat4 &view_projection)
     if (_active)
     {
         auto mvp_matrix = glm::translate(view_projection, glm::vec3{_position});
-        _mesh.Render(mvp_matrix);
+        _mesh.Render([&](Shader *shader) {
+            shader->SetMat4("u_mvp_matrix", mvp_matrix);
+        });
     }
 }
