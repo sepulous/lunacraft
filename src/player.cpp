@@ -4,6 +4,8 @@
 #include "sound_system.h"
 #include "input.h"
 #include "storage.h"
+#include "block.h"
+#include "helpers.h"
 
 Player::Player()
 {
@@ -101,6 +103,10 @@ Player::Player()
     };
     _sprite_mesh.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
     _sprite_mesh.SetVertexData(sprite_vertices, sizeof(sprite_vertices) / (5 * sizeof(float)));
+
+    // Block mesh
+    _block_mesh.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
+    _block_mesh.SetTexture(Storage::IMAGES / "texture_atlas.png");
 }
 
 void Player::Update(float delta_time)
@@ -358,8 +364,6 @@ void Player::RenderArm(const glm::mat4 &vp_matrix)
             drill_bit_model_matrix = glm::translate(drill_bit_model_matrix, {0.5f, -0.35f, -1.5f});
             drill_bit_model_matrix = glm::scale(drill_bit_model_matrix, {0.05f, 0.05f, -0.05f});
             _drill_bit_mesh.Render(vp_matrix * inv_view * drill_bit_model_matrix);
-
-            _last_held_item = ItemID::drill_t1;
         }
         else if (ItemIsSprite(selected_item))
         {
@@ -367,16 +371,54 @@ void Player::RenderArm(const glm::mat4 &vp_matrix)
             sprite_model_matrix = glm::translate(sprite_model_matrix, {0.362f, -0.335f, -0.95f});
             sprite_model_matrix = glm::scale(sprite_model_matrix, {0.14f, 0.14f, -0.14f});
 
-            if (_last_held_item != selected_item)
+            if (_last_held_sprite != selected_item)
             {
                 _sprite_mesh.SetTexture(Storage::IMAGES / "items" / GetItemFile(selected_item));
-                _last_held_item = selected_item;
+                _last_held_sprite = selected_item;
             }
             _sprite_mesh.Render(vp_matrix * inv_view * sprite_model_matrix);
         }
         else
         {
-            // _block_mesh.Render(render_matrix);
+            auto block_model_matrix = glm::mat4(1.0);
+            block_model_matrix = glm::translate(block_model_matrix, {0.38f, -0.25f, -1.0f});
+            block_model_matrix = glm::scale(block_model_matrix, {0.14f, 0.14f, -0.14f});
+            
+            if (_last_held_block != selected_item) // If last item was sprite, we always do this even if the block UV hasn't changed...
+            {
+                auto tile_origins = GetAtlasTileOrigins();
+                glm::vec2 tile_origin_side = tile_origins[ItemIDToBlockID(selected_item)][1];
+                glm::vec2 tile_origin_top = tile_origins[ItemIDToBlockID(selected_item)][2];
+                float tile_size = 1.0f / 14.0f;
+                float block_vertices[] = {
+                    // Back
+                    -1.0f, -1.0f, -1.0f, tile_origin_side.x,             tile_origin_side.y,
+                     1.0f, -1.0f, -1.0f, tile_origin_side.x + tile_size, tile_origin_side.y,
+                     1.0f,  1.0f, -1.0f, tile_origin_side.x + tile_size, tile_origin_side.y + tile_size,
+                     1.0f,  1.0f, -1.0f, tile_origin_side.x + tile_size, tile_origin_side.y + tile_size,
+                    -1.0f,  1.0f, -1.0f, tile_origin_side.x + tile_size, tile_origin_side.y,
+                    -1.0f, -1.0f, -1.0f, tile_origin_side.x,             tile_origin_side.y,
+
+                    // Side
+                    -1.0f, -1.0f,  1.0f, tile_origin_side.x,             tile_origin_side.y,
+                    -1.0f, -1.0f, -1.0f, tile_origin_side.x + tile_size, tile_origin_side.y,
+                    -1.0f,  1.0f, -1.0f, tile_origin_side.x + tile_size, tile_origin_side.y + tile_size,
+                    -1.0f,  1.0f, -1.0f, tile_origin_side.x + tile_size, tile_origin_side.y + tile_size,
+                    -1.0f,  1.0f,  1.0f, tile_origin_side.x + tile_size, tile_origin_side.y,
+                    -1.0f, -1.0f,  1.0f, tile_origin_side.x,             tile_origin_side.y,
+
+                    // Top
+                    -1.0f, 1.0f, -1.0f, tile_origin_side.x,             tile_origin_side.y,
+                     1.0f, 1.0f, -1.0f, tile_origin_side.x + tile_size, tile_origin_side.y,
+                     1.0f, 1.0f,  1.0f, tile_origin_side.x + tile_size, tile_origin_side.y + tile_size,
+                     1.0f, 1.0f,  1.0f, tile_origin_side.x + tile_size, tile_origin_side.y + tile_size,
+                    -1.0f, 1.0f,  1.0f, tile_origin_side.x + tile_size, tile_origin_side.y,
+                    -1.0f, 1.0f, -1.0f, tile_origin_side.x,             tile_origin_side.y,
+                };
+                _block_mesh.SetVertexData(block_vertices, sizeof(block_vertices) / (5 * sizeof(float)));
+                _last_held_block = selected_item;
+            }
+            _block_mesh.Render(vp_matrix * inv_view * block_model_matrix);
         }
     }
 }

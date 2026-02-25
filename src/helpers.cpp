@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <vector>
+#include <unordered_map>
 
 #include "helpers.h"
 #include "constants.h"
@@ -62,6 +63,64 @@ glm::ivec3 LocalToGlobalVoxel(const glm::ivec3& local_voxel_pos, const glm::ivec
         local_voxel_pos.y,
         local_voxel_pos.z + chunk_coord.z * CHUNK_SIZE
     );
+}
+
+BlockID ItemIDToBlockID(ItemID item_id)
+{
+    static auto map = []()
+    {
+        std::unordered_map<ItemID, BlockID> _map {
+            {ItemID::water, BlockID::water},
+            {ItemID::sulphur_crystal, BlockID::sulphur_crystal},
+            {ItemID::blue_crystal, BlockID::blue_crystal},
+            {ItemID::boron_crystal, BlockID::boron_crystal},
+            {ItemID::glass, BlockID::glass},
+            {ItemID::aluminum, BlockID::aluminum},
+            {ItemID::aluminum_ore, BlockID::aluminum_ore},
+            {ItemID::amethyst_ore, BlockID::amethyst_ore},
+            {ItemID::beacon, BlockID::beacon},
+            {ItemID::beryllium, BlockID::beryllium},
+            {ItemID::calcite, BlockID::calcite},
+            {ItemID::carbon, BlockID::carbon},
+            {ItemID::chalchanthite, BlockID::chalchanthite},
+            {ItemID::dirt, BlockID::dirt},
+            {ItemID::feldspar, BlockID::feldspar},
+            {ItemID::gold_ore, BlockID::gold_ore},
+            {ItemID::granite, BlockID::granite},
+            {ItemID::graphite, BlockID::graphite},
+            {ItemID::gravel, BlockID::gravel},
+            {ItemID::light, BlockID::light},
+            {ItemID::magnetite, BlockID::magnetite},
+            {ItemID::molybdenum_ore, BlockID::molybdenum_ore},
+            {ItemID::moon_bark, BlockID::moon_bark},
+            {ItemID::moon_leaf, BlockID::moon_leaf},
+            {ItemID::moon_wood, BlockID::moon_wood},
+            {ItemID::neptunium, BlockID::neptunium},
+            {ItemID::notchium, BlockID::notchium},
+            {ItemID::notchium_ore, BlockID::notchium_ore},
+            {ItemID::phosphate, BlockID::phosphate},
+            {ItemID::polymer, BlockID::polymer},
+            {ItemID::quartz_ore, BlockID::quartz_ore},
+            {ItemID::rock, BlockID::rock},
+            {ItemID::sand, BlockID::sand},
+            {ItemID::shale_gravel, BlockID::shale_gravel},
+            {ItemID::silver_ore, BlockID::silver_ore},
+            {ItemID::snow, BlockID::snow},
+            {ItemID::sulphur_ore, BlockID::sulphur_ore},
+            {ItemID::titanium, BlockID::titanium},
+            {ItemID::titanium_ore, BlockID::titanium_ore},
+            {ItemID::topsoil, BlockID::topsoil},
+            {ItemID::xenostone, BlockID::xenostone},
+            {ItemID::zircon_ore, BlockID::zircon_ore},
+        };
+
+        return _map;
+    }();
+
+    if (!map.contains(item_id))
+        return BlockID::notchium;
+    else
+        return map.at(item_id);
 }
 
 bool ChunkInFrustum(const Plane frustum[6], const glm::vec3& chunk_min, const glm::vec3& chunk_max)

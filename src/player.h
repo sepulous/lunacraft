@@ -34,7 +34,8 @@ class Player : public Entity
         float _time_since_last_suit_update = 0;
         float _time_since_last_jetpack_update = 0;
         float _time_since_started_flying = 0;
-        ItemID _last_held_item = ItemID::none; // So held item textures only update when necessary
+        ItemID _last_held_sprite = ItemID::none; // So held item textures only update when necessary
+        ItemID _last_held_block = ItemID::none;  //
         Mesh _arm_mesh;
         Mesh _pistol_base_mesh;
         Mesh _pistol_slide_mesh;

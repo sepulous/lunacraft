@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <unordered_map>
 
 #include <glm/glm.hpp>
 
@@ -72,7 +73,7 @@ struct BlockVertex
     BlockVertex(glm::vec3 position, glm::vec4 uv, glm::vec3 face_normal, glm::vec3 light) : position(position), uv(uv), face_normal(face_normal), light(light) {}
 };
 
-std::unordered_map<BlockID, glm::mat3x2> GetAtlasTileOrigins()
+inline std::unordered_map<BlockID, glm::mat3x2> GetAtlasTileOrigins()
 {
     static const std::unordered_map<BlockID, glm::vec3> ATLAS_TILE_MAP = { // Tile coordinates are: (top, side, bottom)
         {BlockID::aluminum,        glm::vec3(32, 32, 32)},
@@ -156,3 +157,4 @@ std::unordered_map<BlockID, glm::mat3x2> GetAtlasTileOrigins()
 
     return TILE_ORIGINS;
 }
+
