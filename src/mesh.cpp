@@ -75,6 +75,7 @@ void Mesh::SetTexture(const std::filesystem::path &texture_path, GLenum filterin
     unsigned char *texture_data = stbi_load(reinterpret_cast<const char *>(texture_path.u8string().c_str()), &width, &height, &num_channels, 0);
 
     glBindTexture(GL_TEXTURE_2D, _tex);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filtering);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filtering);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -88,6 +89,7 @@ void Mesh::SetTexture(const std::filesystem::path &texture_path, GLenum filterin
 void Mesh::SetTexture(unsigned char *texture_data, size_t width, size_t height, int num_channels, GLenum filtering)
 {
     glBindTexture(GL_TEXTURE_2D, _tex);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filtering);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filtering);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -96,10 +98,18 @@ void Mesh::SetTexture(unsigned char *texture_data, size_t width, size_t height, 
     glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, texture_data);
 }
 
-void Mesh::Render(const glm::mat4 &mvp_matrix)
+void Mesh::Render(std::function<void(Shader *)> pre_draw_function)
 {
     _shader->Use();
-    _shader->SetMat4("u_mvp_matrix", mvp_matrix);
+    pre_draw_function(_shader);
+    glBindVertexArray(_vao);
+    glBindTexture(GL_TEXTURE_2D, _tex);
+    glDrawArrays(GL_TRIANGLES, 0, _vertex_count);
+}
+
+void Mesh::Render()
+{
+    _shader->Use();
     glBindVertexArray(_vao);
     glBindTexture(GL_TEXTURE_2D, _tex);
     glDrawArrays(GL_TRIANGLES, 0, _vertex_count);

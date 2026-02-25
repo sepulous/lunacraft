@@ -23,6 +23,7 @@
 #include "rng.h"
 #include "inventory.h"
 #include "sound_system.h"
+#include "player.h"
 
 #include <stb_image/stb_image.h>
 #include <stb_truetype/stb_truetype.h>
@@ -1419,33 +1420,47 @@ UIInventory::UIInventory()
     _spacesuit_slots[0].second.SetColor({1.0f, 1.0f, 1.0f, 1.0f});
 }
 
-void UIInventory::RebuildUI(const Inventory &inventory, float suit_status, float health)
+void UIInventory::RebuildUI(Player *player)
 {
+    auto &inventory = player->GetInventory();
+    float suit_status = (float)player->GetSuitStatus() / 100.0f;
+    float health = (float)player->GetHealth() / 100.0f;
+
     // Hotbar and inventory slots
     for (int row = 0; row < 5; row++)
     {
         for (int col = 0; col < 10; col++)
         {
-            auto slot = inventory.inventory[row][col];
-            auto &[slot_image, slot_amount] = _inventory_slots[row][col];
-            slot_image.LoadImage(Storage::IMAGES / "items" / GetItemFile(slot.item), GL_NEAREST);
-            if (slot.amount > 1)
-                slot_amount.SetText(std::to_string(slot.amount));
-            else
-                slot_amount.SetText("");
+            auto &slot = inventory.inventory[row][col];
+            if (slot.changed)
+            {
+                auto &[slot_image, slot_amount] = _inventory_slots[row][col];
+                slot_image.LoadImage(Storage::IMAGES / "items" / GetItemFile(slot.item), GL_NEAREST);
+                if (slot.amount > 1)
+                    slot_amount.SetText(std::to_string(slot.amount));
+                else
+                    slot_amount.SetText("");
+
+                slot.changed = false;
+            }
         }
     }
 
     // Spacesuit slots
     for (int i = 0; i < 3; i++)
     {
-        auto slot = inventory.spacesuit[i];
-        auto &[slot_image, slot_amount] = _spacesuit_slots[i];
-        slot_image.LoadImage(Storage::IMAGES / "items" / GetItemFile(slot.item), GL_NEAREST);
-        if (slot.amount > 1)
-            slot_amount.SetText(std::to_string(slot.amount));
-        else
-            slot_amount.SetText("");
+        auto &slot = inventory.spacesuit[i];
+        if (slot.changed)
+        {
+            auto &[slot_image, slot_amount] = _spacesuit_slots[i];
+            slot_image.LoadImage(Storage::IMAGES / "items" / GetItemFile(slot.item), GL_NEAREST);
+            if (slot.amount > 1)
+                slot_amount.SetText(std::to_string(slot.amount));
+            else
+                slot_amount.SetText("");
+
+            slot.changed = false;
+        }
     }
 
     // Assembler slots
@@ -1453,33 +1468,52 @@ void UIInventory::RebuildUI(const Inventory &inventory, float suit_status, float
     {
         for (int col = 0; col < 3; col++)
         {
-            auto slot = inventory.assembler_input[row][col];
-            auto &[slot_image, slot_amount] = _assembler_input_slots[row][col];
-            slot_image.LoadImage(Storage::IMAGES / "items" / GetItemFile(slot.item), GL_NEAREST);
-            if (slot.amount > 1)
-                slot_amount.SetText(std::to_string(slot.amount));
-            else
-                slot_amount.SetText("");
+            auto &slot = inventory.assembler_input[row][col];
+            if (slot.changed)
+            {
+                auto &[slot_image, slot_amount] = _assembler_input_slots[row][col];
+                slot_image.LoadImage(Storage::IMAGES / "items" / GetItemFile(slot.item), GL_NEAREST);
+                if (slot.amount > 1)
+                    slot_amount.SetText(std::to_string(slot.amount));
+                else
+                    slot_amount.SetText("");
+
+                slot.changed = false;
+            }
         }
     }
-    _assembler_output_slot.first.LoadImage(Storage::IMAGES / "items" / GetItemFile(inventory.assembler_output.item), GL_NEAREST);
-    if (inventory.assembler_output.amount > 1)
-        _assembler_output_slot.second.SetText(std::to_string(inventory.assembler_output.amount));
-    else
-        _assembler_output_slot.second.SetText("");
+
+    if (inventory.assembler_output.changed)
+    {
+        _assembler_output_slot.first.LoadImage(Storage::IMAGES / "items" / GetItemFile(inventory.assembler_output.item), GL_NEAREST);
+        if (inventory.assembler_output.amount > 1)
+            _assembler_output_slot.second.SetText(std::to_string(inventory.assembler_output.amount));
+        else
+            _assembler_output_slot.second.SetText("");
+    }
 
     // Scanner slot
-    _scanner_slot.first.LoadImage(Storage::IMAGES / "items" / GetItemFile(inventory.scanner.item), GL_NEAREST);
+    if (inventory.scanner.changed)
+    {
+        _scanner_slot.first.LoadImage(Storage::IMAGES / "items" / GetItemFile(inventory.scanner.item), GL_NEAREST);
+    }
 
     // Suit status and health bar
-    _suit_status_bar.SetCrop({0.0f, 0.0f, suit_status, 1.0f});
-    _suit_status_bar.SetSize({186 * suit_status, 18});
-    _health_bar.SetCrop({0.0f, 0.0f, health, 1.0f});
-    _health_bar.SetSize({186 * health, 18});
+    // _suit_status_bar.SetCrop({0.0f, 0.0f, suit_status, 1.0f});
+    // _suit_status_bar.SetSize({186 * suit_status, 18});
+    // _health_bar.SetCrop({0.0f, 0.0f, health, 1.0f});
+    // _health_bar.SetSize({186 * health, 18});
 }
 
-void UIInventory::Update(Inventory &inventory, float suit_status, float health, float jetpack_level)
+void UIInventory::Update(Player *player)
 {
+    // RebuildUI(player);
+
+    auto &inventory = player->GetInventory();
+    float suit_status = (float)player->GetSuitStatus() / 100.0f;
+    float health = (float)player->GetHealth() / 100.0f;
+    float jetpack_level = (float)player->GetJetpackEnergy() / (float)player->GetMaxJetpackEnergy();
+
     glm::dvec2 mouse_position = Input::GetVirtualMousePosition(UIGetVirtualToWindow());
 
     // Update held item (UI)
@@ -1957,77 +1991,22 @@ ItemStack *UIInventory::GetSlotUnderMouse(glm::dvec2 mouse_pos, Inventory &inven
 
 UIImage::UIImage(GLint filtering)
 {
-    // Vertex array object
-    glGenVertexArrays(1, &_vao);
-    glBindVertexArray(_vao);
+    float vertices[] = {
+    //  Position--  UV--------
+        0.0f, 0.0f, 0.0f, 0.0f, // Bottom left
+        1.0f, 0.0f, 1.0f, 0.0f, // Bottom right
+        1.0f, 1.0f, 1.0f, 1.0f, // Top right
+        1.0f, 1.0f, 1.0f, 1.0f, // Top right
+        0.0f, 1.0f, 0.0f, 1.0f, // Top left
+        0.0f, 0.0f, 0.0f, 0.0f, // Bottom left
+    };
 
-    // Vertex buffer object
-    glGenBuffers(1, &_vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, _vbo);
-
-    // Vertex attribute pointer
-    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    // Texture
-    glGenTextures(1, &_texture);
-    glBindTexture(GL_TEXTURE_2D, _texture);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filtering);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filtering);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    _quad.SetShader(ShaderManager::UI_IMAGE_SHADER);
+    _quad.SetVertexData(vertices, 6, GL_STATIC_DRAW);
 
     _position = glm::vec2(0);
     _size = glm::vec2(0);
     _crop = glm::vec4(0.0f, 0.0f, 1.0f, 1.0f);
-}
-
-UIImage::UIImage(std::filesystem::path image_path, glm::vec2 position, glm::vec2 size, GLint filtering)
-{
-    // Vertex array object
-    glGenVertexArrays(1, &_vao);
-    glBindVertexArray(_vao);
-
-    // Create texture from image data
-    int image_width, image_height, num_channels;
-    stbi_set_flip_vertically_on_load(true);
-    unsigned char *image_data = stbi_load(reinterpret_cast<const char *>(image_path.u8string().c_str()), &image_width, &image_height, &num_channels, 0);
-
-    glGenTextures(1, &_texture);
-    glBindTexture(GL_TEXTURE_2D, _texture);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filtering);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filtering);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    int format = (num_channels == 3) ? GL_RGB : GL_RGBA; // I expect either 3 or 4 channels
-    glTexImage2D(GL_TEXTURE_2D, 0, format, image_width, image_height, 0, format, GL_UNSIGNED_BYTE, image_data);
-
-    stbi_image_free(image_data);
-
-    float vertices[] = {
-    //  Position--------------------------------  UV--------
-        position.x,          position.y,          0.0f, 0.0f, // Bottom left
-        position.x + size.x, position.y,          1.0f, 0.0f, // Bottom right
-        position.x + size.x, position.y + size.y, 1.0f, 1.0f, // Top right
-        position.x + size.x, position.y + size.y, 1.0f, 1.0f, // Top right
-        position.x,          position.y + size.y, 0.0f, 1.0f, // Top left
-        position.x,          position.y,          0.0f, 0.0f, // Bottom left
-    };
-
-    // Vertex buffer object
-    glGenBuffers(1, &_vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, _vbo);
-    glBufferData(GL_ARRAY_BUFFER, 4 * 6 * sizeof(float), vertices, GL_STATIC_DRAW);
-
-    // Vertex attribute pointer
-    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    _position = position;
-    _size = size;
-    _aspect_ratio = (float)image_width / (float)image_height;
 }
 
 void UIImage::LoadImage(std::filesystem::path image_path, GLint filtering)
@@ -2036,11 +2015,7 @@ void UIImage::LoadImage(std::filesystem::path image_path, GLint filtering)
     stbi_set_flip_vertically_on_load(true);
     unsigned char *image_data = stbi_load(reinterpret_cast<const char *>(image_path.u8string().c_str()), &image_width, &image_height, &num_channels, 0);
 
-    glBindTexture(GL_TEXTURE_2D, _texture); // Already exists since constructor was called
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filtering);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filtering);
-    int format = (num_channels == 3) ? GL_RGB : GL_RGBA; // I expect either 3 or 4 channels
-    glTexImage2D(GL_TEXTURE_2D, 0, format, image_width, image_height, 0, format, GL_UNSIGNED_BYTE, image_data);
+    _quad.SetTexture(image_data, image_width, image_height, num_channels, filtering);
 
     stbi_image_free(image_data);
 
@@ -2049,18 +2024,6 @@ void UIImage::LoadImage(std::filesystem::path image_path, GLint filtering)
 
 void UIImage::SetPosition(glm::vec2 position)
 {
-    float vertices[] = {
-    //  Position----------------------------------  UV--------
-        position.x,           position.y,           0.0f, 0.0f, // Bottom left
-        position.x + _size.x, position.y,           1.0f, 0.0f, // Bottom right
-        position.x + _size.x, position.y + _size.y, 1.0f, 1.0f, // Top right
-        position.x + _size.x, position.y + _size.y, 1.0f, 1.0f, // Top right
-        position.x,           position.y + _size.y, 0.0f, 1.0f, // Top left
-        position.x,           position.y,           0.0f, 0.0f, // Bottom left
-    };
-    glBindBuffer(GL_ARRAY_BUFFER, _vbo);
-    glBufferData(GL_ARRAY_BUFFER, 4 * 6 * sizeof(float), vertices, GL_STATIC_DRAW);
-
     _position = position;
 }
 
@@ -2073,19 +2036,6 @@ void UIImage::SetSize(glm::vec2 size, bool preserve_aspect_ratio)
 {
     if (preserve_aspect_ratio)
         size.x = size.y * _aspect_ratio;
-
-    float vertices[] = {
-    //  Position----------------------------------  UV--------
-        _position.x,          _position.y,          0.0f, 0.0f, // Bottom left
-        _position.x + size.x, _position.y,          1.0f, 0.0f, // Bottom right
-        _position.x + size.x, _position.y + size.y, 1.0f, 1.0f, // Top right
-        _position.x + size.x, _position.y + size.y, 1.0f, 1.0f, // Top right
-        _position.x,          _position.y + size.y, 0.0f, 1.0f, // Top left
-        _position.x,          _position.y,          0.0f, 0.0f, // Bottom left
-    };
-
-    glBindBuffer(GL_ARRAY_BUFFER, _vbo);
-    glBufferData(GL_ARRAY_BUFFER, 4 * 6 * sizeof(float), vertices, GL_STATIC_DRAW);
 
     _size = size;
 }
@@ -2102,13 +2052,14 @@ void UIImage::SetCrop(glm::vec4 crop)
 
 void UIImage::Render()
 {
-    auto &shader = ShaderManager::UI_IMAGE_SHADER;
-    shader.Use();
-    shader.SetVec4("u_crop", _crop);
-    glBindVertexArray(_vao);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, _texture);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glm::mat4 model_matrix{1.0};
+    model_matrix = glm::translate(model_matrix, glm::vec3{_position, 0.0f});
+    model_matrix = glm::scale(model_matrix, glm::vec3{_size, 0.0f});
+    
+    _quad.Render([&](Shader *shader) {
+        shader->SetVec4("u_crop", _crop);
+        shader->SetMat4("u_model_matrix", model_matrix);
+    });
 }
 
 //

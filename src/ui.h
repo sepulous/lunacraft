@@ -9,9 +9,11 @@
 
 #include "shader.h"
 #include "moon_settings.h"
+#include "mesh.h"
 
-class Inventory; // Forward declarations
-class ItemStack; //
+class ItemStack; // Forward declarations
+class Player;    //
+class Inventory; //
 
 const float VIRTUAL_UI_WIDTH = 1920.0f;
 const float VIRTUAL_UI_HEIGHT = 1080.0f;
@@ -45,9 +47,7 @@ glm::mat4 UIGetVirtualToWindow();
 class UIImage
 {
     private:
-        GLuint _vao;
-        GLuint _vbo;
-        GLuint _texture;
+        Mesh _quad;
         glm::vec2 _position;
         glm::vec2 _size;
         glm::vec4 _crop;
@@ -55,7 +55,6 @@ class UIImage
         
     public:
         UIImage(GLint filtering = GL_LINEAR);
-        UIImage(std::filesystem::path image_path, glm::vec2 position, glm::vec2 size, GLint filtering = GL_LINEAR);
         void LoadImage(std::filesystem::path image_path, GLint filtering = GL_LINEAR);
         void SetPosition(glm::vec2 position);
         glm::vec2 GetPosition();
@@ -400,8 +399,8 @@ class UIInventory
 {
     public:
         UIInventory();
-        void RebuildUI(const Inventory &inventory, float suit_status, float health);
-        void Update(Inventory &inventory, float suit_status, float health, float jetpack_level);
+        void RebuildUI(Player *player);
+        void Update(Player *player);
         void Render();
         bool IsActive();
         void SetActive(bool active);

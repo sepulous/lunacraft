@@ -3,6 +3,7 @@
 #include <vector>
 #include <filesystem>
 #include <variant>
+#include <functional>
 
 #include <glad/glad.h>
 #include <glm/glm.hpp>
@@ -23,7 +24,8 @@ class Mesh
         void SetTexture(const std::filesystem::path &texture_path, GLenum filtering = GL_NEAREST);
         void SetTexture(unsigned char *texture_data, size_t width, size_t height, int num_channels = 4, GLenum filtering = GL_NEAREST);
 
-        void Render(const glm::mat4 &mvp_matrix);
+        void Render(std::function<void(Shader *)> pre_draw_function);
+        void Render();
 
     private:
         size_t GetTypeSize(int type);

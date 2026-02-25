@@ -1,13 +1,13 @@
 #version 330 core
 
-out vec4 out_color;
-
 in vec2 v_uv;
 
 uniform sampler2D u_tex;
 uniform float u_opacity;
 uniform float u_darkness;
 uniform vec4 u_crop; // (minX, minY, maxX, maxY) in UV space (0-1)
+
+out vec4 out_color;
 
 void main()
 {
