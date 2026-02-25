@@ -199,39 +199,75 @@ void Moon::Update(double delta_time)
     // Upload any new chunks that are ready to the GPU
     _chunk_manager.UploadReadyChunks();
 
-    // Update block select
-    const float PLAYER_REACH = 9.0f;
-    const int CAST_STEPS = 300;
+    //
+    // Update selection block
+    //
     auto camera = _player->GetCamera();
-    bool block_select_active = false;
-    for (int i = 0; i <= CAST_STEPS; i++)
-    {
-        // Instead of actually having four rays, just have a central one and displace from it
-        auto center_ray_pos = camera.position + i * (PLAYER_REACH / CAST_STEPS) * camera.forward;
-        glm::vec3 rays[] = {
-            center_ray_pos - 0.01f * camera.right,
-            center_ray_pos + 0.01f * camera.right,
-            center_ray_pos + 0.01f * camera.up,
-            center_ray_pos - 0.01f * camera.up
-        };
 
-        // Assuming one will hit before the others, we should be safe to just check one-by-one
-        for (auto &ray : rays)
+    auto origin = camera.position;
+    glm::ivec3 voxel = GetNearestVoxel(origin);
+
+    glm::vec3 inv_dir = 1.0f / camera.forward;
+
+    glm::ivec3 step = {
+        camera.forward.x > 0 ? 1 : -1,
+        camera.forward.y > 0 ? 1 : -1,
+        camera.forward.z > 0 ? 1 : -1
+    };
+
+    glm::vec3 next_boundary = {
+        voxel.x + (step.x > 0 ? 0.5f : -0.5f),
+        voxel.y + (step.y > 0 ? 0.5f : -0.5f),
+        voxel.z + (step.z > 0 ? 0.5f : -0.5f)
+    };
+
+    glm::vec3 t_max = (next_boundary - origin) * inv_dir;
+    glm::vec3 t_delta = glm::abs(inv_dir);
+
+    float distance = 0.0f;
+    const float PLAYER_REACH = 9.0f;
+    _selection_block.SetActive(false);
+    while (distance < PLAYER_REACH)
+    {
+        BlockID block = _chunk_manager.GetChunk(VoxelToChunk(voxel))->GetBlocks()[GetChunkIndex(GlobalToLocalVoxel(voxel))];
+        if (BlockIsOpaque(block))
         {
-            auto ray_voxel = GetNearestVoxel(ray);
-            auto ray_chunk = _chunk_manager.GetChunk(VoxelToChunk(ray_voxel));
-            if (ray_chunk->GetBlocks()[GetChunkIndex(GlobalToLocalVoxel(ray_voxel))] != BlockID::air)
-            {
-                _selection_block.SetPosition(ray_voxel);
-                block_select_active = true;
-                break;
-            }
+            _selection_block.SetPosition(voxel);
+            _selection_block.SetActive(true);
+            break;
         }
 
-        if (block_select_active)
-            break;
+        if (t_max.x < t_max.y)
+        {
+            if (t_max.x < t_max.z)
+            {
+                voxel.x += step.x;
+                distance = t_max.x;
+                t_max.x += t_delta.x;
+            }
+            else
+            {
+                voxel.z += step.z;
+                distance = t_max.z;
+                t_max.z += t_delta.z;
+            }
+        }
+        else
+        {
+            if (t_max.y < t_max.z)
+            {
+                voxel.y += step.y;
+                distance = t_max.y;
+                t_max.y += t_delta.y;
+            }
+            else
+            {
+                voxel.z += step.z;
+                distance = t_max.z;
+                t_max.z += t_delta.z;
+            }
+        }
     }
-    _selection_block.SetActive(block_select_active);
 }
 
 void Moon::Render(const glm::mat4 &projection)
