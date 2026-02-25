@@ -1445,7 +1445,7 @@ void UIInventory::RebuildUI(Player *player, bool force)
         }
     }
 
-    if (_active)
+    if (force || _active)
     {
         // Inventory
         for (int row = 1; row < 5; row++)
