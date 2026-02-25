@@ -196,8 +196,6 @@ int main()
                     if (glfwRawMouseMotionSupported())
                         glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE); // More natural mouse motion
 
-                    auto player = Moon::GetCurrentMoon()->GetPlayer();
-                    ui_game.GetInventoryUI().RebuildUI(player->GetInventory(), (float)player->GetSuitStatus() / 100.0f, (float)player->GetHealth() / 100.0f);
                     ui_main_menu.ResetMoonSettings();
                     moon_load_progress = 0;
                     ui_main_menu.SetLoadProgressLevel(0);
@@ -303,8 +301,7 @@ int main()
             }
 
             // Update inventory
-            auto player = Moon::GetCurrentMoon()->GetPlayer();
-            ui_inventory.Update(player->GetInventory(), (float)player->GetSuitStatus() / 100.0f, (float)player->GetHealth() / 100.0f, (float)player->GetJetpackEnergy() / (float)player->GetMaxJetpackEnergy());
+            ui_inventory.Update(Moon::GetCurrentMoon()->GetPlayer());
 
             // Handle quit/resume buttons (this combines Update and Input; let's try to do better)
             if (ui_pause_menu.IsActive())

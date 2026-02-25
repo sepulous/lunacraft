@@ -1426,33 +1426,13 @@ void UIInventory::RebuildUI(Player *player)
     float suit_status = (float)player->GetSuitStatus() / 100.0f;
     float health = (float)player->GetHealth() / 100.0f;
 
-    // Hotbar and inventory slots
-    for (int row = 0; row < 5; row++)
+    // Hotbar
+    for (int col = 0; col < 10; col++)
     {
-        for (int col = 0; col < 10; col++)
-        {
-            auto &slot = inventory.inventory[row][col];
-            if (slot.changed)
-            {
-                auto &[slot_image, slot_amount] = _inventory_slots[row][col];
-                slot_image.LoadImage(Storage::IMAGES / "items" / GetItemFile(slot.item), GL_NEAREST);
-                if (slot.amount > 1)
-                    slot_amount.SetText(std::to_string(slot.amount));
-                else
-                    slot_amount.SetText("");
-
-                slot.changed = false;
-            }
-        }
-    }
-
-    // Spacesuit slots
-    for (int i = 0; i < 3; i++)
-    {
-        auto &slot = inventory.spacesuit[i];
+        auto &slot = inventory.inventory[0][col];
         if (slot.changed)
         {
-            auto &[slot_image, slot_amount] = _spacesuit_slots[i];
+            auto &[slot_image, slot_amount] = _inventory_slots[0][col];
             slot_image.LoadImage(Storage::IMAGES / "items" / GetItemFile(slot.item), GL_NEAREST);
             if (slot.amount > 1)
                 slot_amount.SetText(std::to_string(slot.amount));
@@ -1463,15 +1443,35 @@ void UIInventory::RebuildUI(Player *player)
         }
     }
 
-    // Assembler slots
-    for (int row = 0; row < 3; row++)
+    if (_active)
     {
-        for (int col = 0; col < 3; col++)
+        // Inventory
+        for (int row = 1; row < 5; row++)
         {
-            auto &slot = inventory.assembler_input[row][col];
+            for (int col = 0; col < 10; col++)
+            {
+                auto &slot = inventory.inventory[row][col];
+                if (slot.changed)
+                {
+                    auto &[slot_image, slot_amount] = _inventory_slots[row][col];
+                    slot_image.LoadImage(Storage::IMAGES / "items" / GetItemFile(slot.item), GL_NEAREST);
+                    if (slot.amount > 1)
+                        slot_amount.SetText(std::to_string(slot.amount));
+                    else
+                        slot_amount.SetText("");
+
+                    slot.changed = false;
+                }
+            }
+        }
+
+        // Spacesuit slots
+        for (int i = 0; i < 3; i++)
+        {
+            auto &slot = inventory.spacesuit[i];
             if (slot.changed)
             {
-                auto &[slot_image, slot_amount] = _assembler_input_slots[row][col];
+                auto &[slot_image, slot_amount] = _spacesuit_slots[i];
                 slot_image.LoadImage(Storage::IMAGES / "items" / GetItemFile(slot.item), GL_NEAREST);
                 if (slot.amount > 1)
                     slot_amount.SetText(std::to_string(slot.amount));
@@ -1481,33 +1481,53 @@ void UIInventory::RebuildUI(Player *player)
                 slot.changed = false;
             }
         }
-    }
 
-    if (inventory.assembler_output.changed)
-    {
-        _assembler_output_slot.first.LoadImage(Storage::IMAGES / "items" / GetItemFile(inventory.assembler_output.item), GL_NEAREST);
-        if (inventory.assembler_output.amount > 1)
-            _assembler_output_slot.second.SetText(std::to_string(inventory.assembler_output.amount));
-        else
-            _assembler_output_slot.second.SetText("");
-    }
+        // Assembler slots
+        for (int row = 0; row < 3; row++)
+        {
+            for (int col = 0; col < 3; col++)
+            {
+                auto &slot = inventory.assembler_input[row][col];
+                if (slot.changed)
+                {
+                    auto &[slot_image, slot_amount] = _assembler_input_slots[row][col];
+                    slot_image.LoadImage(Storage::IMAGES / "items" / GetItemFile(slot.item), GL_NEAREST);
+                    if (slot.amount > 1)
+                        slot_amount.SetText(std::to_string(slot.amount));
+                    else
+                        slot_amount.SetText("");
 
-    // Scanner slot
-    if (inventory.scanner.changed)
-    {
-        _scanner_slot.first.LoadImage(Storage::IMAGES / "items" / GetItemFile(inventory.scanner.item), GL_NEAREST);
-    }
+                    slot.changed = false;
+                }
+            }
+        }
 
-    // Suit status and health bar
-    // _suit_status_bar.SetCrop({0.0f, 0.0f, suit_status, 1.0f});
-    // _suit_status_bar.SetSize({186 * suit_status, 18});
-    // _health_bar.SetCrop({0.0f, 0.0f, health, 1.0f});
-    // _health_bar.SetSize({186 * health, 18});
+        if (inventory.assembler_output.changed)
+        {
+            _assembler_output_slot.first.LoadImage(Storage::IMAGES / "items" / GetItemFile(inventory.assembler_output.item), GL_NEAREST);
+            if (inventory.assembler_output.amount > 1)
+                _assembler_output_slot.second.SetText(std::to_string(inventory.assembler_output.amount));
+            else
+                _assembler_output_slot.second.SetText("");
+        }
+
+        // Scanner slot
+        if (inventory.scanner.changed)
+        {
+            _scanner_slot.first.LoadImage(Storage::IMAGES / "items" / GetItemFile(inventory.scanner.item), GL_NEAREST);
+        }
+
+        // Suit status and health bar
+        _suit_status_bar.SetCrop({0.0f, 0.0f, suit_status, 1.0f});
+        _suit_status_bar.SetSize({186 * suit_status, 18});
+        _health_bar.SetCrop({0.0f, 0.0f, health, 1.0f});
+        _health_bar.SetSize({186 * health, 18});
+    }
 }
 
 void UIInventory::Update(Player *player)
 {
-    // RebuildUI(player);
+    RebuildUI(player);
 
     auto &inventory = player->GetInventory();
     float suit_status = (float)player->GetSuitStatus() / 100.0f;
