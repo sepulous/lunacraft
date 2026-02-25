@@ -358,6 +358,8 @@ void Player::RenderArm(const glm::mat4 &vp_matrix)
             drill_bit_model_matrix = glm::translate(drill_bit_model_matrix, {0.5f, -0.35f, -1.5f});
             drill_bit_model_matrix = glm::scale(drill_bit_model_matrix, {0.05f, 0.05f, -0.05f});
             _drill_bit_mesh.Render(vp_matrix * inv_view * drill_bit_model_matrix);
+
+            _last_held_item = ItemID::drill_t1;
         }
         else if (ItemIsSprite(selected_item))
         {
@@ -365,7 +367,11 @@ void Player::RenderArm(const glm::mat4 &vp_matrix)
             sprite_model_matrix = glm::translate(sprite_model_matrix, {0.362f, -0.335f, -0.95f});
             sprite_model_matrix = glm::scale(sprite_model_matrix, {0.14f, 0.14f, -0.14f});
 
-            _sprite_mesh.SetTexture(Storage::IMAGES / "items" / GetItemFile(selected_item)); // TODO: Only change this when necessary!
+            if (_last_held_item != selected_item)
+            {
+                _sprite_mesh.SetTexture(Storage::IMAGES / "items" / GetItemFile(selected_item));
+                _last_held_item = selected_item;
+            }
             _sprite_mesh.Render(vp_matrix * inv_view * sprite_model_matrix);
         }
         else
