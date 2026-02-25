@@ -107,3 +107,4 @@ enum class ScannerDataType {TYPE, COMPOSITION, VALUE};
 
 std::string GetItemFile(ItemID item);
 std::unordered_map<ScannerDataType, std::string> GetItemScannerData(ItemID item);
+bool ItemIsSprite(ItemID item);

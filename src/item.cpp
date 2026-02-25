@@ -3,6 +3,45 @@
 
 #include "item.h"
 
+bool ItemIsSprite(ItemID item)
+{
+    return item == ItemID::mechanism
+        || item == ItemID::battery
+        || item == ItemID::energy_orb
+        || item == ItemID::power_crystal
+        || item == ItemID::adhesive
+        || item == ItemID::minilight
+        || item == ItemID::magnet
+        || item == ItemID::biogel
+        || item == ItemID::gold
+        || item == ItemID::camera
+        || item == ItemID::disk
+        || item == ItemID::disk1
+        || item == ItemID::disk2
+        || item == ItemID::disk3
+        || item == ItemID::disk4
+        || item == ItemID::disk5
+        || item == ItemID::disk6
+        || item == ItemID::disk7
+        || item == ItemID::disk8
+        || item == ItemID::disk9
+        || item == ItemID::disk10
+        || item == ItemID::disk11
+        || item == ItemID::disk12
+        || item == ItemID::disk13
+        || item == ItemID::disk14
+        || item == ItemID::disk15
+        || item == ItemID::disk16
+        || item == ItemID::disk17
+        || item == ItemID::disk18
+        || item == ItemID::jetpack_t1
+        || item == ItemID::jetpack_t2
+        || item == ItemID::jetpack_t3
+        || item == ItemID::medkit
+        || item == ItemID::chronobooster
+        || item == ItemID::chronowinder;
+}
+
 std::string GetItemFile(ItemID item)
 {
     static auto ITEM_FILE_MAP = []()

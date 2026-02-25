@@ -89,6 +89,18 @@ Player::Player()
     _drill_bit_mesh.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
     _drill_bit_mesh.SetVertexData(drill_bit_vertices, sizeof(drill_bit_vertices) / (5 * sizeof(float)));
     _drill_bit_mesh.SetTexture(Storage::IMAGES / "player_drill.png");
+
+    // Sprite mesh
+    float sprite_vertices[] = {
+        -1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+         1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+         1.0f, 2.0f, 0.0f, 1.0f, 1.0f,
+         1.0f, 2.0f, 0.0f, 1.0f, 1.0f,
+        -1.0f, 2.0f, 0.0f, 0.0f, 1.0f,
+        -1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+    };
+    _sprite_mesh.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
+    _sprite_mesh.SetVertexData(sprite_vertices, sizeof(sprite_vertices) / (5 * sizeof(float)));
 }
 
 void Player::Update(float delta_time)
@@ -349,7 +361,12 @@ void Player::RenderArm(const glm::mat4 &vp_matrix)
         }
         else if (ItemIsSprite(selected_item))
         {
-            // _sprite_mesh.Render(render_matrix);
+            auto sprite_model_matrix = glm::mat4(1.0);
+            sprite_model_matrix = glm::translate(sprite_model_matrix, {0.362f, -0.335f, -0.95f});
+            sprite_model_matrix = glm::scale(sprite_model_matrix, {0.14f, 0.14f, -0.14f});
+
+            _sprite_mesh.SetTexture(Storage::IMAGES / "items" / GetItemFile(selected_item)); // TODO: Only change this when necessary!
+            _sprite_mesh.Render(vp_matrix * inv_view * sprite_model_matrix);
         }
         else
         {
