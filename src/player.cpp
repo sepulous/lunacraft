@@ -6,6 +6,7 @@
 #include "storage.h"
 #include "block.h"
 #include "helpers.h"
+#include "rng.h"
 
 Player::Player()
 {
@@ -128,6 +129,15 @@ void Player::Update(float delta_time)
 
     if (glm::length(_input_direction) > 0)
         _input_direction = glm::normalize(_input_direction);
+
+    // Use medkit
+    if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT) && _inventory.GetSelectedItem() == ItemID::medkit && _health < 100)
+    {
+        _health += 25 + RNG{}.Range(0, 9);
+        _health = glm::clamp(_health, 0, 100);
+        _inventory.inventory[0][_inventory.selected_hotbar_slot] = {ItemID::none, 0};
+        SoundSystem::Play(SoundSystem::Sound::MEDKIT);
+    }
 
     // Regen health
     if (_suit_status > 0 && _time_since_last_health_update > 0.5f)
@@ -341,9 +351,11 @@ void Player::RenderArm(const glm::mat4 &vp_matrix)
     auto arm_model_matrix = glm::mat4(1.0);
     arm_model_matrix = glm::translate(arm_model_matrix, {0.48f, -0.35f, -0.35f});
     arm_model_matrix = glm::scale(arm_model_matrix, {-0.45f, 0.45f, -0.45f});
-    _arm_mesh.Render(vp_matrix * inv_view * arm_model_matrix);
+    _arm_mesh.Render([&](Shader *shader) {
+        shader->SetMat4("u_mvp_matrix", vp_matrix * inv_view * arm_model_matrix);
+    });
 
-    ItemID selected_item = _inventory.inventory[0][_inventory.selected_hotbar_slot].item;
+    ItemID selected_item = _inventory.GetSelectedItem();
     if (selected_item != ItemID::none)
     {
         if (selected_item == ItemID::slug_pistol_t1 || selected_item == ItemID::slug_pistol_t2 || selected_item == ItemID::slug_pistol_t3)
@@ -357,13 +369,17 @@ void Player::RenderArm(const glm::mat4 &vp_matrix)
             auto drill_base_model_matrix = glm::mat4(1.0);
             drill_base_model_matrix = glm::translate(drill_base_model_matrix, {0.5f, -0.35f, -1.0f});
             drill_base_model_matrix = glm::scale(drill_base_model_matrix, {0.15f, 0.15f, -0.15f});
-            _drill_base_mesh.Render(vp_matrix * inv_view * drill_base_model_matrix);
+            _drill_base_mesh.Render([&](Shader *shader) {
+                shader->SetMat4("u_mvp_matrix", vp_matrix * inv_view * drill_base_model_matrix);
+            });
 
             // Drill bit
             auto drill_bit_model_matrix = glm::mat4(1.0);
             drill_bit_model_matrix = glm::translate(drill_bit_model_matrix, {0.5f, -0.35f, -1.5f});
             drill_bit_model_matrix = glm::scale(drill_bit_model_matrix, {0.05f, 0.05f, -0.05f});
-            _drill_bit_mesh.Render(vp_matrix * inv_view * drill_bit_model_matrix);
+            _drill_bit_mesh.Render([&](Shader *shader) {
+                shader->SetMat4("u_mvp_matrix", vp_matrix * inv_view * drill_bit_model_matrix);
+            });
         }
         else if (ItemIsSprite(selected_item))
         {
@@ -376,7 +392,9 @@ void Player::RenderArm(const glm::mat4 &vp_matrix)
                 _sprite_mesh.SetTexture(Storage::IMAGES / "items" / GetItemFile(selected_item));
                 _last_held_sprite = selected_item;
             }
-            _sprite_mesh.Render(vp_matrix * inv_view * sprite_model_matrix);
+            _sprite_mesh.Render([&](Shader *shader) {
+                shader->SetMat4("u_mvp_matrix", vp_matrix * inv_view * sprite_model_matrix);
+            });
         }
         else
         {
@@ -418,7 +436,9 @@ void Player::RenderArm(const glm::mat4 &vp_matrix)
                 _block_mesh.SetVertexData(block_vertices, sizeof(block_vertices) / (5 * sizeof(float)));
                 _last_held_block = selected_item;
             }
-            _block_mesh.Render(vp_matrix * inv_view * block_model_matrix);
+            _block_mesh.Render([&](Shader *shader) {
+                shader->SetMat4("u_mvp_matrix", vp_matrix * inv_view * block_model_matrix);
+            });
         }
     }
 }
