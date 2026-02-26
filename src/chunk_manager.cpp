@@ -76,29 +76,22 @@ void ChunkManager::UploadReadyChunks()
 
 void ChunkManager::RenderChunks(Plane frustum[6])
 {
-    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, _texture_atlas);
     glDepthFunc(GL_LESS);
 
     std::vector<Chunk *> visible_chunks;
+    visible_chunks.reserve(32);
 
+    // Render opaque blocks
     for (auto it = _chunks.begin(); it != _chunks.end(); ++it)
     {
         Chunk *chunk = it->second;
-        if (chunk->HasUploadedVertices() && !chunk->IsBorderChunk()) // Border chunks should never be rendered, and patch chunks aren't necessarily ready
+        if (chunk->HasUploadedVertices() && !chunk->IsBorderChunk())
         {
             glm::ivec3 chunk_coords = chunk->GetCoords();
             float x0 = chunk_coords.x * CHUNK_SIZE;
-            float y0 = 0;
             float z0 = chunk_coords.z * CHUNK_SIZE;
-            float x1 = x0 + CHUNK_SIZE;
-            float y1 = WORLD_HEIGHT_LIMIT;
-            float z1 = z0 + CHUNK_SIZE;
-
-            glm::vec3 min(x0, y0, z0);
-            glm::vec3 max(x1, y1, z1);
-
-            if (ChunkInFrustum(frustum, min, max))
+            if (ChunkInFrustum(frustum, x0, z0))
             {
                 chunk->RenderOpaques();
                 visible_chunks.push_back(chunk);

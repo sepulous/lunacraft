@@ -123,7 +123,7 @@ BlockID ItemIDToBlockID(ItemID item_id)
         return map.at(item_id);
 }
 
-bool ChunkInFrustum(const Plane frustum[6], const glm::vec3& chunk_min, const glm::vec3& chunk_max)
+bool ChunkInFrustum(const Plane frustum[6], float chunk_min_x, float chunk_min_z)
 {
     for (int i = 0; i < 6; i++)
     {
@@ -131,9 +131,9 @@ bool ChunkInFrustum(const Plane frustum[6], const glm::vec3& chunk_min, const gl
 
         // Compute the most positive point relative to plane normal
         glm::vec3 positive = {
-            (p.normal.x >= 0 ? chunk_max.x : chunk_min.x),
-            (p.normal.y >= 0 ? chunk_max.y : chunk_min.y),
-            (p.normal.z >= 0 ? chunk_max.z : chunk_min.z),
+            (p.normal.x < 0 ? chunk_min_x : chunk_min_x + CHUNK_SIZE),
+            (p.normal.y < 0 ? 0           : WORLD_HEIGHT_LIMIT),
+            (p.normal.z < 0 ? chunk_min_z : chunk_min_z + CHUNK_SIZE),
         };
 
         // If that point is behind the plane, the chunk is outside
