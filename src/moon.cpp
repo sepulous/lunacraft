@@ -237,36 +237,13 @@ void Moon::Update(double delta_time)
             break;
         }
 
-        if (t_max.x < t_max.y)
-        {
-            if (t_max.x < t_max.z)
-            {
-                voxel.x += step.x;
-                distance = t_max.x;
-                t_max.x += t_delta.x;
-            }
-            else
-            {
-                voxel.z += step.z;
-                distance = t_max.z;
-                t_max.z += t_delta.z;
-            }
-        }
-        else
-        {
-            if (t_max.y < t_max.z)
-            {
-                voxel.y += step.y;
-                distance = t_max.y;
-                t_max.y += t_delta.y;
-            }
-            else
-            {
-                voxel.z += step.z;
-                distance = t_max.z;
-                t_max.z += t_delta.z;
-            }
-        }
+        int min_comp_idx = (t_max.x < t_max.y && t_max.x < t_max.z) ? 0
+                         : (t_max.y < t_max.x && t_max.y < t_max.z) ? 1
+                         : 2;
+
+        voxel[min_comp_idx] += step[min_comp_idx];
+        distance = t_max[min_comp_idx];
+        t_max[min_comp_idx] += t_delta[min_comp_idx];
     }
 }
 
