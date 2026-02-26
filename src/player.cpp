@@ -93,6 +93,66 @@ Player::Player()
     _drill_bit_mesh.SetVertexData(drill_bit_vertices, sizeof(drill_bit_vertices) / (5 * sizeof(float)));
     _drill_bit_mesh.SetTexture(Storage::IMAGES / "player_drill.png");
 
+    // Pistol base mesh
+    float pistol_base_vertices[] = {
+        // Side
+        -1.0f, -1.0f,  4.0f,  0.0f,            0.0f,
+        -1.0f, -1.0f, -4.0f, (12.0f / 32.0f),  0.0f,
+        -1.0f,  1.0f, -4.0f, (12.0f / 32.0f), (4.0f / 16.0f),
+        -1.0f,  1.0f, -4.0f, (12.0f / 32.0f), (4.0f / 16.0f),
+        -1.0f,  1.0f,  4.0f,  0.0f,           (4.0f / 16.0f),
+        -1.0f, -1.0f,  4.0f,  0.0f,            0.0f,
+
+        // Top
+        -1.0f, 1.0f, -4.0f,  0.0f,           0.0f,
+         1.0f, 1.0f, -4.0f, (4.0f / 32.0f),  0.0f,
+         1.0f, 1.0f,  4.0f, (4.0f / 32.0f), (12.0f / 16.0f),
+         1.0f, 1.0f,  4.0f, (4.0f / 32.0f), (12.0f / 16.0f),
+        -1.0f, 1.0f,  4.0f,  0.0f,          (12.0f / 16.0f),
+        -1.0f, 1.0f, -4.0f,  0.0f,           0.0f,
+
+        // Back
+        -1.0f, -1.0f, -4.0f,  0.0f,           0.0f,
+         1.0f, -1.0f, -4.0f, (4.0f / 32.0f),  0.0f,
+         1.0f,  1.0f, -4.0f, (4.0f / 32.0f), (4.0f / 16.0f),
+         1.0f,  1.0f, -4.0f, (4.0f / 32.0f), (4.0f / 16.0f),
+        -1.0f,  1.0f, -4.0f,  0.0f,          (4.0f / 16.0f),
+        -1.0f, -1.0f, -4.0f,  0.0f,           0.0f,
+    };
+    _pistol_base_mesh.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
+    _pistol_base_mesh.SetVertexData(pistol_base_vertices, sizeof(pistol_base_vertices) / (5 * sizeof(float)));
+    _pistol_base_mesh.SetTexture(Storage::IMAGES / "player_pistol.png");
+
+    // Pistol slide mesh
+    float pistol_slide_vertices[] = {
+        // Back
+        -1.0f, -1.0f, -1.0f, 0.5f, 0.0f,
+         1.0f, -1.0f, -1.0f, 1.0f, 0.0f,
+         1.0f,  1.0f, -1.0f, 1.0f, 1.0f,
+         1.0f,  1.0f, -1.0f, 1.0f, 1.0f,
+        -1.0f,  1.0f, -1.0f, 1.0f, 0.0f,
+        -1.0f, -1.0f, -1.0f, 0.5f, 0.0f,
+
+        // Side
+        -1.0f, -1.0f,  1.0f, 0.5f, 0.0f,
+        -1.0f, -1.0f, -1.0f, 1.0f, 0.0f,
+        -1.0f,  1.0f, -1.0f, 1.0f, 1.0f,
+        -1.0f,  1.0f, -1.0f, 1.0f, 1.0f,
+        -1.0f,  1.0f,  1.0f, 1.0f, 0.0f,
+        -1.0f, -1.0f,  1.0f, 0.5f, 0.0f,
+
+        // Top
+        -1.0f, 1.0f, -1.0f, 0.5f, 0.0f,
+         1.0f, 1.0f, -1.0f, 1.0f, 0.0f,
+         1.0f, 1.0f,  1.0f, 1.0f, 1.0f,
+         1.0f, 1.0f,  1.0f, 1.0f, 1.0f,
+        -1.0f, 1.0f,  1.0f, 1.0f, 0.0f,
+        -1.0f, 1.0f, -1.0f, 0.5f, 0.0f,
+    };
+    _pistol_slide_mesh.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
+    _pistol_slide_mesh.SetVertexData(pistol_slide_vertices, sizeof(pistol_slide_vertices) / (5 * sizeof(float)));
+    _pistol_slide_mesh.SetTexture(Storage::IMAGES / "player_pistol.png");
+
     // Sprite mesh
     float sprite_vertices[] = {
         -1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
@@ -360,8 +420,21 @@ void Player::RenderArm(const glm::mat4 &vp_matrix)
     {
         if (selected_item == ItemID::slug_pistol_t1 || selected_item == ItemID::slug_pistol_t2 || selected_item == ItemID::slug_pistol_t3)
         {
-            // _pistol_base_mesh.Render(render_matrix);
-            // _pistol_slide_mesh.Render(render_matrix);
+            // Pistol base
+            auto pistol_base_model_matrix = glm::mat4(1.0);
+            pistol_base_model_matrix = glm::translate(pistol_base_model_matrix, {0.46f, -0.15f, -1.2f});
+            pistol_base_model_matrix = glm::scale(pistol_base_model_matrix, {0.08f, 0.08f, -0.08f});
+            _pistol_base_mesh.Render([&](Shader *shader) {
+                shader->SetMat4("u_mvp_matrix", vp_matrix * inv_view * pistol_base_model_matrix);
+            });
+
+            // Pistol slide
+            auto pistol_slide_model_matrix = glm::mat4(1.0);
+            pistol_slide_model_matrix = glm::translate(pistol_slide_model_matrix, {0.44f, -0.06f, -1.35f});
+            pistol_slide_model_matrix = glm::scale(pistol_slide_model_matrix, {0.03f, 0.02f, -0.02f});
+            _pistol_slide_mesh.Render([&](Shader *shader) {
+                shader->SetMat4("u_mvp_matrix", vp_matrix * inv_view * pistol_slide_model_matrix);
+            });
         }
         else if (selected_item == ItemID::drill_t1 || selected_item == ItemID::drill_t2 || selected_item == ItemID::drill_t3)
         {
