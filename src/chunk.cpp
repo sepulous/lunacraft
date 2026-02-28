@@ -191,12 +191,12 @@ void Chunk::UploadVertices()
     if (_opaque_vertices.size() <= _reserved_opaque_vertex_count)
     {
         glBufferSubData(GL_ARRAY_BUFFER, 0, _opaque_vertices.size() * sizeof(BlockVertex), _opaque_vertices.data());
-        glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, _opaque_indices.size() * sizeof(uint32_t), _opaque_indices.data());
+        glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, _opaque_indices.size() * sizeof(uint16_t), _opaque_indices.data());
     }
     else
     {
         glBufferData(GL_ARRAY_BUFFER, _opaque_vertices.size() * sizeof(BlockVertex), _opaque_vertices.data(), GL_STATIC_DRAW);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, _opaque_indices.size() * sizeof(uint32_t), _opaque_indices.data(), GL_STATIC_DRAW);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, _opaque_indices.size() * sizeof(uint16_t), _opaque_indices.data(), GL_STATIC_DRAW);
         _reserved_opaque_vertex_count = _opaque_vertices.size();
     }
 
@@ -206,12 +206,12 @@ void Chunk::UploadVertices()
     if (_transparent_vertices.size() <= _reserved_transparent_vertex_count)
     {
         glBufferSubData(GL_ARRAY_BUFFER, 0, _transparent_vertices.size() * sizeof(BlockVertex), _transparent_vertices.data());
-        glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, _transparent_indices.size() * sizeof(uint32_t), _transparent_indices.data());
+        glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, _transparent_indices.size() * sizeof(uint16_t), _transparent_indices.data());
     }
     else
     {
         glBufferData(GL_ARRAY_BUFFER, _transparent_vertices.size() * sizeof(BlockVertex), _transparent_vertices.data(), GL_STATIC_DRAW);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, _transparent_indices.size() * sizeof(uint32_t), _transparent_indices.data(), GL_STATIC_DRAW);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, _transparent_indices.size() * sizeof(uint16_t), _transparent_indices.data(), GL_STATIC_DRAW);
         _reserved_transparent_vertex_count = _transparent_vertices.size();
     }
 
@@ -228,7 +228,7 @@ void Chunk::UploadVertices()
 void Chunk::RenderOpaques()
 {
     glBindVertexArray(_opaque_vao);
-    glDrawElements(GL_TRIANGLES, _opaque_indices.size(), GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_TRIANGLES, _opaque_indices.size(), GL_UNSIGNED_SHORT, 0);
 }
 
 //
@@ -239,7 +239,7 @@ void Chunk::RenderOpaques()
 void Chunk::RenderTransparents()
 {
     glBindVertexArray(_transparent_vao);
-    glDrawElements(GL_TRIANGLES, _transparent_indices.size(), GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_TRIANGLES, _transparent_indices.size(), GL_UNSIGNED_SHORT, 0);
 }
 
 void Chunk::SetState(ChunkState state)
@@ -787,6 +787,8 @@ bool Chunk::BuildVertices()
             indices.push_back(index_base + 0);
         }
         index_base += 4;
+
+        printf("Opaque vertices: %i\n", _opaque_vertices.size());
     }
 
     SetState(ChunkState::READY_TO_UPLOAD);
