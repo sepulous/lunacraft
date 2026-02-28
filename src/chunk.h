@@ -106,15 +106,19 @@ private:
 
     // Opaque vertices
     std::vector<BlockVertex> _opaque_vertices;
+    std::vector<uint32_t> _opaque_indices;
     size_t _reserved_opaque_vertex_count = 0;
     GLuint _opaque_vao;
     GLuint _opaque_vbo;
+    GLuint _opaque_ebo;
 
     // Transparent vertices
     std::vector<BlockVertex> _transparent_vertices;
+    std::vector<uint32_t> _transparent_indices;
     size_t _reserved_transparent_vertex_count = 0;
     GLuint _transparent_vao;
     GLuint _transparent_vbo;
+    GLuint _transparent_ebo;
 
     // Lifetime control
     std::atomic<int> _pins{0};

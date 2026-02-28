@@ -45,6 +45,9 @@ Chunk::Chunk(glm::ivec3 coords, bool is_border_chunk, ChunkManager *chunk_manage
     glGenBuffers(1, &_opaque_vbo);
     glBindBuffer(GL_ARRAY_BUFFER, _opaque_vbo);
 
+    glGenBuffers(1, &_opaque_ebo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _opaque_ebo);
+
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 13 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 13 * sizeof(float), (void*)(3 * sizeof(float)));
@@ -60,6 +63,9 @@ Chunk::Chunk(glm::ivec3 coords, bool is_border_chunk, ChunkManager *chunk_manage
 
     glGenBuffers(1, &_transparent_vbo);
     glBindBuffer(GL_ARRAY_BUFFER, _transparent_vbo);
+
+    glGenBuffers(1, &_transparent_ebo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _transparent_ebo);
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 13 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
@@ -77,6 +83,8 @@ Chunk::~Chunk()
     glDeleteVertexArrays(1, &_transparent_vao);
     glDeleteBuffers(1, &_opaque_vbo);
     glDeleteBuffers(1, &_transparent_vbo);
+    glDeleteBuffers(1, &_opaque_ebo);
+    glDeleteBuffers(1, &_transparent_ebo);
 }
 
 ChunkState Chunk::GetState()
@@ -179,25 +187,31 @@ void Chunk::UploadVertices()
 {
     // Opaques
     glBindBuffer(GL_ARRAY_BUFFER, _opaque_vbo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _opaque_ebo);
     if (_opaque_vertices.size() <= _reserved_opaque_vertex_count)
     {
         glBufferSubData(GL_ARRAY_BUFFER, 0, _opaque_vertices.size() * sizeof(BlockVertex), _opaque_vertices.data());
+        glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, _opaque_indices.size() * sizeof(uint32_t), _opaque_indices.data());
     }
     else
     {
         glBufferData(GL_ARRAY_BUFFER, _opaque_vertices.size() * sizeof(BlockVertex), _opaque_vertices.data(), GL_STATIC_DRAW);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, _opaque_indices.size() * sizeof(uint32_t), _opaque_indices.data(), GL_STATIC_DRAW);
         _reserved_opaque_vertex_count = _opaque_vertices.size();
     }
 
     // Transparents
     glBindBuffer(GL_ARRAY_BUFFER, _transparent_vbo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _transparent_ebo);
     if (_transparent_vertices.size() <= _reserved_transparent_vertex_count)
     {
         glBufferSubData(GL_ARRAY_BUFFER, 0, _transparent_vertices.size() * sizeof(BlockVertex), _transparent_vertices.data());
+        glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, _transparent_indices.size() * sizeof(uint32_t), _transparent_indices.data());
     }
     else
     {
         glBufferData(GL_ARRAY_BUFFER, _transparent_vertices.size() * sizeof(BlockVertex), _transparent_vertices.data(), GL_STATIC_DRAW);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, _transparent_indices.size() * sizeof(uint32_t), _transparent_indices.data(), GL_STATIC_DRAW);
         _reserved_transparent_vertex_count = _transparent_vertices.size();
     }
 
@@ -214,7 +228,7 @@ void Chunk::UploadVertices()
 void Chunk::RenderOpaques()
 {
     glBindVertexArray(_opaque_vao);
-    glDrawArrays(GL_TRIANGLES, 0, _opaque_vertices.size());
+    glDrawElements(GL_TRIANGLES, _opaque_indices.size(), GL_UNSIGNED_INT, 0);
 }
 
 //
@@ -225,7 +239,7 @@ void Chunk::RenderOpaques()
 void Chunk::RenderTransparents()
 {
     glBindVertexArray(_transparent_vao);
-    glDrawArrays(GL_TRIANGLES, 0, _transparent_vertices.size());
+    glDrawElements(GL_TRIANGLES, _transparent_indices.size(), GL_UNSIGNED_INT, 0);
 }
 
 void Chunk::SetState(ChunkState state)
@@ -555,7 +569,7 @@ bool Chunk::UpdateVertexLighting()
     std::vector<BlockVertex> *vertex_lists[2] = {&_opaque_vertices, &_transparent_vertices};
     for (auto vertices : vertex_lists)
     {
-        for (int i = 0; i < vertices->size(); i += 6)
+        for (int i = 0; i < vertices->size(); i += 4)
         {
             auto &first = vertices->at(i);
 
@@ -606,11 +620,9 @@ bool Chunk::UpdateVertexLighting()
             float block_light = (float)_block_light * (100.0f / 9.0f);  // so let's scale to [0, 100] so his code works as-is
 
             float corrected_sky_light = (sky_light * ambient_light + (1.0 - ambient_light) * sky_light * dot) * sunlight_factor;
-            float scaled_sky_light;
+            float scaled_sky_light = 0;
             if (corrected_sky_light != 0)
                 scaled_sky_light = ((corrected_sky_light / 100.0) * 68.0) + 32;
-            else
-                scaled_sky_light = 0;
 
             if (sin_world_time > 0)
             {
@@ -627,8 +639,6 @@ bool Chunk::UpdateVertexLighting()
             vertices->at(i+1).light = light;
             vertices->at(i+2).light = light;
             vertices->at(i+3).light = light;
-            vertices->at(i+4).light = light;
-            vertices->at(i+5).light = light;
         }
     }
 
@@ -656,7 +666,11 @@ bool Chunk::BuildVertices()
     auto tile_origins = GetAtlasTileOrigins();
 
     _opaque_vertices.clear();
+    _opaque_indices.clear();
     _transparent_vertices.clear();
+    _transparent_indices.clear();
+    int opaque_index_base = 0;
+    int transparent_index_base = 0;
     for (const BlockQuad &quad : quads)
     {
         // Determine vertex normal
@@ -746,24 +760,33 @@ bool Chunk::BuildVertices()
 
         // Push vertices
         auto &vertices = BlockIsOpaque(quad.block) ? _opaque_vertices : _transparent_vertices;
+        vertices.emplace_back(base_pos,                     glm::vec4{0,          0,           tile_origin}, normal, light); // 0
+        vertices.emplace_back(base_pos + quad.dv,           glm::vec4{0,          quad_height, tile_origin}, normal, light); // 1
+        vertices.emplace_back(base_pos + quad.dv + quad.du, glm::vec4{quad_width, quad_height, tile_origin}, normal, light); // 2
+        vertices.emplace_back(base_pos + quad.du,           glm::vec4{quad_width, 0,           tile_origin}, normal, light); // 3
+
+        // Push indices
+        auto &indices = BlockIsOpaque(quad.block) ? _opaque_indices : _transparent_indices;
+        auto &index_base = BlockIsOpaque(quad.block) ? opaque_index_base : transparent_index_base;
         if (!quad.back_face)
         {
-            vertices.emplace_back(base_pos,                     glm::vec4{0,          0,           tile_origin}, normal, light);
-            vertices.emplace_back(base_pos + quad.dv,           glm::vec4{0,          quad_height, tile_origin}, normal, light);
-            vertices.emplace_back(base_pos + quad.dv + quad.du, glm::vec4{quad_width, quad_height, tile_origin}, normal, light);
-            vertices.emplace_back(base_pos + quad.dv + quad.du, glm::vec4{quad_width, quad_height, tile_origin}, normal, light);
-            vertices.emplace_back(base_pos + quad.du,           glm::vec4{quad_width, 0,           tile_origin}, normal, light);
-            vertices.emplace_back(base_pos,                     glm::vec4{0,          0,           tile_origin}, normal, light);
+            indices.push_back(index_base + 0);
+            indices.push_back(index_base + 1);
+            indices.push_back(index_base + 2);
+            indices.push_back(index_base + 2);
+            indices.push_back(index_base + 3);
+            indices.push_back(index_base + 0);
         }
         else
         {
-            vertices.emplace_back(base_pos,                     glm::vec4{0,          0,           tile_origin}, normal, light);
-            vertices.emplace_back(base_pos + quad.du,           glm::vec4{quad_width, 0,           tile_origin}, normal, light);
-            vertices.emplace_back(base_pos + quad.dv + quad.du, glm::vec4{quad_width, quad_height, tile_origin}, normal, light);
-            vertices.emplace_back(base_pos + quad.dv + quad.du, glm::vec4{quad_width, quad_height, tile_origin}, normal, light);
-            vertices.emplace_back(base_pos + quad.dv,           glm::vec4{0,          quad_height, tile_origin}, normal, light);
-            vertices.emplace_back(base_pos,                     glm::vec4{0,          0,           tile_origin}, normal, light);
+            indices.push_back(index_base + 0);
+            indices.push_back(index_base + 3);
+            indices.push_back(index_base + 2);
+            indices.push_back(index_base + 2);
+            indices.push_back(index_base + 1);
+            indices.push_back(index_base + 0);
         }
+        index_base += 4;
     }
 
     SetState(ChunkState::READY_TO_UPLOAD);
