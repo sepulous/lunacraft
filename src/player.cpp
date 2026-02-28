@@ -190,6 +190,16 @@ void Player::Update(float delta_time)
     if (glm::length(_input_direction) > 0)
         _input_direction = glm::normalize(_input_direction);
 
+    // Punching
+    if (Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_LEFT) && !ItemIsDrill(_inventory.GetSelectedItem()) && !ItemIsPistol(_inventory.GetSelectedItem()))
+    {
+        _time_punching += delta_time;
+    }
+    else
+    {
+        _time_punching = 0;
+    }
+
     // Use medkit
     if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT) && _inventory.GetSelectedItem() == ItemID::medkit && _health < 100)
     {
@@ -407,9 +417,11 @@ void Player::RenderArm(const glm::mat4 &vp_matrix)
 {
     auto inv_view = glm::inverse(_camera.GetViewMatrix()); // To do this in camera space
 
+    float arm_displacement = 0.2f * glm::pow(glm::sin(7.0f * _time_punching), 2);
+
     // Arm
     auto arm_model_matrix = glm::mat4(1.0);
-    arm_model_matrix = glm::translate(arm_model_matrix, {0.48f, -0.35f, -0.35f});
+    arm_model_matrix = glm::translate(arm_model_matrix, {0.48f, -0.35f, -0.35f - arm_displacement});
     arm_model_matrix = glm::scale(arm_model_matrix, {-0.45f, 0.45f, -0.45f});
     _arm_mesh.Render([&](Shader *shader) {
         shader->SetMat4("u_mvp_matrix", vp_matrix * inv_view * arm_model_matrix);
@@ -457,7 +469,7 @@ void Player::RenderArm(const glm::mat4 &vp_matrix)
         else if (ItemIsSprite(selected_item))
         {
             auto sprite_model_matrix = glm::mat4(1.0);
-            sprite_model_matrix = glm::translate(sprite_model_matrix, {0.362f, -0.335f, -0.95f});
+            sprite_model_matrix = glm::translate(sprite_model_matrix, {0.362f, -0.335f, -0.95f - arm_displacement});
             sprite_model_matrix = glm::scale(sprite_model_matrix, {0.14f, 0.14f, -0.14f});
 
             if (_last_held_sprite != selected_item)
@@ -472,7 +484,7 @@ void Player::RenderArm(const glm::mat4 &vp_matrix)
         else
         {
             auto block_model_matrix = glm::mat4(1.0);
-            block_model_matrix = glm::translate(block_model_matrix, {0.38f, -0.25f, -1.0f});
+            block_model_matrix = glm::translate(block_model_matrix, {0.38f, -0.25f, -1.0f - arm_displacement});
             block_model_matrix = glm::scale(block_model_matrix, {0.14f, 0.14f, -0.14f});
             
             if (_last_held_block != selected_item) // If last item was sprite, we always do this even if the block UV hasn't changed...

@@ -28,6 +28,16 @@ bool ItemIsSprite(ItemID item)
         || item == ItemID::chronowinder;
 }
 
+bool ItemIsDrill(ItemID item)
+{
+    return item == ItemID::drill_t1 || item == ItemID::drill_t2 || item == ItemID::drill_t3;
+}
+
+bool ItemIsPistol(ItemID item)
+{
+    return item == ItemID::slug_pistol_t1 || item == ItemID::slug_pistol_t2 || item == ItemID::slug_pistol_t3;
+}
+
 bool ItemIsDisk(ItemID item)
 {
     return item == ItemID::disk || item == ItemID::disk1 || item == ItemID::disk2
