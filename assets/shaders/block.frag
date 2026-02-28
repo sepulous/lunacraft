@@ -6,7 +6,7 @@ in vec2 v_tex;
 in vec2 v_tile_origin;
 in vec3 v_normal;
 in vec3 v_ws_position;
-in vec3 v_light;
+in vec2 v_light;
 
 uniform sampler2D u_block_texture;
 uniform vec3 u_ws_camera_position;
@@ -18,7 +18,10 @@ void main()
     vec2 local_uv = fract(v_tex);
     vec2 atlas_uv = v_tile_origin + local_uv / 14.0; // atlas is 14x14
     vec4 tex_color = texture(u_block_texture, atlas_uv);
-    tex_color = vec4(v_light * tex_color.rgb, tex_color.a);
+    tex_color = vec4(v_light.x * tex_color.r,
+                     v_light.x * tex_color.g,
+                     v_light.y * tex_color.b,
+                     tex_color.a);
 
     float view_distance = length(u_ws_camera_position - v_ws_position) - u_fog_distance;
     float fog_factor = clamp(exp(-0.1 * view_distance), 0, 1);

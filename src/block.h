@@ -68,7 +68,7 @@ struct BlockVertex
     glm::vec3 position; // Global coordinates
     glm::vec4 uv; // {repeat_width, repeat_height, tile_origin_x, tile_origin_y}
     glm::vec3 face_normal;
-    glm::vec3 light;
+    glm::vec2 light;
 };
 
 inline std::unordered_map<BlockID, glm::mat3x2> GetAtlasTileOrigins()

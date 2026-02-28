@@ -48,13 +48,13 @@ Chunk::Chunk(glm::ivec3 coords, bool is_border_chunk, ChunkManager *chunk_manage
     glGenBuffers(1, &_opaque_ebo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _opaque_ebo);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 13 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 12 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 13 * sizeof(float), (void*)(3 * sizeof(float)));
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 12 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 13 * sizeof(float), (void*)(7 * sizeof(float)));
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 12 * sizeof(float), (void*)(7 * sizeof(float)));
     glEnableVertexAttribArray(2);
-    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 13 * sizeof(float), (void*)(10 * sizeof(float)));
+    glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, 12 * sizeof(float), (void*)(10 * sizeof(float)));
     glEnableVertexAttribArray(3);
     
     // Transparents
@@ -67,13 +67,13 @@ Chunk::Chunk(glm::ivec3 coords, bool is_border_chunk, ChunkManager *chunk_manage
     glGenBuffers(1, &_transparent_ebo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _transparent_ebo);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 13 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 12 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 13 * sizeof(float), (void*)(3 * sizeof(float)));
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 12 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 13 * sizeof(float), (void*)(7 * sizeof(float)));
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 12 * sizeof(float), (void*)(7 * sizeof(float)));
     glEnableVertexAttribArray(2);
-    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 13 * sizeof(float), (void*)(10 * sizeof(float)));
+    glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, 12 * sizeof(float), (void*)(10 * sizeof(float)));
     glEnableVertexAttribArray(3);
 }
 
@@ -702,7 +702,7 @@ bool Chunk::BuildVertices()
         // the original game (definitely at least v1.91).
         //
 
-        glm::vec3 light;
+        glm::vec2 light;
 
         float world_time = Moon::GetCurrentMoon()->GetWorldTime();
         float snapped_world_time = (((int)world_time % 330) / 30) * 30; // Snap world time to beginning of phase so all chunks in the same phase agree on ambient_light
@@ -749,21 +749,21 @@ bool Chunk::BuildVertices()
 
         if (sin_world_time > 0)
         {
-            light = glm::vec3(glm::max(scaled_sky_light, block_light) / 100.0f);
+            light = glm::vec2(glm::max(scaled_sky_light, block_light) / 100.0f);
         }
         else
         {
             float red_green = glm::clamp(block_light / 100.0f + scaled_sky_light * sunlight_factor * 0.01f, 0.0f, 1.0f);
             float blue = glm::clamp(block_light / 100.0f + scaled_sky_light * 0.01f, 0.0f, 1.0f);
-            light = {red_green, red_green, blue};
+            light = {red_green, blue};
         }
 
         // Push vertices
         auto &vertices = BlockIsOpaque(quad.block) ? _opaque_vertices : _transparent_vertices;
-        vertices.emplace_back(base_pos,                     glm::vec4{0,          0,           tile_origin}, normal, light); // 0
-        vertices.emplace_back(base_pos + quad.dv,           glm::vec4{0,          quad_height, tile_origin}, normal, light); // 1
-        vertices.emplace_back(base_pos + quad.dv + quad.du, glm::vec4{quad_width, quad_height, tile_origin}, normal, light); // 2
-        vertices.emplace_back(base_pos + quad.du,           glm::vec4{quad_width, 0,           tile_origin}, normal, light); // 3
+        vertices.emplace_back(base_pos,                     glm::vec4{0,          0,           tile_origin}, normal, light);
+        vertices.emplace_back(base_pos + quad.dv,           glm::vec4{0,          quad_height, tile_origin}, normal, light);
+        vertices.emplace_back(base_pos + quad.dv + quad.du, glm::vec4{quad_width, quad_height, tile_origin}, normal, light);
+        vertices.emplace_back(base_pos + quad.du,           glm::vec4{quad_width, 0,           tile_origin}, normal, light);
 
         // Push indices
         auto &indices = BlockIsOpaque(quad.block) ? _opaque_indices : _transparent_indices;
@@ -787,8 +787,6 @@ bool Chunk::BuildVertices()
             indices.push_back(index_base + 0);
         }
         index_base += 4;
-
-        printf("Opaque vertices: %i\n", _opaque_vertices.size());
     }
 
     SetState(ChunkState::READY_TO_UPLOAD);
