@@ -262,6 +262,14 @@ void Player::Update(float delta_time)
     else
         _time_walking = 0;
 
+    // Camera shake when flying
+    if (_is_flying)
+        _time_flying += delta_time;
+    else
+        _time_flying = 0;
+
+    _camera.pitch += 0.005f * glm::sin(80.0f * _time_flying);
+
     _camera.position = _position + glm::vec3(0, 0.9f, 0);
 }
 
