@@ -31,6 +31,7 @@ class Player : public Entity
         float _fall_time = 0;
         bool _is_flying = false;
         float _time_punching = 0;
+        float _time_walking = 0;
         float _time_since_last_health_update = 0;
         float _time_since_last_suit_update = 0;
         float _time_since_last_jetpack_update = 0;
