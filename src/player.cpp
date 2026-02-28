@@ -252,22 +252,49 @@ void Player::Update(float delta_time)
 
     // Punching
     if (Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_LEFT) && !ItemIsDrill(_inventory.GetSelectedItem()) && !ItemIsPistol(_inventory.GetSelectedItem()))
+    {
         _time_punching += delta_time;
-    else
-        _time_punching = 0;
+        _arm_extent = 0.2f * glm::pow(glm::sin(7.0f * _time_punching), 2);
+    }
+    else if (_time_punching != 0) // Animation should stop
+    {
+        if (glm::abs(_arm_extent) < 0.01f)
+        {
+            _arm_extent = 0;
+            _time_punching = 0;
+        }
+        else
+        {
+            _time_punching += delta_time;
+            _arm_extent = 0.2f * glm::pow(glm::sin(7.0f * _time_punching), 2);
+        }
+    }
 
     // Walking (animation)
     if (glm::length(_input_direction) > 0)
+    {
         _time_walking += delta_time;
-    else
-        _time_walking = 0;
+        _arm_bob = 0.01f * glm::pow(glm::sin(5.0f * _time_walking), 2);
+    }
+    else if (_time_walking != 0)
+    {
+        if (glm::abs(_arm_bob) < 0.001f)
+        {
+            _arm_bob = 0;
+            _time_walking = 0;
+        }
+        else
+        {
+            _time_walking += delta_time;
+            _arm_bob = 0.01f * glm::pow(glm::sin(5.0f * _time_walking), 2);
+        }
+    }
 
     // Camera shake when flying
     if (_is_flying)
         _time_flying += delta_time;
     else
         _time_flying = 0;
-
     _camera.pitch += 0.005f * glm::sin(80.0f * _time_flying);
 
     _camera.position = _position + glm::vec3(0, 0.9f, 0);
@@ -427,12 +454,9 @@ void Player::RenderArm(const glm::mat4 &vp_matrix)
 {
     auto inv_view = glm::inverse(_camera.GetViewMatrix()); // To do this in camera space
 
-    float arm_extent = 0.2f * glm::pow(glm::sin(7.0f * _time_punching), 2);
-    float arm_bob = 0.01f * glm::pow(glm::sin(5.0f * _time_walking), 2);
-
     // Arm
     auto arm_model_matrix = glm::mat4(1.0);
-    arm_model_matrix = glm::translate(arm_model_matrix, {0.48f, -0.35f + arm_bob, -0.35f - arm_extent});
+    arm_model_matrix = glm::translate(arm_model_matrix, {0.48f, -0.35f + _arm_bob, -0.35f - _arm_extent});
     arm_model_matrix = glm::scale(arm_model_matrix, {-0.45f, 0.45f, -0.45f});
     _arm_mesh.Render([&](Shader *shader) {
         shader->SetMat4("u_mvp_matrix", vp_matrix * inv_view * arm_model_matrix);
@@ -445,7 +469,7 @@ void Player::RenderArm(const glm::mat4 &vp_matrix)
         {
             // Pistol base
             auto pistol_base_model_matrix = glm::mat4(1.0);
-            pistol_base_model_matrix = glm::translate(pistol_base_model_matrix, {0.46f, -0.15f + arm_bob, -1.2f});
+            pistol_base_model_matrix = glm::translate(pistol_base_model_matrix, {0.46f, -0.15f + _arm_bob, -1.2f});
             pistol_base_model_matrix = glm::scale(pistol_base_model_matrix, {0.08f, 0.08f, -0.08f});
             _pistol_base_mesh.Render([&](Shader *shader) {
                 shader->SetMat4("u_mvp_matrix", vp_matrix * inv_view * pistol_base_model_matrix);
@@ -453,7 +477,7 @@ void Player::RenderArm(const glm::mat4 &vp_matrix)
 
             // Pistol slide
             auto pistol_slide_model_matrix = glm::mat4(1.0);
-            pistol_slide_model_matrix = glm::translate(pistol_slide_model_matrix, {0.44f, -0.06f + arm_bob, -1.35f});
+            pistol_slide_model_matrix = glm::translate(pistol_slide_model_matrix, {0.44f, -0.06f + _arm_bob, -1.35f});
             pistol_slide_model_matrix = glm::scale(pistol_slide_model_matrix, {0.03f, 0.02f, -0.02f});
             _pistol_slide_mesh.Render([&](Shader *shader) {
                 shader->SetMat4("u_mvp_matrix", vp_matrix * inv_view * pistol_slide_model_matrix);
@@ -463,7 +487,7 @@ void Player::RenderArm(const glm::mat4 &vp_matrix)
         {
             // Drill base
             auto drill_base_model_matrix = glm::mat4(1.0);
-            drill_base_model_matrix = glm::translate(drill_base_model_matrix, {0.5f, -0.35f + arm_bob, -1.0f});
+            drill_base_model_matrix = glm::translate(drill_base_model_matrix, {0.5f, -0.35f + _arm_bob, -1.0f});
             drill_base_model_matrix = glm::scale(drill_base_model_matrix, {0.15f, 0.15f, -0.15f});
             _drill_base_mesh.Render([&](Shader *shader) {
                 shader->SetMat4("u_mvp_matrix", vp_matrix * inv_view * drill_base_model_matrix);
@@ -471,7 +495,7 @@ void Player::RenderArm(const glm::mat4 &vp_matrix)
 
             // Drill bit
             auto drill_bit_model_matrix = glm::mat4(1.0);
-            drill_bit_model_matrix = glm::translate(drill_bit_model_matrix, {0.5f, -0.35f + arm_bob, -1.5f});
+            drill_bit_model_matrix = glm::translate(drill_bit_model_matrix, {0.5f, -0.35f + _arm_bob, -1.5f});
             drill_bit_model_matrix = glm::scale(drill_bit_model_matrix, {0.05f, 0.05f, -0.05f});
             _drill_bit_mesh.Render([&](Shader *shader) {
                 shader->SetMat4("u_mvp_matrix", vp_matrix * inv_view * drill_bit_model_matrix);
@@ -480,7 +504,7 @@ void Player::RenderArm(const glm::mat4 &vp_matrix)
         else if (ItemIsSprite(selected_item))
         {
             auto sprite_model_matrix = glm::mat4(1.0);
-            sprite_model_matrix = glm::translate(sprite_model_matrix, {0.362f, -0.335f + arm_bob, -0.95f - arm_extent});
+            sprite_model_matrix = glm::translate(sprite_model_matrix, {0.362f, -0.335f + _arm_bob, -0.95f - _arm_extent});
             sprite_model_matrix = glm::scale(sprite_model_matrix, {0.14f, 0.14f, -0.14f});
 
             if (_last_held_sprite != selected_item)
@@ -495,7 +519,7 @@ void Player::RenderArm(const glm::mat4 &vp_matrix)
         else
         {
             auto block_model_matrix = glm::mat4(1.0);
-            block_model_matrix = glm::translate(block_model_matrix, {0.38f, -0.25f + arm_bob, -1.0f - arm_extent});
+            block_model_matrix = glm::translate(block_model_matrix, {0.38f, -0.25f + _arm_bob, -1.0f - _arm_extent});
             block_model_matrix = glm::scale(block_model_matrix, {0.14f, 0.14f, -0.14f});
             
             if (_last_held_block != selected_item)

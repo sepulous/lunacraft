@@ -30,9 +30,6 @@ class Player : public Entity
         bool _was_grounded = false;
         float _fall_time = 0;
         bool _is_flying = false;
-        float _time_punching = 0;
-        float _time_walking = 0;
-        float _time_flying = 0;
         float _time_since_last_health_update = 0;
         float _time_since_last_suit_update = 0;
         float _time_since_last_jetpack_update = 0;
@@ -46,6 +43,16 @@ class Player : public Entity
         Mesh _drill_bit_mesh;
         Mesh _sprite_mesh;
         Mesh _block_mesh;
+
+        // Punching animation
+        float _time_punching = 0;
+        float _arm_extent = 0;
+
+        // Bob animation
+        float _time_walking = 0;
+        float _arm_bob = 0;
+
+        float _time_flying = 0;
 
     public:
         Player();
