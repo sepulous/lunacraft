@@ -113,4 +113,6 @@ struct ItemIcon
 std::string GetItemFile(ItemID item);
 std::unordered_map<ScannerDataType, std::string> GetItemScannerData(ItemID item);
 bool ItemIsSprite(ItemID item);
+bool ItemIsDisk(ItemID item);
+bool ItemIsBlock(ItemID item);
 ItemIcon GetItemIcon(ItemID item);

@@ -20,18 +20,40 @@ class SelectionBlock
         void SetPosition(const glm::ivec3 &position);
         glm::ivec3 GetPosition();
 
+        void SetAdjacentPosition(const glm::ivec3 &position);
+        glm::ivec3 GetAdjacentPosition();
+
         void SetActive(bool active);
+        bool IsActive();
 
         void Render(const glm::mat4 &mvp_matrix);
 
     private:
         Mesh _mesh;
         glm::ivec3 _position;
+        glm::ivec3 _adjacent_position;
         bool _active;
 };
 
 class Moon
 {
+    public:
+        Moon(int id, MoonSettings moon_settings);
+        ~Moon();
+        ChunkManager &GetChunkManager();
+        EntityManager &GetEntityManager();
+        Player *GetPlayer();
+        glm::vec4 GetFogColor();
+        int GetID();
+        float GetLoadProgress();
+        MoonSettings GetSettings();
+        double GetWorldTime();
+        glm::vec3 GetSunlightDirection();
+        void Update(double delta_time);
+        void Render(const glm::mat4 &projection);
+
+        static Moon *GetCurrentMoon();
+
     private:
         static Moon *_current_moon;
 
@@ -50,20 +72,6 @@ class Moon
         ChunkManager _chunk_manager;
         EntityManager _entity_manager;
 
-    public:
-        Moon(int id, MoonSettings moon_settings);
-        ~Moon();
-        ChunkManager &GetChunkManager();
-        EntityManager &GetEntityManager();
-        Player *GetPlayer();
-        glm::vec4 GetFogColor();
-        int GetID();
-        float GetLoadProgress();
-        MoonSettings GetSettings();
-        double GetWorldTime();
-        glm::vec3 GetSunlightDirection();
-        void Update(double delta_time);
-        void Render(const glm::mat4 &projection);
-
-        static Moon *GetCurrentMoon();
+    private:
+        void UpdateSelectionBlock();
 };

@@ -1,6 +1,25 @@
 
 #include "chunk_worker_pool.h"
 
+//
+// ChunkJob
+//
+
+bool ChunkJob::ExecuteNextTask()
+{
+    auto &task = tasks[current_task];
+    return (chunk->*task)();
+}
+
+bool ChunkJob::IsDone()
+{
+    return current_task == tasks.size();
+}
+
+//
+// ChunkWorkerPool
+//
+
 ChunkWorkerPool::ChunkWorkerPool()
 {
     size_t worker_count = std::thread::hardware_concurrency() - 1;
@@ -24,7 +43,7 @@ ChunkWorkerPool::~ChunkWorkerPool()
         worker.join();
 }
 
-void ChunkWorkerPool::SubmitJob(std::function<void()> job)
+void ChunkWorkerPool::SubmitJob(ChunkJob job)
 {
     {
         std::lock_guard<std::mutex> lock(_jobs_mutex);
@@ -37,7 +56,7 @@ void ChunkWorkerPool::WorkerLoop()
 {
     while (true)
     {
-        std::function<void()> job;
+        ChunkJob job;
 
         {
             std::unique_lock<std::mutex> lock(_jobs_mutex);
@@ -52,6 +71,19 @@ void ChunkWorkerPool::WorkerLoop()
             _jobs.pop();
         }
 
-        job();
+        bool success = job.ExecuteNextTask();
+
+        if (success)
+            job.current_task++;
+
+        // If next task is just to unpin neighbors, do it here and avoid the yield overhead.
+        if (job.tasks[job.current_task] == ChunkTask::UNPIN_NEIGHBORS)
+        {
+            job.ExecuteNextTask();
+            job.current_task++; // Unpinning always succeeds
+        }
+
+        if (!job.IsDone())
+            SubmitJob(job);
     }
 }

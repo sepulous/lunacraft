@@ -38,10 +38,10 @@ class ChunkManager
         void AdjustChunkPatch();
         void UploadReadyChunks();
         void RenderChunks(Plane frustum[6]);
-        void RebuildChunks();
+        void UpdateGlobalLighting();
+        void HandlePlayerModification(glm::ivec3 voxel, BlockID block_placed = BlockID::air);
         BlockID *GetBlockMemory(uint64_t chunk_id);
-        std::array<Chunk *, 4> GetAdjacentNeighbors(glm::ivec3 chunk_coords);
-        std::array<Chunk *, 8> GetAllNeighbors(glm::ivec3 chunk_coords);
+        std::array<Chunk *, 4> GetNeighbors(glm::ivec3 chunk_coords);
         Chunk *GetChunk(glm::ivec3 chunk_coords);
         ChunkWorkerPool *GetWorkerPool();
         int GetLoadedChunkCount();

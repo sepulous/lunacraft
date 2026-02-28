@@ -74,6 +74,62 @@ void ChunkManager::UploadReadyChunks()
     }
 }
 
+void ChunkManager::HandlePlayerModification(glm::ivec3 voxel, BlockID block_placed)
+{
+    // Get chunk
+    auto chunk_coords = VoxelToChunk(voxel);
+    auto chunk = _chunks.at(ChunkCoordsToID(chunk_coords));
+
+    // Remove block
+    auto local = GlobalToLocalVoxel(voxel);
+    chunk->GetBlocks()[GetChunkIndex(local)] = block_placed;
+
+    // Rebuild this chunk
+    chunk->PinNeighbors();
+    _worker_pool->SubmitJob({chunk, {
+        ChunkTask::BUILD_LIGHTMAP_INTERNAL,
+        ChunkTask::BUILD_LIGHTMAP_EXTERNAL,
+        ChunkTask::BUILD_VERTICES,
+        ChunkTask::UNPIN_NEIGHBORS
+    }});
+
+    // Rebuild neighbor chunks
+    auto neighbor_chunks = GetNeighbors(chunk_coords);
+    auto voxel_local = GlobalToLocalVoxel(voxel);
+    if (voxel_local.x != 0 && voxel_local.x != CHUNK_SIZE - 1 && voxel_local.z != 0 && voxel_local.z != CHUNK_SIZE - 1) // Not on chunk border
+    {
+        for (auto &neighbor : neighbor_chunks)
+        {
+            neighbor->PinNeighbors();
+            _worker_pool->SubmitJob({neighbor, {
+                ChunkTask::BUILD_LIGHTMAP_EXTERNAL,
+                ChunkTask::UPDATE_VERTEX_LIGHTING,
+                ChunkTask::UNPIN_NEIGHBORS
+            }});
+        }
+    }
+    else // On chunk border
+    {
+        int indices[] = {2, 0, 2, 0}; // {z, x, z, x}
+        int borders[] = {CHUNK_SIZE - 1, CHUNK_SIZE - 1, 0, 0}; // {z_max, x_max, z_min, x_min}
+        for (int i = 0; i < 4; i++)
+        {
+            // This is just a compact way to decide whether the modified voxel shares a border with
+            // the ith neighbor, to decide how that neighbor should update its vertices. If a shared
+            // border was modified, the neighbor must remesh; otherwise, it only needs to update lighting.
+            auto vertex_task = voxel_local[indices[i]] == borders[i] ? ChunkTask::BUILD_VERTICES
+                                                                     : ChunkTask::UPDATE_VERTEX_LIGHTING;
+            auto neighbor = neighbor_chunks[i];
+            neighbor->PinNeighbors();
+            _worker_pool->SubmitJob({neighbor, {
+                ChunkTask::BUILD_LIGHTMAP_EXTERNAL,
+                vertex_task,
+                ChunkTask::UNPIN_NEIGHBORS
+            }});
+        }
+    }
+}
+
 void ChunkManager::RenderChunks(Plane frustum[6])
 {
     glBindTexture(GL_TEXTURE_2D, _texture_atlas);
@@ -106,13 +162,19 @@ void ChunkManager::RenderChunks(Plane frustum[6])
     }
 }
 
-void ChunkManager::RebuildChunks()
+void ChunkManager::UpdateGlobalLighting()
 {
     for (auto it = _chunks.begin(); it != _chunks.end(); ++it)
     {
         Chunk *chunk = it->second;
         if (!chunk->IsBorderChunk())
-            chunk->Rebuild();
+        {
+            chunk->PinNeighbors();
+            _worker_pool->SubmitJob({chunk, {
+                ChunkTask::UPDATE_VERTEX_LIGHTING,
+                ChunkTask::UNPIN_NEIGHBORS
+            }});
+        }
     }
 }
 
@@ -140,10 +202,31 @@ void ChunkManager::CreateInitialPatch()
 
     // Chunks expect their neighbors to exist when building, so we defer it
     for (auto it = _chunks.begin(); it != _chunks.end(); ++it)
-        it->second->Build();
+    {
+        auto chunk = it->second;
+        if (chunk->IsBorderChunk())
+        {
+            _worker_pool->SubmitJob({chunk, {
+                ChunkTask::LOAD_BLOCKS,
+                ChunkTask::BUILD_LIGHTMAP_INTERNAL
+            }});
+        }
+        else
+        {
+            chunk->PinNeighbors();
+            _worker_pool->SubmitJob({chunk, {
+                ChunkTask::LOAD_BLOCKS,
+                ChunkTask::BUILD_LIGHTMAP_INTERNAL,
+                ChunkTask::BUILD_LIGHTMAP_EXTERNAL,
+                ChunkTask::BUILD_VERTICES,
+                ChunkTask::UNPIN_NEIGHBORS
+            }});
+        }
+    }
 }
 
-std::array<Chunk *, 4> ChunkManager::GetAdjacentNeighbors(glm::ivec3 chunk_coords)
+// Get chunk's neighbors in order {front, right, back, left}
+std::array<Chunk *, 4> ChunkManager::GetNeighbors(glm::ivec3 chunk_coords)
 {
     std::array<Chunk *, 4> neighbors;
 
@@ -152,32 +235,6 @@ std::array<Chunk *, 4> ChunkManager::GetAdjacentNeighbors(glm::ivec3 chunk_coord
         {chunk_coords.x + 1, 0, chunk_coords.z}, // Right
         {chunk_coords.x, 0, chunk_coords.z - 1}, // Back
         {chunk_coords.x - 1, 0, chunk_coords.z}  // Left
-    };
-
-    size_t idx = 0;
-    for (auto &neighbor : neighbor_coords)
-    {
-        auto chunk_id = ChunkCoordsToID(neighbor);
-        neighbors[idx] = _chunks.at(chunk_id); // Existence of neighbors should be guaranteed
-        idx++;
-    }
-
-    return neighbors;
-}
-
-std::array<Chunk *, 8> ChunkManager::GetAllNeighbors(glm::ivec3 chunk_coords)
-{
-    std::array<Chunk *, 8> neighbors;
-
-    glm::ivec3 neighbor_coords[] = {
-        {chunk_coords.x - 1, 0, chunk_coords.z},
-        {chunk_coords.x + 1, 0, chunk_coords.z},
-        {chunk_coords.x, 0, chunk_coords.z - 1},
-        {chunk_coords.x, 0, chunk_coords.z + 1},
-        {chunk_coords.x - 1, 0, chunk_coords.z - 1},
-        {chunk_coords.x - 1, 0, chunk_coords.z + 1},
-        {chunk_coords.x + 1, 0, chunk_coords.z - 1},
-        {chunk_coords.x + 1, 0, chunk_coords.z + 1},
     };
 
     size_t idx = 0;
@@ -213,14 +270,14 @@ void ChunkManager::AdjustChunkPatch()
             chunk->MarkForDelete();
             if (chunk->GetPinCount() < 1)
             {
-                // Write chunk to disk and then take block memory back
-                auto file_path = chunk->GetFilePath();
-                auto blocks = chunk->GetBlocks();
-                auto chunk_id = chunk->GetID();
-                _worker_pool->SubmitJob([this, file_path, blocks, chunk_id]() {
-                    WriteChunkToDisk(file_path, blocks);
-                    ReuseBlockMemory(chunk_id);
-                });
+                // // Write chunk to disk and then take block memory back
+                // auto file_path = chunk->GetFilePath();
+                // auto blocks = chunk->GetBlocks();
+                // auto chunk_id = chunk->GetID();
+                // _worker_pool->SubmitJob([this, file_path, blocks, chunk_id]() {
+                //     WriteChunkToDisk(file_path, blocks);
+                //     ReuseBlockMemory(chunk_id);
+                // });
 
                 // Erase chunk
                 delete chunk;
@@ -274,10 +331,37 @@ void ChunkManager::AdjustChunkPatch()
 
     // Build border chunks that just became patch chunks
     for (auto chunk : to_convert)
-        chunk->BuildExternal();
+    {
+        chunk->PinNeighbors();
+        _worker_pool->SubmitJob({chunk, {
+            ChunkTask::BUILD_LIGHTMAP_EXTERNAL,
+            ChunkTask::BUILD_VERTICES,
+            ChunkTask::UNPIN_NEIGHBORS
+        }});
+    }
 
+    // Build new patch chunks
     for (auto chunk : to_build)
-        chunk->Build();
+    {
+        if (chunk->IsBorderChunk())
+        {
+            _worker_pool->SubmitJob({chunk, {
+                ChunkTask::LOAD_BLOCKS,
+                ChunkTask::BUILD_LIGHTMAP_INTERNAL
+            }});
+        }
+        else
+        {
+            chunk->PinNeighbors();
+            _worker_pool->SubmitJob({chunk, {
+                ChunkTask::LOAD_BLOCKS,
+                ChunkTask::BUILD_LIGHTMAP_INTERNAL,
+                ChunkTask::BUILD_LIGHTMAP_EXTERNAL,
+                ChunkTask::BUILD_VERTICES,
+                ChunkTask::UNPIN_NEIGHBORS
+            }});
+        }
+    }
 }
 
 BlockID *ChunkManager::GetBlockMemory(uint64_t chunk_id)

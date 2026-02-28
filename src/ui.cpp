@@ -1734,7 +1734,7 @@ void UIInventory::Update(Player *player)
                     {
                         auto scanner_data = GetItemScannerData(inventory.scanner.item);
                         std::string scanner_text;
-                        if (inventory.scanner.ItemIsDisk())
+                        if (ItemIsDisk(inventory.scanner.item))
                         {
                             scanner_text = std::format("{}", scanner_data[ScannerDataType::COMPOSITION]);
                         }

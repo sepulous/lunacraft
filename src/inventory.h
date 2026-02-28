@@ -11,7 +11,6 @@ struct ItemStack
     bool changed = true;
 
     bool IsEmpty();
-    bool ItemIsDisk();
 };
 
 class Inventory

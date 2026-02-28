@@ -1,5 +1,8 @@
 
 #include <unordered_map>
+#include <thread>
+
+using namespace std::chrono_literals;
 
 #include <glm/glm.hpp>
 
@@ -12,6 +15,17 @@
 #include "moon.h"
 #include "storage.h"
 #include "chunk_generation.h"
+
+//
+// Chunk tasks
+//
+
+bool (Chunk::*ChunkTask::LOAD_BLOCKS)() = &Chunk::LoadBlocks;
+bool (Chunk::*ChunkTask::BUILD_LIGHTMAP_INTERNAL)() = &Chunk::BuildLightmapInternal;
+bool (Chunk::*ChunkTask::BUILD_LIGHTMAP_EXTERNAL)() = &Chunk::BuildLightmapExternal;
+bool (Chunk::*ChunkTask::UPDATE_VERTEX_LIGHTING)() = &Chunk::UpdateVertexLighting;
+bool (Chunk::*ChunkTask::BUILD_VERTICES)() = &Chunk::BuildVertices;
+bool (Chunk::*ChunkTask::UNPIN_NEIGHBORS)() = &Chunk::UnpinNeighbors;
 
 //
 // Chunk
@@ -117,9 +131,25 @@ void Chunk::Pin()
     _pins.fetch_add(1, std::memory_order_relaxed);
 }
 
+void Chunk::PinNeighbors()
+{
+    auto neighbors = _chunk_manager->GetNeighbors(_coords);
+    for (auto &neighbor : neighbors)
+        neighbor->Pin();
+}
+
 void Chunk::Unpin()
 {
     _pins.fetch_sub(1, std::memory_order_release);
+}
+
+bool Chunk::UnpinNeighbors()
+{
+    auto neighbors = _chunk_manager->GetNeighbors(_coords);
+    for (auto &neighbor : neighbors)
+        neighbor->Unpin();
+
+    return true;
 }
 
 int Chunk::GetPinCount()
@@ -135,55 +165,6 @@ void Chunk::MarkForDelete()
 bool Chunk::IsMarkedForDelete()
 {
     return _marked_for_delete.load(std::memory_order_relaxed);
-}
-
-//
-// The behavior of this function depends on whether the chunk is a border chunk.
-//
-// For a non-border chunk, everything is fully built, and it ends in the state READY_TO_UPLOAD.
-//
-// For a border chunk, only the block data and internal light map is built, and it ends in the
-// state INTERNAL_DONE. If a border chunk is to be rendered, BuildExternal() should be called
-// before UploadVertices().
-//
-void Chunk::Build()
-{
-    // Pin neighbors so they can't be deleted
-    if (!IsBorderChunk())
-    {
-        auto neighbors = _chunk_manager->GetAllNeighbors(_coords);
-        for (auto &neighbor : neighbors)
-            neighbor->Pin();
-    }
-
-    _chunk_manager->GetWorkerPool()->SubmitJob([this]() { LoadBlocks(); });
-}
-
-//
-// Recalculates the vertex lighting.
-//
-void Chunk::Rebuild()
-{
-    // Pin neighbors so they can't be deleted
-    if (!IsBorderChunk())
-    {
-        auto neighbors = _chunk_manager->GetAdjacentNeighbors(_coords);
-        for (auto &neighbor : neighbors)
-            neighbor->Pin();
-    }
-
-    _chunk_manager->GetWorkerPool()->SubmitJob([this]() { UpdateVertexLighting(); });
-}
-
-// Builds all data that depends on neighbor chunk data, ending in the state READY_TO_UPLOAD.
-void Chunk::BuildExternal()
-{
-    // Pin neighbors so they can't be deleted
-    auto neighbors = _chunk_manager->GetAllNeighbors(_coords);
-    for (auto &neighbor : neighbors)
-        neighbor->Pin();
-
-    _chunk_manager->GetWorkerPool()->SubmitJob([this]() { BuildLightmapExternal(); });
 }
 
 //
@@ -252,7 +233,10 @@ void Chunk::SetState(ChunkState state)
     _state.store(state, std::memory_order::release);
 }
 
-void Chunk::LoadBlocks()
+//
+// Generate block data, or load from disk.
+//
+bool Chunk::LoadBlocks()
 {
     // Update state
     SetState(ChunkState::LOADING_BLOCKS);
@@ -264,11 +248,13 @@ void Chunk::LoadBlocks()
     else
         GenerateChunk(_blocks, _coords.x, _coords.z, Moon::GetCurrentMoon()->GetSettings());
 
-    // Start next task
-    _chunk_manager->GetWorkerPool()->SubmitJob([this]() { BuildLightmapInternal(); });
+    return true;
 }
 
-void Chunk::BuildLightmapInternal()
+//
+// Build lightmap using internal block data.
+//
+bool Chunk::BuildLightmapInternal()
 {
     // Update state
     SetState(ChunkState::LIGHT_INTERNAL);
@@ -386,22 +372,26 @@ void Chunk::BuildLightmapInternal()
 
     SetState(ChunkState::INTERNAL_DONE);
 
-    if (!IsBorderChunk())
-        _chunk_manager->GetWorkerPool()->SubmitJob([this]() { BuildLightmapExternal(); });
+    return true;
 }
 
-void Chunk::BuildLightmapExternal()
+//
+// Incorporate neighbor lightmaps.
+//
+// Requires all neighbors.
+//
+bool Chunk::BuildLightmapExternal()
 {
     SetState(ChunkState::LIGHT_EXTERNAL);
 
     // Reschedule if any neighbors aren't ready
-    auto neighbors = _chunk_manager->GetAllNeighbors(_coords);
+    auto neighbors = _chunk_manager->GetNeighbors(_coords);
     for (auto &neighbor : neighbors)
     {
         if (neighbor->GetState() <= ChunkState::LIGHT_INTERNAL)
         {
-            _chunk_manager->GetWorkerPool()->SubmitJob([this]() { BuildLightmapExternal(); });
-            return;
+            std::this_thread::sleep_for(2ms);
+            return false;
         }
     }
 
@@ -415,107 +405,33 @@ void Chunk::BuildLightmapExternal()
     for (auto &neighbor : neighbors)
     {
         auto neighbor_chunk_coords = neighbor->GetCoords();
-        auto neighbor_chunk_displacement = neighbor_chunk_coords - _coords;
-        if (glm::abs(neighbor_chunk_displacement.x) + glm::abs(neighbor_chunk_displacement.z) == 1) // Directly adjacent neighbor
+        const Lightmap &neighbor_lightmap = neighbor->GetLightmap();
+        V3 my_block_coords;
+        V3 neighbor_block_coords;
+        for (int xz = 0; xz < CHUNK_SIZE; xz++)
         {
-            V3 my_block_coords;
-            V3 neighbor_block_coords;
-            const Lightmap &neighbor_lightmap = neighbor->GetLightmap();
-
-            for (int xz = 0; xz < CHUNK_SIZE; xz++)
-            {
-                for (int y = 0; y < WORLD_HEIGHT_LIMIT; y++)
-                {
-                    // Get coordinates for block pair
-                    if (neighbor_chunk_coords.z == _coords.z + 1) // Front neighbor
-                    {
-                        my_block_coords = {xz, y, CHUNK_SIZE - 1};
-                        neighbor_block_coords = {xz, y, 0};
-                    }
-                    else if (neighbor_chunk_coords.x == _coords.x + 1) // Right neighbor
-                    {
-                        my_block_coords = {CHUNK_SIZE - 1, y, xz};
-                        neighbor_block_coords = {0, y, xz};
-                    }
-                    else if (neighbor_chunk_coords.z == _coords.z - 1) // Back neighbor
-                    {
-                        my_block_coords = {xz, y, 0};
-                        neighbor_block_coords = {xz, y, CHUNK_SIZE - 1};
-                    }
-                    else // Left neighbor
-                    {
-                        my_block_coords = {0, y, xz};
-                        neighbor_block_coords = {CHUNK_SIZE - 1, y, xz};
-                    }
-
-                    BlockID my_block = _blocks[GetChunkIndex(my_block_coords.x, my_block_coords.y, my_block_coords.z)];
-                    if (!BlockIsOpaque(my_block))
-                    {
-                        BlockID neighbor_block = neighbor->GetBlocks()[GetChunkIndex(neighbor_block_coords.x, neighbor_block_coords.y, neighbor_block_coords.z)];
-
-                        // Sky light
-                        uint8_t neighbor_sky_light = neighbor_lightmap.GetSkyLevel(neighbor_block_coords.x, neighbor_block_coords.y, neighbor_block_coords.z);
-                        if (neighbor_sky_light > 0)
-                        {
-                            uint8_t propagated = neighbor_sky_light - 1;
-                            if (propagated > _lightmap.GetSkyLevel(my_block_coords.x, my_block_coords.y, my_block_coords.z))
-                            {
-                                _lightmap.SetSkyLevel(propagated, my_block_coords.x, my_block_coords.y, my_block_coords.z);
-                                to_expand.emplace_back(my_block_coords.x, my_block_coords.y, my_block_coords.z);
-                            }
-                        }
-
-                        // Block light
-                        if (neighbor_block == BlockID::light)
-                        {
-                            _lightmap.SetBlockLevel(9, my_block_coords.x, my_block_coords.y, my_block_coords.z);
-                            to_expand.emplace_back(my_block_coords.x, my_block_coords.y, my_block_coords.z);
-                        }
-                        else
-                        {
-                            uint8_t neighbor_block_light = neighbor_lightmap.GetBlockLevel(neighbor_block_coords.x, neighbor_block_coords.y, neighbor_block_coords.z);
-                            if (neighbor_block_light > 0 && !BlockIsOpaque(my_block))
-                            {
-                                uint8_t propagated = neighbor_block_light - 1;
-                                if (propagated > _lightmap.GetBlockLevel(my_block_coords.x, my_block_coords.y, my_block_coords.z))
-                                {
-                                    _lightmap.SetBlockLevel(propagated, my_block_coords.x, my_block_coords.y, my_block_coords.z);
-                                    to_expand.emplace_back(my_block_coords.x, my_block_coords.y, my_block_coords.z);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        else // Corner neighbor
-        {
-            V3 my_block_coords;
-            V3 neighbor_block_coords;
-            const Lightmap &neighbor_lightmap = neighbor->GetLightmap();
-
             for (int y = 0; y < WORLD_HEIGHT_LIMIT; y++)
             {
                 // Get coordinates for block pair
-                if (neighbor_chunk_coords.z == _coords.z + 1) // Front left neighbor
+                if (neighbor_chunk_coords.z == _coords.z + 1) // Front neighbor
                 {
-                    my_block_coords = {0, y, CHUNK_SIZE - 1};
-                    neighbor_block_coords = {CHUNK_SIZE - 1, y, 0};
+                    my_block_coords = {xz, y, CHUNK_SIZE - 1};
+                    neighbor_block_coords = {xz, y, 0};
                 }
-                else if (neighbor_chunk_coords.x == _coords.x + 1) // Front right neighbor
+                else if (neighbor_chunk_coords.x == _coords.x + 1) // Right neighbor
                 {
-                    my_block_coords = {CHUNK_SIZE - 1, y, CHUNK_SIZE - 1};
-                    neighbor_block_coords = {0, y, 0};
+                    my_block_coords = {CHUNK_SIZE - 1, y, xz};
+                    neighbor_block_coords = {0, y, xz};
                 }
-                else if (neighbor_chunk_coords.z == _coords.z - 1) // Back right neighbor
+                else if (neighbor_chunk_coords.z == _coords.z - 1) // Back neighbor
                 {
-                    my_block_coords = {CHUNK_SIZE - 1, y, 0};
-                    neighbor_block_coords = {0, y, CHUNK_SIZE - 1};
+                    my_block_coords = {xz, y, 0};
+                    neighbor_block_coords = {xz, y, CHUNK_SIZE - 1};
                 }
-                else // Back left neighbor
+                else // Left neighbor
                 {
-                    my_block_coords = {0, y, 0};
-                    neighbor_block_coords = {CHUNK_SIZE - 1, y, CHUNK_SIZE - 1};
+                    my_block_coords = {0, y, xz};
+                    neighbor_block_coords = {CHUNK_SIZE - 1, y, xz};
                 }
 
                 BlockID my_block = _blocks[GetChunkIndex(my_block_coords.x, my_block_coords.y, my_block_coords.z)];
@@ -525,9 +441,9 @@ void Chunk::BuildLightmapExternal()
 
                     // Sky light
                     uint8_t neighbor_sky_light = neighbor_lightmap.GetSkyLevel(neighbor_block_coords.x, neighbor_block_coords.y, neighbor_block_coords.z);
-                    if (neighbor_sky_light > 1)
+                    if (neighbor_sky_light > 0)
                     {
-                        uint8_t propagated = neighbor_sky_light - 2;
+                        uint8_t propagated = neighbor_sky_light - 1;
                         if (propagated > _lightmap.GetSkyLevel(my_block_coords.x, my_block_coords.y, my_block_coords.z))
                         {
                             _lightmap.SetSkyLevel(propagated, my_block_coords.x, my_block_coords.y, my_block_coords.z);
@@ -538,15 +454,15 @@ void Chunk::BuildLightmapExternal()
                     // Block light
                     if (neighbor_block == BlockID::light)
                     {
-                        _lightmap.SetBlockLevel(7, my_block_coords.x, my_block_coords.y, my_block_coords.z);
+                        _lightmap.SetBlockLevel(9, my_block_coords.x, my_block_coords.y, my_block_coords.z);
                         to_expand.emplace_back(my_block_coords.x, my_block_coords.y, my_block_coords.z);
                     }
                     else
                     {
                         uint8_t neighbor_block_light = neighbor_lightmap.GetBlockLevel(neighbor_block_coords.x, neighbor_block_coords.y, neighbor_block_coords.z);
-                        if (neighbor_block_light > 1 && !BlockIsOpaque(my_block))
+                        if (neighbor_block_light > 0 && !BlockIsOpaque(my_block))
                         {
-                            uint8_t propagated = neighbor_block_light - 2;
+                            uint8_t propagated = neighbor_block_light - 1;
                             if (propagated > _lightmap.GetBlockLevel(my_block_coords.x, my_block_coords.y, my_block_coords.z))
                             {
                                 _lightmap.SetBlockLevel(propagated, my_block_coords.x, my_block_coords.y, my_block_coords.z);
@@ -615,20 +531,20 @@ void Chunk::BuildLightmapExternal()
         }
     }
 
-    _chunk_manager->GetWorkerPool()->SubmitJob([this]() { BuildVertices(); });
+    return true;
 }
 
-void Chunk::UpdateVertexLighting()
+bool Chunk::UpdateVertexLighting()
 {
     SetState(ChunkState::UPDATING_VERTEX_LIGHTING);
 
-    auto neighbors = _chunk_manager->GetAdjacentNeighbors(_coords);
+    auto neighbors = _chunk_manager->GetNeighbors(_coords);
     for (auto &neighbor : neighbors)
     {
         if (neighbor->GetState() <= ChunkState::LIGHT_INTERNAL) // Reschedule if any neighbors aren't ready
         {
-            _chunk_manager->GetWorkerPool()->SubmitJob([this]() { UpdateVertexLighting(); });
-            return;
+            std::this_thread::sleep_for(2ms);
+            return false;
         }
     }
 
@@ -716,24 +632,22 @@ void Chunk::UpdateVertexLighting()
         }
     }
 
-    // Unpin neighbors
-    for (auto &neighbor : neighbors)
-        neighbor->Unpin();
-
     SetState(ChunkState::READY_TO_UPLOAD);
+
+    return true;
 }
 
-void Chunk::BuildVertices()
+bool Chunk::BuildVertices()
 {
     SetState(ChunkState::BUILDING_VERTICES);
 
-    auto neighbors = _chunk_manager->GetAdjacentNeighbors(_coords);
+    auto neighbors = _chunk_manager->GetNeighbors(_coords);
     for (auto &neighbor : neighbors)
     {
         if (neighbor->GetState() <= ChunkState::LIGHT_INTERNAL) // Reschedule if any neighbors aren't ready
         {
-            _chunk_manager->GetWorkerPool()->SubmitJob([this]() { BuildVertices(); });
-            return;
+            std::this_thread::sleep_for(2ms);
+            return false;
         }
     }
 
@@ -852,12 +766,9 @@ void Chunk::BuildVertices()
         }
     }
 
-    // Unpin neighbors
-    auto all_neighbors = _chunk_manager->GetAllNeighbors(_coords);
-    for (auto &neighbor : all_neighbors)
-        neighbor->Unpin();
-
     SetState(ChunkState::READY_TO_UPLOAD);
+
+    return true;
 }
 
 //

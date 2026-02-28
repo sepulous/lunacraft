@@ -118,7 +118,7 @@ BlockID ItemIDToBlockID(ItemID item_id)
     }();
 
     if (!map.contains(item_id))
-        return BlockID::notchium;
+        return BlockID::air;
     else
         return map.at(item_id);
 }

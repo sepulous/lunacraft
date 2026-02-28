@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <vector>
 #include <array>
+#include <atomic>
 
 #include <glad/glad.h>
 
@@ -11,7 +12,6 @@
 
 #include "block.h"
 #include "constants.h"
-#include "chunk_worker_pool.h"
 
 class ChunkManager;
 
@@ -68,16 +68,25 @@ public:
     const Lightmap &GetLightmap() const;
     std::filesystem::path GetFilePath();
 
-    void Build();
-    void BuildExternal();
-    void Rebuild();
+// Main thread tasks
+public:
     void UploadVertices();
     void RenderOpaques();
     void RenderTransparents();
 
-// Lifetime control
+// Worker tasks
+public:
+    bool LoadBlocks();
+    bool BuildLightmapInternal();
+    bool BuildLightmapExternal();
+    bool UpdateVertexLighting();
+    bool BuildVertices();
+    bool UnpinNeighbors(); // This really belongs in the section below, it's just more ergonomic to include it in a chunk job
+
+// Lifetime control (main thread)
 public:
     void Pin();
+    void PinNeighbors();
     void Unpin();
     int GetPinCount();
     void MarkForDelete();
@@ -85,11 +94,6 @@ public:
 
 private:
     void SetState(ChunkState state);
-    void LoadBlocks();
-    void BuildLightmapInternal();
-    void BuildLightmapExternal();
-    void BuildVertices();
-    void UpdateVertexLighting();
 
 private:
     ChunkManager *_chunk_manager;
@@ -115,4 +119,14 @@ private:
     // Lifetime control
     std::atomic<int> _pins{0};
     std::atomic<bool> _marked_for_delete{false};
+};
+
+struct ChunkTask
+{
+    static bool (Chunk::*LOAD_BLOCKS)();
+    static bool (Chunk::*BUILD_LIGHTMAP_INTERNAL)();
+    static bool (Chunk::*BUILD_LIGHTMAP_EXTERNAL)();
+    static bool (Chunk::*UPDATE_VERTEX_LIGHTING)();
+    static bool (Chunk::*BUILD_VERTICES)();
+    static bool (Chunk::*UNPIN_NEIGHBORS)();
 };

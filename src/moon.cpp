@@ -15,6 +15,8 @@
 #include "shader.h"
 #include "rng.h"
 
+#include "input.h" // TEMP
+
 Moon *Moon::_current_moon;
 
 Moon::Moon(int moon_id, MoonSettings moon_settings)
@@ -181,12 +183,44 @@ void Moon::Update(double delta_time)
     // Non-physics updates
     _entity_manager.Update(delta_time);
 
+    // Update selection block
+    UpdateSelectionBlock();
+
+    // Handle player modifications
+    if (_selection_block.IsActive())
+    {
+        if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT))
+        {
+            _chunk_manager.HandlePlayerModification(_selection_block.GetPosition());
+        }
+        else if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT))
+        {
+            auto &inventory = _player->GetInventory();
+            auto &selected = inventory.inventory[0][inventory.selected_hotbar_slot];
+            if (ItemIsBlock(selected.item))
+            {
+                BlockID block = ItemIDToBlockID(selected.item);
+                if (block != BlockID::air)
+                {
+                    if (!_settings.is_creative)
+                    {
+                        selected.amount--;
+                        if (selected.amount < 1)
+                            selected = {ItemID::none, 0};
+                    }
+
+                    _chunk_manager.HandlePlayerModification(_selection_block.GetAdjacentPosition(), block);
+                }
+            }
+        }
+    }
+
     // Update lighting
     int light_phase = ((int)(_world_time + SECONDS_PER_LIGHT_PHASE) / SECONDS_PER_LIGHT_PHASE) % LIGHT_PHASES; // The offset initializes moon on Phase 1
     if (light_phase != _current_light_phase)
     {
         _current_light_phase = light_phase;
-        _chunk_manager.RebuildChunks();
+        _chunk_manager.UpdateGlobalLighting();
     }
     
     // Load new chunks around player (and unload old ones)
@@ -198,53 +232,6 @@ void Moon::Update(double delta_time)
 
     // Upload any new chunks that are ready to the GPU
     _chunk_manager.UploadReadyChunks();
-
-    //
-    // Update selection block
-    //
-    auto camera = _player->GetCamera();
-
-    auto origin = camera.position;
-    glm::ivec3 voxel = GetNearestVoxel(origin);
-
-    glm::vec3 inv_dir = 1.0f / camera.forward;
-
-    glm::ivec3 step = {
-        camera.forward.x > 0 ? 1 : -1,
-        camera.forward.y > 0 ? 1 : -1,
-        camera.forward.z > 0 ? 1 : -1
-    };
-
-    glm::vec3 next_boundary = {
-        voxel.x + (step.x > 0 ? 0.5f : -0.5f),
-        voxel.y + (step.y > 0 ? 0.5f : -0.5f),
-        voxel.z + (step.z > 0 ? 0.5f : -0.5f)
-    };
-
-    glm::vec3 t_max = (next_boundary - origin) * inv_dir;
-    glm::vec3 t_delta = glm::abs(inv_dir);
-
-    float distance = 0.0f;
-    const float PLAYER_REACH = 9.0f;
-    _selection_block.SetActive(false);
-    while (distance < PLAYER_REACH)
-    {
-        BlockID block = _chunk_manager.GetChunk(VoxelToChunk(voxel))->GetBlocks()[GetChunkIndex(GlobalToLocalVoxel(voxel))];
-        if (BlockIsOpaque(block))
-        {
-            _selection_block.SetPosition(voxel);
-            _selection_block.SetActive(true);
-            break;
-        }
-
-        int min_comp_idx = (t_max.x < t_max.y && t_max.x < t_max.z) ? 0
-                         : (t_max.y < t_max.x && t_max.y < t_max.z) ? 1
-                         : 2;
-
-        voxel[min_comp_idx] += step[min_comp_idx];
-        distance = t_max[min_comp_idx];
-        t_max[min_comp_idx] += t_delta[min_comp_idx];
-    }
 }
 
 void Moon::Render(const glm::mat4 &projection)
@@ -291,6 +278,56 @@ void Moon::Render(const glm::mat4 &projection)
     float skybox_angle = (_world_time + SECONDS_PER_LIGHT_PHASE) * (2 * 3.1416f / (LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE)); // The offset initializes moon on Phase 1
     _skybox.Update(view_projection, skybox_angle);
     _skybox.Render();
+}
+
+void Moon::UpdateSelectionBlock()
+{
+    auto camera = _player->GetCamera();
+
+    auto origin = camera.position;
+    glm::ivec3 voxel = GetNearestVoxel(origin);
+    glm::ivec3 last_voxel;
+
+    glm::vec3 inv_dir = 1.0f / camera.forward;
+
+    glm::ivec3 step = {
+        camera.forward.x > 0 ? 1 : -1,
+        camera.forward.y > 0 ? 1 : -1,
+        camera.forward.z > 0 ? 1 : -1
+    };
+
+    glm::vec3 next_boundary = {
+        voxel.x + (step.x > 0 ? 0.5f : -0.5f),
+        voxel.y + (step.y > 0 ? 0.5f : -0.5f),
+        voxel.z + (step.z > 0 ? 0.5f : -0.5f)
+    };
+
+    glm::vec3 t_max = (next_boundary - origin) * inv_dir;
+    glm::vec3 t_delta = glm::abs(inv_dir);
+
+    float distance = 0.0f;
+    const float PLAYER_REACH = 9.0f;
+    _selection_block.SetActive(false);
+    while (distance < PLAYER_REACH)
+    {
+        BlockID block = _chunk_manager.GetChunk(VoxelToChunk(voxel))->GetBlocks()[GetChunkIndex(GlobalToLocalVoxel(voxel))];
+        if (BlockIsOpaque(block))
+        {
+            _selection_block.SetPosition(voxel);
+            _selection_block.SetAdjacentPosition(last_voxel);
+            _selection_block.SetActive(true);
+            break;
+        }
+
+        int min_comp_idx = (t_max.x < t_max.y && t_max.x < t_max.z) ? 0
+                         : (t_max.y < t_max.x && t_max.y < t_max.z) ? 1
+                         :                                            2;
+
+        last_voxel = voxel;
+        voxel[min_comp_idx] += step[min_comp_idx];
+        distance = t_max[min_comp_idx];
+        t_max[min_comp_idx] += t_delta[min_comp_idx];
+    }
 }
 
 //
@@ -358,9 +395,24 @@ glm::ivec3 SelectionBlock::GetPosition()
     return _position;
 }
 
+void SelectionBlock::SetAdjacentPosition(const glm::ivec3 &position)
+{
+    _adjacent_position = position;
+}
+
+glm::ivec3 SelectionBlock::GetAdjacentPosition()
+{
+    return _adjacent_position;
+}
+
 void SelectionBlock::SetActive(bool active)
 {
     _active = active;
+}
+
+bool SelectionBlock::IsActive()
+{
+    return _active;
 }
 
 void SelectionBlock::Render(const glm::mat4 &view_projection)
