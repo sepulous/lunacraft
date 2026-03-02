@@ -17,17 +17,6 @@ using namespace std::chrono_literals;
 #include "chunk_generation.h"
 
 //
-// Chunk tasks
-//
-
-bool (Chunk::*ChunkTask::LOAD_BLOCKS)() = &Chunk::LoadBlocks;
-bool (Chunk::*ChunkTask::BUILD_LIGHTMAP_INTERNAL)() = &Chunk::BuildLightmapInternal;
-bool (Chunk::*ChunkTask::BUILD_LIGHTMAP_EXTERNAL)() = &Chunk::BuildLightmapExternal;
-bool (Chunk::*ChunkTask::UPDATE_VERTEX_LIGHTING)() = &Chunk::UpdateVertexLighting;
-bool (Chunk::*ChunkTask::BUILD_VERTICES)() = &Chunk::BuildVertices;
-bool (Chunk::*ChunkTask::UNPIN_NEIGHBORS)() = &Chunk::UnpinNeighbors;
-
-//
 // Chunk
 //
 
@@ -151,13 +140,11 @@ void Chunk::Unpin()
     _pins.fetch_sub(1, std::memory_order_release);
 }
 
-bool Chunk::UnpinNeighbors()
+void Chunk::UnpinNeighbors()
 {
     auto neighbors = _chunk_manager->GetNeighbors(_coords);
     for (auto &neighbor : neighbors)
         neighbor->Unpin();
-
-    return true;
 }
 
 int Chunk::GetPinCount()
@@ -250,7 +237,7 @@ void Chunk::SetState(ChunkState state)
 //
 // Generate block data, or load from disk.
 //
-bool Chunk::LoadBlocks()
+void Chunk::LoadBlocks()
 {
     // Update state
     SetState(ChunkState::LOADING_BLOCKS);
@@ -261,14 +248,12 @@ bool Chunk::LoadBlocks()
         LoadChunkFromDisk(chunk_file_path, _blocks);
     else
         GenerateChunk(_blocks, _coords.x, _coords.z, Moon::GetCurrentMoon()->GetSettings());
-
-    return true;
 }
 
 //
 // Build lightmap using internal block data.
 //
-bool Chunk::BuildLightmapInternal()
+void Chunk::BuildLightmapInternal()
 {
     // Update state
     SetState(ChunkState::LIGHT_INTERNAL);
@@ -385,8 +370,6 @@ bool Chunk::BuildLightmapInternal()
     }
 
     SetState(ChunkState::INTERNAL_DONE);
-
-    return true;
 }
 
 //
@@ -394,20 +377,9 @@ bool Chunk::BuildLightmapInternal()
 //
 // Requires all neighbors.
 //
-bool Chunk::BuildLightmapExternal()
+void Chunk::BuildLightmapExternal()
 {
     SetState(ChunkState::LIGHT_EXTERNAL);
-
-    // Reschedule if any neighbors aren't ready
-    auto neighbors = _chunk_manager->GetNeighbors(_coords);
-    for (auto &neighbor : neighbors)
-    {
-        if (neighbor->GetState() <= ChunkState::LIGHT_INTERNAL)
-        {
-            std::this_thread::sleep_for(2ms);
-            return false;
-        }
-    }
 
     struct V3 { int x, y, z; }; // No glm vec construction; need max performance here
     std::vector<V3> to_expand;
@@ -416,6 +388,7 @@ bool Chunk::BuildLightmapExternal()
     //
     // Initial fill
     //
+    auto neighbors = _chunk_manager->GetNeighbors(_coords);
     for (auto &neighbor : neighbors)
     {
         auto neighbor_chunk_coords = neighbor->GetCoords();
@@ -544,23 +517,13 @@ bool Chunk::BuildLightmapExternal()
             }
         }
     }
-
-    return true;
 }
 
-bool Chunk::UpdateVertexLighting()
+void Chunk::UpdateVertexLighting()
 {
     SetState(ChunkState::UPDATING_VERTEX_LIGHTING);
 
     auto neighbors = _chunk_manager->GetNeighbors(_coords);
-    for (auto &neighbor : neighbors)
-    {
-        if (neighbor->GetState() <= ChunkState::LIGHT_INTERNAL) // Reschedule if any neighbors aren't ready
-        {
-            std::this_thread::sleep_for(2ms);
-            return false;
-        }
-    }
 
     // We need to determine the global voxel position of the base of the quad (the inverse of what we do in BuildVertices), but some
     // vertex positions include offsets (du and dv), so we can't always do this directly. But we submit vertices in groups of six,
@@ -642,24 +605,16 @@ bool Chunk::UpdateVertexLighting()
         }
     }
 
-    SetState(ChunkState::READY_TO_UPLOAD);
+    UnpinNeighbors();
 
-    return true;
+    SetState(ChunkState::READY_TO_UPLOAD);
 }
 
-bool Chunk::BuildVertices()
+void Chunk::BuildVertices()
 {
     SetState(ChunkState::BUILDING_VERTICES);
 
     auto neighbors = _chunk_manager->GetNeighbors(_coords);
-    for (auto &neighbor : neighbors)
-    {
-        if (neighbor->GetState() <= ChunkState::LIGHT_INTERNAL) // Reschedule if any neighbors aren't ready
-        {
-            std::this_thread::sleep_for(2ms);
-            return false;
-        }
-    }
 
     std::vector<BlockQuad> quads = GreedyMesh(_blocks, neighbors);
 
@@ -789,9 +744,9 @@ bool Chunk::BuildVertices()
         index_base += 4;
     }
 
-    SetState(ChunkState::READY_TO_UPLOAD);
+    UnpinNeighbors();
 
-    return true;
+    SetState(ChunkState::READY_TO_UPLOAD);
 }
 
 //

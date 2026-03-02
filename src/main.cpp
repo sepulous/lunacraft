@@ -174,6 +174,7 @@ int main()
             float moon_load_progress = 0;
             if (moon != nullptr)
             {
+                moon->GetChunkManager().HandleChunkJobs();
                 moon->GetChunkManager().UploadReadyChunks();
                 moon_load_progress = moon->GetLoadProgress();
             }

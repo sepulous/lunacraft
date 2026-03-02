@@ -1,4 +1,5 @@
 
+#include <algorithm>
 #include <filesystem>
 #include <string>
 #include <fstream>
@@ -13,6 +14,20 @@
 #include "storage.h"
 #include "options.h"
 #include "moon.h"
+
+//
+// Chunk tasks
+//
+
+void (Chunk::*ChunkTask::LOAD_BLOCKS)() = &Chunk::LoadBlocks;
+void (Chunk::*ChunkTask::BUILD_LIGHTMAP_INTERNAL)() = &Chunk::BuildLightmapInternal;
+void (Chunk::*ChunkTask::BUILD_LIGHTMAP_EXTERNAL)() = &Chunk::BuildLightmapExternal;
+void (Chunk::*ChunkTask::UPDATE_VERTEX_LIGHTING)() = &Chunk::UpdateVertexLighting;
+void (Chunk::*ChunkTask::BUILD_VERTICES)() = &Chunk::BuildVertices;
+
+//
+// ChunkManager
+//
 
 ChunkManager::~ChunkManager()
 {
@@ -61,6 +76,60 @@ void ChunkManager::Init(int moon_id, MoonSettings moon_settings)
     _worker_pool = new ChunkWorkerPool{};
 }
 
+void ChunkManager::HandleChunkJobs()
+{
+    int jobs_to_handle = _job_queue.size(); // Jobs can be requeued, so we should only get this once at the beginning
+    for (int i = 0; i < jobs_to_handle; i++)
+    {
+        auto job = std::move(_job_queue.front());
+        _job_queue.pop();
+
+        if (job.requires_neighbors)
+        {
+            bool neighbors_ready = true;
+            auto neighbors = GetNeighbors(job.chunk->GetCoords());
+            for (auto &neighbor : neighbors)
+            {
+                if (neighbor->GetState() < ChunkState::INTERNAL_DONE)
+                {
+                    neighbors_ready = false;
+                    break;
+                }
+            }
+
+            if (neighbors_ready) // All tasks can be done
+            {
+                _worker_pool->SubmitJob({job.chunk, job.tasks});
+            }
+            else // External tasks cannot be done, but there may be internal tasks that can
+            {
+                auto it = std::partition_point(job.tasks.begin(), job.tasks.end(), [](auto task) {
+                    return task == ChunkTask::LOAD_BLOCKS || task == ChunkTask::BUILD_LIGHTMAP_INTERNAL;
+                });
+
+                if (it == job.tasks.begin()) // All tasks are external, so just requeue the job
+                {
+                    _job_queue.push(std::move(job));
+                }
+                else
+                {
+                    // Submit internal tasks
+                    std::vector<void (Chunk::*)()> internal_tasks{job.tasks.begin(), it};
+                    _worker_pool->SubmitJob({job.chunk, internal_tasks});
+
+                    // Requeue remaining external tasks
+                    job.tasks = std::vector<void (Chunk::*)()>{it, job.tasks.end()};
+                    _job_queue.push(std::move(job));
+                }
+            }
+        }
+        else // Purely internal job; just submit everything
+        {
+            _worker_pool->SubmitJob({job.chunk, job.tasks});
+        }
+    }
+}
+
 void ChunkManager::UploadReadyChunks()
 {
     for (auto it = _chunks.begin(); it != _chunks.end(); ++it)
@@ -86,12 +155,15 @@ void ChunkManager::HandlePlayerModification(glm::ivec3 voxel, BlockID block_plac
 
     // Rebuild this chunk
     chunk->PinNeighbors();
-    _worker_pool->SubmitJob({chunk, {
-        ChunkTask::BUILD_LIGHTMAP_INTERNAL,
-        ChunkTask::BUILD_LIGHTMAP_EXTERNAL,
-        ChunkTask::BUILD_VERTICES,
-        ChunkTask::UNPIN_NEIGHBORS
-    }});
+    _job_queue.push({
+        .chunk = chunk,
+        .requires_neighbors = true,
+        .tasks = {
+            ChunkTask::BUILD_LIGHTMAP_INTERNAL,
+            ChunkTask::BUILD_LIGHTMAP_EXTERNAL,
+            ChunkTask::BUILD_VERTICES
+        }
+    });
 
     // Rebuild neighbor chunks
     auto neighbor_chunks = GetNeighbors(chunk_coords);
@@ -101,11 +173,14 @@ void ChunkManager::HandlePlayerModification(glm::ivec3 voxel, BlockID block_plac
         for (auto &neighbor : neighbor_chunks)
         {
             neighbor->PinNeighbors();
-            _worker_pool->SubmitJob({neighbor, {
-                ChunkTask::BUILD_LIGHTMAP_EXTERNAL,
-                ChunkTask::UPDATE_VERTEX_LIGHTING,
-                ChunkTask::UNPIN_NEIGHBORS
-            }});
+            _job_queue.push({
+                .chunk = neighbor,
+                .requires_neighbors = true,
+                .tasks = {
+                    ChunkTask::BUILD_LIGHTMAP_EXTERNAL,
+                    ChunkTask::UPDATE_VERTEX_LIGHTING
+                }
+            });
         }
     }
     else // On chunk border
@@ -121,11 +196,14 @@ void ChunkManager::HandlePlayerModification(glm::ivec3 voxel, BlockID block_plac
                                                                      : ChunkTask::UPDATE_VERTEX_LIGHTING;
             auto neighbor = neighbor_chunks[i];
             neighbor->PinNeighbors();
-            _worker_pool->SubmitJob({neighbor, {
-                ChunkTask::BUILD_LIGHTMAP_EXTERNAL,
-                vertex_task,
-                ChunkTask::UNPIN_NEIGHBORS
-            }});
+            _job_queue.push({
+                .chunk = neighbor,
+                .requires_neighbors = true,
+                .tasks = {
+                    ChunkTask::BUILD_LIGHTMAP_EXTERNAL,
+                    vertex_task
+                }
+            });
         }
     }
 }
@@ -170,10 +248,13 @@ void ChunkManager::UpdateGlobalLighting()
         if (!chunk->IsBorderChunk())
         {
             chunk->PinNeighbors();
-            _worker_pool->SubmitJob({chunk, {
-                ChunkTask::UPDATE_VERTEX_LIGHTING,
-                ChunkTask::UNPIN_NEIGHBORS
-            }});
+            _job_queue.push({
+                .chunk = chunk,
+                .requires_neighbors = true,
+                .tasks = {
+                    ChunkTask::UPDATE_VERTEX_LIGHTING
+                }
+            });
         }
     }
 }
@@ -206,21 +287,28 @@ void ChunkManager::CreateInitialPatch()
         auto chunk = it->second;
         if (chunk->IsBorderChunk())
         {
-            _worker_pool->SubmitJob({chunk, {
-                ChunkTask::LOAD_BLOCKS,
-                ChunkTask::BUILD_LIGHTMAP_INTERNAL
-            }});
+            _job_queue.push({
+                .chunk = chunk,
+                .requires_neighbors = false,
+                .tasks = {
+                    ChunkTask::LOAD_BLOCKS,
+                    ChunkTask::BUILD_LIGHTMAP_INTERNAL
+                }
+            });
         }
         else
         {
             chunk->PinNeighbors();
-            _worker_pool->SubmitJob({chunk, {
-                ChunkTask::LOAD_BLOCKS,
-                ChunkTask::BUILD_LIGHTMAP_INTERNAL,
-                ChunkTask::BUILD_LIGHTMAP_EXTERNAL,
-                ChunkTask::BUILD_VERTICES,
-                ChunkTask::UNPIN_NEIGHBORS
-            }});
+            _job_queue.push({
+                .chunk = chunk,
+                .requires_neighbors = true,
+                .tasks = {
+                    ChunkTask::LOAD_BLOCKS,
+                    ChunkTask::BUILD_LIGHTMAP_INTERNAL,
+                    ChunkTask::BUILD_LIGHTMAP_EXTERNAL,
+                    ChunkTask::BUILD_VERTICES
+                }
+            });
         }
     }
 }
@@ -333,11 +421,14 @@ void ChunkManager::AdjustChunkPatch()
     for (auto chunk : to_convert)
     {
         chunk->PinNeighbors();
-        _worker_pool->SubmitJob({chunk, {
-            ChunkTask::BUILD_LIGHTMAP_EXTERNAL,
-            ChunkTask::BUILD_VERTICES,
-            ChunkTask::UNPIN_NEIGHBORS
-        }});
+        _job_queue.push({
+            .chunk = chunk,
+            .requires_neighbors = true,
+            .tasks = {
+                ChunkTask::BUILD_LIGHTMAP_EXTERNAL,
+                ChunkTask::BUILD_VERTICES
+            }
+        });
     }
 
     // Build new patch chunks
@@ -345,21 +436,28 @@ void ChunkManager::AdjustChunkPatch()
     {
         if (chunk->IsBorderChunk())
         {
-            _worker_pool->SubmitJob({chunk, {
-                ChunkTask::LOAD_BLOCKS,
-                ChunkTask::BUILD_LIGHTMAP_INTERNAL
-            }});
+            _job_queue.push({
+                .chunk = chunk,
+                .requires_neighbors = false,
+                .tasks = {
+                    ChunkTask::LOAD_BLOCKS,
+                    ChunkTask::BUILD_LIGHTMAP_INTERNAL
+                }
+            });
         }
         else
         {
             chunk->PinNeighbors();
-            _worker_pool->SubmitJob({chunk, {
-                ChunkTask::LOAD_BLOCKS,
-                ChunkTask::BUILD_LIGHTMAP_INTERNAL,
-                ChunkTask::BUILD_LIGHTMAP_EXTERNAL,
-                ChunkTask::BUILD_VERTICES,
-                ChunkTask::UNPIN_NEIGHBORS
-            }});
+            _job_queue.push({
+                .chunk = chunk,
+                .requires_neighbors = true,
+                .tasks = {
+                    ChunkTask::LOAD_BLOCKS,
+                    ChunkTask::BUILD_LIGHTMAP_INTERNAL,
+                    ChunkTask::BUILD_LIGHTMAP_EXTERNAL,
+                    ChunkTask::BUILD_VERTICES
+                }
+            });
         }
     }
 }

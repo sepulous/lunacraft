@@ -1,6 +1,8 @@
 #pragma once
 
 #include <unordered_map>
+#include <vector>
+#include <queue>
 #include <memory>
 
 #include <glm/glm.hpp>
@@ -21,12 +23,29 @@ struct BlockMemory
     uint64_t owner; // Chunk ID
 };
 
+struct ChunkTask
+{
+    static void (Chunk::*LOAD_BLOCKS)();
+    static void (Chunk::*BUILD_LIGHTMAP_INTERNAL)();
+    static void (Chunk::*BUILD_LIGHTMAP_EXTERNAL)();
+    static void (Chunk::*UPDATE_VERTEX_LIGHTING)();
+    static void (Chunk::*BUILD_VERTICES)();
+};
+
+struct ChunkJob
+{
+    Chunk *chunk;
+    bool requires_neighbors;
+    std::vector<void (Chunk::*)()> tasks;
+};
+
 class ChunkManager
 {
     private:
         int _loaded_chunk_count = 0;
         GLuint _texture_atlas;
         std::vector<BlockMemory> _block_memory;
+        std::queue<ChunkJob> _job_queue;
         std::unordered_map<uint64_t, Chunk *> _chunks;
         ChunkWorkerPool *_worker_pool;
 
@@ -34,6 +53,7 @@ class ChunkManager
         ChunkManager() = default;
         ~ChunkManager();
         void Init(int moon_id, MoonSettings moon_settings);
+        void HandleChunkJobs();
         void CreateInitialPatch();
         void AdjustChunkPatch();
         void UploadReadyChunks();

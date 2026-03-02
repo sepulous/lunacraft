@@ -186,6 +186,9 @@ void Moon::Update(double delta_time)
     // Update selection block
     UpdateSelectionBlock();
 
+    // Handle chunk jobs
+    _chunk_manager.HandleChunkJobs();
+
     // Handle player modifications
     if (_selection_block.IsActive())
     {

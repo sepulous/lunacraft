@@ -2,21 +2,6 @@
 #include "chunk_worker_pool.h"
 
 //
-// ChunkJob
-//
-
-bool ChunkJob::ExecuteNextTask()
-{
-    auto &task = tasks[current_task];
-    return (chunk->*task)();
-}
-
-bool ChunkJob::IsDone()
-{
-    return current_task == tasks.size();
-}
-
-//
 // ChunkWorkerPool
 //
 
@@ -43,7 +28,7 @@ ChunkWorkerPool::~ChunkWorkerPool()
         worker.join();
 }
 
-void ChunkWorkerPool::SubmitJob(ChunkJob job)
+void ChunkWorkerPool::SubmitJob(WorkerJob job)
 {
     {
         std::lock_guard<std::mutex> lock(_jobs_mutex);
@@ -56,7 +41,7 @@ void ChunkWorkerPool::WorkerLoop()
 {
     while (true)
     {
-        ChunkJob job;
+        WorkerJob job;
 
         {
             std::unique_lock<std::mutex> lock(_jobs_mutex);
@@ -71,19 +56,7 @@ void ChunkWorkerPool::WorkerLoop()
             _jobs.pop();
         }
 
-        bool success = job.ExecuteNextTask();
-
-        if (success)
-            job.current_task++;
-
-        // If next task is just to unpin neighbors, do it here and avoid the yield overhead.
-        if (job.tasks[job.current_task] == ChunkTask::UNPIN_NEIGHBORS)
-        {
-            job.ExecuteNextTask();
-            job.current_task++; // Unpinning always succeeds
-        }
-
-        if (!job.IsDone())
-            SubmitJob(job);
+        for (auto task : job.tasks)
+            (job.chunk->*task)();
     }
 }

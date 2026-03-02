@@ -76,18 +76,18 @@ public:
 
 // Worker tasks
 public:
-    bool LoadBlocks();
-    bool BuildLightmapInternal();
-    bool BuildLightmapExternal();
-    bool UpdateVertexLighting();
-    bool BuildVertices();
-    bool UnpinNeighbors(); // This really belongs in the section below, it's just more ergonomic to include it in a chunk job
+    void LoadBlocks();
+    void BuildLightmapInternal();
+    void BuildLightmapExternal();
+    void UpdateVertexLighting();
+    void BuildVertices();
 
 // Lifetime control (main thread)
 public:
     void Pin();
     void PinNeighbors();
     void Unpin();
+    void UnpinNeighbors();
     int GetPinCount();
     void MarkForDelete();
     bool IsMarkedForDelete();
@@ -123,14 +123,4 @@ private:
     // Lifetime control
     std::atomic<int> _pins{0};
     std::atomic<bool> _marked_for_delete{false};
-};
-
-struct ChunkTask
-{
-    static bool (Chunk::*LOAD_BLOCKS)();
-    static bool (Chunk::*BUILD_LIGHTMAP_INTERNAL)();
-    static bool (Chunk::*BUILD_LIGHTMAP_EXTERNAL)();
-    static bool (Chunk::*UPDATE_VERTEX_LIGHTING)();
-    static bool (Chunk::*BUILD_VERTICES)();
-    static bool (Chunk::*UNPIN_NEIGHBORS)();
 };

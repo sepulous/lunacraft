@@ -9,14 +9,10 @@
 
 #include "chunk.h"
 
-struct ChunkJob
+struct WorkerJob
 {
     Chunk *chunk;
-    std::vector<bool (Chunk::*)()> tasks;
-    size_t current_task = 0;
-
-    bool ExecuteNextTask();
-    bool IsDone();
+    std::vector<void (Chunk::*)()> tasks;
 };
 
 class ChunkWorkerPool
@@ -25,13 +21,13 @@ public:
     ChunkWorkerPool();
     ~ChunkWorkerPool();
 
-    void SubmitJob(ChunkJob job);
+    void SubmitJob(WorkerJob job);
 
 private:
     void WorkerLoop();
 
     std::vector<std::thread> _workers;
-    std::queue<ChunkJob> _jobs;
+    std::queue<WorkerJob> _jobs;
 
     std::mutex _jobs_mutex;
     std::condition_variable _jobs_cv;
