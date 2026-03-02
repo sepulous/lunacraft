@@ -258,113 +258,220 @@ void Chunk::BuildLightmapInternal()
     // Update state
     SetState(ChunkState::LIGHT_INTERNAL);
 
-    struct V3 { int x, y, z; }; // No glm vec construction; need max performance here
-    std::vector<V3> to_expand;
-    to_expand.reserve(BLOCKS_IN_CHUNK / 2);
+    constexpr int H  = WORLD_HEIGHT_LIMIT;        // 128
+    constexpr int S  = CHUNK_SIZE;                // 32
+    constexpr int SZ = H;                         // stride for z++
+    constexpr int SX = H * S;                     // stride for x++
+    constexpr int SY = 1;                         // stride for y++
 
-    V3 offsets[] = {
-        {-1, 0, 0},
-        {+1, 0, 0},
-        {0, -1, 0},
-        {0, +1, 0},
-        {0, 0, -1},
-        {0, 0, +1},
-    };
+    std::vector<uint32_t> queue;
+    queue.reserve(BLOCKS_IN_CHUNK);
 
-    //
-    // Initial fill
-    //
-    for (int x = 0; x < CHUNK_SIZE; x++)
+    for (int x = 0; x < S; x++)
     {
-        for (int z = 0; z < CHUNK_SIZE; z++)
+        int x_base = x * SX;
+
+        for (int z = 0; z < S; z++)
         {
-            uint8_t skylight_level = 9;
-            for (int y = WORLD_HEIGHT_LIMIT - 1; y >= 0; y--)
+            int column_base = x_base + z * SZ;
+
+            uint8_t skylight = 9;
+
+            // Start at top of column
+            uint32_t idx = column_base + (H - 1);
+
+            for (int y = H - 1; y >= 0; y--, idx--)
             {
-                BlockID block = _blocks[GetChunkIndex(x, y, z)];
+                BlockID &block = _blocks[idx];
 
-                // Sky light
+                if (skylight != 0 && BlockIsOpaque(block))
+                    skylight = 0;
 
-                if (skylight_level != 0 && BlockIsOpaque(block))
-                    skylight_level = 0;
-
-                if (skylight_level != 0)
+                if (skylight != 0)
                 {
-                    _lightmap.SetSkyLevel(9, x, y, z);
-                    to_expand.emplace_back(x, y, z);
+                    _lightmap.SetSkyLevel(9, idx);
+                    queue.push_back(idx);
                 }
-
-                // Block light
 
                 if (block == BlockID::light)
                 {
-                    V3 neighbor_coords;
-                    for (const V3 &offset : offsets)
+                    // Y+1
+                    if (y < H - 1 && !BlockIsOpaque(_blocks[idx + 1]))
                     {
-                        neighbor_coords = {x + offset.x, y + offset.y, z + offset.z};
+                        _lightmap.SetBlockLevel(9, idx + 1);
+                        queue.push_back(idx + 1);
+                    }
 
-                        // I would use BlockIsInChunk(), but we can't afford the function overhead here
-                        if ((unsigned)neighbor_coords.x >= CHUNK_SIZE || (unsigned)neighbor_coords.z >= CHUNK_SIZE || (unsigned)neighbor_coords.y >= WORLD_HEIGHT_LIMIT)
-                            continue;
+                    // Y-1
+                    if (y > 0 && !BlockIsOpaque(_blocks[idx - 1]))
+                    {
+                        _lightmap.SetBlockLevel(9, idx - 1);
+                        queue.push_back(idx - 1);
+                    }
 
-                        BlockID neighbor_block = _blocks[GetChunkIndex(neighbor_coords.x, neighbor_coords.y, neighbor_coords.z)];
-                        if (BlockIsTransparent(neighbor_block))
-                        {
-                            _lightmap.SetBlockLevel(9, neighbor_coords.x, neighbor_coords.y, neighbor_coords.z);
+                    // Z+1
+                    if (z < S - 1 && !BlockIsOpaque(_blocks[idx + SZ]))
+                    {
+                        _lightmap.SetBlockLevel(9, idx + SZ);
+                        queue.push_back(idx + SZ);
+                    }
 
-                            // This neighbor might have already been pushed, but duplicates are on the order of 10,
-                            // while the total size of to_expand is on the order of 10,000
-                            to_expand.emplace_back(neighbor_coords);
-                        }
+                    // Z-1
+                    if (z > 0 && !BlockIsOpaque(_blocks[idx - SZ]))
+                    {
+                        _lightmap.SetBlockLevel(9, idx - SZ);
+                        queue.push_back(idx - SZ);
+                    }
+
+                    // X+1
+                    if (x < S - 1 && !BlockIsOpaque(_blocks[idx + SX]))
+                    {
+                        _lightmap.SetBlockLevel(9, idx + SX);
+                        queue.push_back(idx + SX);
+                    }
+
+                    // X-1
+                    if (x > 0 && !BlockIsOpaque(_blocks[idx - SX]))
+                    {
+                        _lightmap.SetBlockLevel(9, idx - SX);
+                        queue.push_back(idx - SX);
                     }
                 }
             }
         }
     }
 
-    //
-    // Expansion
-    //
-    while (to_expand.size() > 0)
+    size_t head = 0;
+    while (head < queue.size())
     {
-        V3 coords = to_expand.back();
-        uint8_t sky_light = _lightmap.GetSkyLevel(coords.x, coords.y, coords.z);
-        uint8_t block_light = _lightmap.GetBlockLevel(coords.x, coords.y, coords.z);
-        to_expand.pop_back();
+        uint32_t idx = queue[head++];
 
-        for (const V3 &offset : offsets)
+        uint8_t sky = _lightmap.GetSkyLevel(idx);
+        uint8_t sky_prop = sky == 0 ? 0 : sky - 1;
+        uint8_t block = _lightmap.GetBlockLevel(idx);
+        uint8_t block_prop = block == 0 ? 0 : block - 1;
+
+        int y = idx & 127;
+        int z = (idx >> 7) & 31;
+        int x = idx >> 12;
+
+        if (y > 0)
         {
-            V3 neighbor_coords = {coords.x + offset.x, coords.y + offset.y, coords.z + offset.z};
-
-            // I would use BlockIsInChunk(), but we can't afford the function overhead here
-            if ((unsigned)neighbor_coords.x >= CHUNK_SIZE || (unsigned)neighbor_coords.z >= CHUNK_SIZE || (unsigned)neighbor_coords.y >= WORLD_HEIGHT_LIMIT)
-                continue;
-
-            BlockID neighbor_block = _blocks[GetChunkIndex(neighbor_coords.x, neighbor_coords.y, neighbor_coords.z)];
-
-            if (BlockIsTransparent(neighbor_block)) // neighbor_block is transparent
+            uint32_t n = idx - 1;
+            bool pushed = false;
+            
+            if (sky_prop > _lightmap.GetSkyLevel(n))
             {
-                // Sky light
-                if (neighbor_coords.y <= coords.y && sky_light > 0)
-                {
-                    uint8_t sky_light_propagated = sky_light - 1;
-                    if (sky_light_propagated > _lightmap.GetSkyLevel(neighbor_coords.x, neighbor_coords.y, neighbor_coords.z))
-                    {
-                        _lightmap.SetSkyLevel(sky_light_propagated, neighbor_coords.x, neighbor_coords.y, neighbor_coords.z);
-                        to_expand.emplace_back(neighbor_coords);
-                    }
-                }
+                _lightmap.SetSkyLevel(sky_prop, n);
+                queue.push_back(n);
+                pushed = true;
+            }
 
-                // Block light
-                if (block_light > 0)
-                {
-                    uint8_t block_light_propagated = block_light - 1;
-                    if (block_light_propagated > _lightmap.GetBlockLevel(neighbor_coords.x, neighbor_coords.y, neighbor_coords.z))
-                    {
-                        _lightmap.SetBlockLevel(block_light_propagated, neighbor_coords.x, neighbor_coords.y, neighbor_coords.z);
-                        to_expand.emplace_back(neighbor_coords);
-                    }
-                }
+            if (block_prop > _lightmap.GetBlockLevel(n))
+            {
+                _lightmap.SetBlockLevel(block_prop, n);
+                if (!pushed)
+                    queue.push_back(n);
+            }
+        }
+
+        if (y < 127)
+        {
+            uint32_t n = idx + 1;
+            bool pushed = false;
+            
+            if (sky_prop > _lightmap.GetSkyLevel(n))
+            {
+                _lightmap.SetSkyLevel(sky_prop, n);
+                queue.push_back(n);
+                pushed = true;
+            }
+
+            if (block_prop > _lightmap.GetBlockLevel(n))
+            {
+                _lightmap.SetBlockLevel(block_prop, n);
+                if (!pushed)
+                    queue.push_back(n);
+            }
+        }
+
+        if (z > 0)
+        {
+            uint32_t n = idx - SZ;
+            bool pushed = false;
+            
+            if (sky_prop > _lightmap.GetSkyLevel(n))
+            {
+                _lightmap.SetSkyLevel(sky_prop, n);
+                queue.push_back(n);
+                pushed = true;
+            }
+
+            if (block_prop > _lightmap.GetBlockLevel(n))
+            {
+                _lightmap.SetBlockLevel(block_prop, n);
+                if (!pushed)
+                    queue.push_back(n);
+            }
+        }
+
+        if (z < 31)
+        {
+            uint32_t n = idx + SZ;
+            bool pushed = false;
+            
+            if (sky_prop > _lightmap.GetSkyLevel(n))
+            {
+                _lightmap.SetSkyLevel(sky_prop, n);
+                queue.push_back(n);
+                pushed = true;
+            }
+
+            if (block_prop > _lightmap.GetBlockLevel(n))
+            {
+                _lightmap.SetBlockLevel(block_prop, n);
+                if (!pushed)
+                    queue.push_back(n);
+            }
+        }
+
+        if (x > 0)
+        {
+            uint32_t n = idx - SX;
+            bool pushed = false;
+            
+            if (sky_prop > _lightmap.GetSkyLevel(n))
+            {
+                _lightmap.SetSkyLevel(sky_prop, n);
+                queue.push_back(n);
+                pushed = true;
+            }
+
+            if (block_prop > _lightmap.GetBlockLevel(n))
+            {
+                _lightmap.SetBlockLevel(block_prop, n);
+                if (!pushed)
+                    queue.push_back(n);
+            }
+        }
+
+        if (x < 31)
+        {
+            uint32_t n = idx + SX;
+            bool pushed = false;
+            
+            if (sky_prop > _lightmap.GetSkyLevel(n))
+            {
+                _lightmap.SetSkyLevel(sky_prop, n);
+                queue.push_back(n);
+                pushed = true;
+            }
+
+            if (block_prop > _lightmap.GetBlockLevel(n))
+            {
+                _lightmap.SetBlockLevel(block_prop, n);
+                if (!pushed)
+                    queue.push_back(n);
             }
         }
     }
@@ -381,8 +488,7 @@ void Chunk::BuildLightmapExternal()
 {
     SetState(ChunkState::LIGHT_EXTERNAL);
 
-    struct V3 { int x, y, z; }; // No glm vec construction; need max performance here
-    std::vector<V3> to_expand;
+    std::vector<glm::ivec3> to_expand;
     to_expand.reserve(BLOCKS_IN_CHUNK / 2);
 
     //
@@ -393,8 +499,8 @@ void Chunk::BuildLightmapExternal()
     {
         auto neighbor_chunk_coords = neighbor->GetCoords();
         const Lightmap &neighbor_lightmap = neighbor->GetLightmap();
-        V3 my_block_coords;
-        V3 neighbor_block_coords;
+        glm::ivec3 my_block_coords;
+        glm::ivec3 neighbor_block_coords;
         for (int xz = 0; xz < CHUNK_SIZE; xz++)
         {
             for (int y = 0; y < WORLD_HEIGHT_LIMIT; y++)
@@ -421,39 +527,39 @@ void Chunk::BuildLightmapExternal()
                     neighbor_block_coords = {CHUNK_SIZE - 1, y, xz};
                 }
 
-                BlockID my_block = _blocks[GetChunkIndex(my_block_coords.x, my_block_coords.y, my_block_coords.z)];
+                BlockID my_block = _blocks[GetChunkIndex(my_block_coords)];
                 if (!BlockIsOpaque(my_block))
                 {
-                    BlockID neighbor_block = neighbor->GetBlocks()[GetChunkIndex(neighbor_block_coords.x, neighbor_block_coords.y, neighbor_block_coords.z)];
+                    BlockID neighbor_block = neighbor->GetBlocks()[GetChunkIndex(neighbor_block_coords)];
 
                     // Sky light
-                    uint8_t neighbor_sky_light = neighbor_lightmap.GetSkyLevel(neighbor_block_coords.x, neighbor_block_coords.y, neighbor_block_coords.z);
+                    uint8_t neighbor_sky_light = neighbor_lightmap.GetSkyLevel(neighbor_block_coords);
                     if (neighbor_sky_light > 0)
                     {
                         uint8_t propagated = neighbor_sky_light - 1;
-                        if (propagated > _lightmap.GetSkyLevel(my_block_coords.x, my_block_coords.y, my_block_coords.z))
+                        if (propagated > _lightmap.GetSkyLevel(my_block_coords))
                         {
-                            _lightmap.SetSkyLevel(propagated, my_block_coords.x, my_block_coords.y, my_block_coords.z);
-                            to_expand.emplace_back(my_block_coords.x, my_block_coords.y, my_block_coords.z);
+                            _lightmap.SetSkyLevel(propagated, my_block_coords);
+                            to_expand.emplace_back(my_block_coords);
                         }
                     }
 
                     // Block light
                     if (neighbor_block == BlockID::light)
                     {
-                        _lightmap.SetBlockLevel(9, my_block_coords.x, my_block_coords.y, my_block_coords.z);
-                        to_expand.emplace_back(my_block_coords.x, my_block_coords.y, my_block_coords.z);
+                        _lightmap.SetBlockLevel(9, my_block_coords);
+                        to_expand.emplace_back(my_block_coords);
                     }
                     else
                     {
-                        uint8_t neighbor_block_light = neighbor_lightmap.GetBlockLevel(neighbor_block_coords.x, neighbor_block_coords.y, neighbor_block_coords.z);
+                        uint8_t neighbor_block_light = neighbor_lightmap.GetBlockLevel(neighbor_block_coords);
                         if (neighbor_block_light > 0 && !BlockIsOpaque(my_block))
                         {
                             uint8_t propagated = neighbor_block_light - 1;
-                            if (propagated > _lightmap.GetBlockLevel(my_block_coords.x, my_block_coords.y, my_block_coords.z))
+                            if (propagated > _lightmap.GetBlockLevel(my_block_coords))
                             {
-                                _lightmap.SetBlockLevel(propagated, my_block_coords.x, my_block_coords.y, my_block_coords.z);
-                                to_expand.emplace_back(my_block_coords.x, my_block_coords.y, my_block_coords.z);
+                                _lightmap.SetBlockLevel(propagated, my_block_coords);
+                                to_expand.emplace_back(my_block_coords);
                             }
                         }
                     }
@@ -466,7 +572,7 @@ void Chunk::BuildLightmapExternal()
     // Expansion
     //
 
-    V3 offsets[] = {
+    glm::ivec3 offsets[] = {
         {-1, 0, 0},
         {+1, 0, 0},
         {0, -1, 0},
@@ -477,19 +583,19 @@ void Chunk::BuildLightmapExternal()
     
     while (to_expand.size() > 0)
     {
-        V3 coords = to_expand.back();
-        uint8_t sky_light = _lightmap.GetSkyLevel(coords.x, coords.y, coords.z);
-        uint8_t block_light = _lightmap.GetBlockLevel(coords.x, coords.y, coords.z);
+        auto coords = to_expand.back();
+        uint8_t sky_light = _lightmap.GetSkyLevel(coords);
+        uint8_t block_light = _lightmap.GetBlockLevel(coords);
         to_expand.pop_back();
 
         for (const auto &offset : offsets)
         {
-            V3 neighbor_coords{coords.x + offset.x, coords.y + offset.y, coords.z + offset.z};
+            glm::ivec3 neighbor_coords{coords.x + offset.x, coords.y + offset.y, coords.z + offset.z};
 
-            if (!BlockIsInChunk(neighbor_coords.x, neighbor_coords.y, neighbor_coords.z))
+            if (!BlockIsInChunk(neighbor_coords))
                 continue;
 
-            BlockID neighbor_block = _blocks[GetChunkIndex(neighbor_coords.x, neighbor_coords.y, neighbor_coords.z)];
+            BlockID neighbor_block = _blocks[GetChunkIndex(neighbor_coords)];
 
             if (!BlockIsOpaque(neighbor_block))
             {
@@ -497,9 +603,9 @@ void Chunk::BuildLightmapExternal()
                 if (neighbor_coords.y <= coords.y && sky_light > 0)
                 {
                     uint8_t sky_light_propagated = sky_light - 1;
-                    if (sky_light_propagated > _lightmap.GetSkyLevel(neighbor_coords.x, neighbor_coords.y, neighbor_coords.z))
+                    if (sky_light_propagated > _lightmap.GetSkyLevel(neighbor_coords))
                     {
-                        _lightmap.SetSkyLevel(sky_light_propagated, neighbor_coords.x, neighbor_coords.y, neighbor_coords.z);
+                        _lightmap.SetSkyLevel(sky_light_propagated, neighbor_coords);
                         to_expand.push_back(neighbor_coords);
                     }
                 }
@@ -508,9 +614,9 @@ void Chunk::BuildLightmapExternal()
                 if (block_light > 0)
                 {
                     uint8_t block_light_propagated = block_light - 1;
-                    if (block_light_propagated > _lightmap.GetBlockLevel(neighbor_coords.x, neighbor_coords.y, neighbor_coords.z))
+                    if (block_light_propagated > _lightmap.GetBlockLevel(neighbor_coords))
                     {
-                        _lightmap.SetBlockLevel(block_light_propagated, neighbor_coords.x, neighbor_coords.y, neighbor_coords.z);
+                        _lightmap.SetBlockLevel(block_light_propagated, neighbor_coords);
                         to_expand.push_back(neighbor_coords);
                     }
                 }
@@ -755,62 +861,90 @@ void Chunk::BuildVertices()
 
 Lightmap::Lightmap()
 {
-    _map = (uint8_t *)calloc(BLOCKS_IN_CHUNK, sizeof(uint8_t));
+    _sky_light = (uint8_t *)calloc(BLOCKS_IN_CHUNK, sizeof(uint8_t));
+    _block_light = (uint8_t *)calloc(BLOCKS_IN_CHUNK, sizeof(uint8_t));
 }
 
 Lightmap::~Lightmap()
 {
-    free(_map);
+    free(_sky_light);
+    free(_block_light);
 }
 
 uint8_t Lightmap::GetSkyLevel(glm::ivec3 coords) const
 {
-    uint8_t entry = _map[GetChunkIndex(coords.x, coords.y, coords.z)];
+    uint8_t entry = _sky_light[GetChunkIndex(coords)];
     return (entry >> 4);
 }
 
 uint8_t Lightmap::GetSkyLevel(int x, int y, int z) const
 {
-    uint8_t entry = _map[GetChunkIndex(x, y, z)];
+    uint8_t entry = _sky_light[GetChunkIndex(x, y, z)];
+    return (entry >> 4);
+}
+
+uint8_t Lightmap::GetSkyLevel(uint32_t idx) const
+{
+    uint8_t entry = _sky_light[idx];
     return (entry >> 4);
 }
 
 // Level must be in the range [0, 15]
 void Lightmap::SetSkyLevel(uint8_t sky_level, glm::ivec3 coords)
 {
-    uint8_t entry = _map[GetChunkIndex(coords.x, coords.y, coords.z)];
-    _map[GetChunkIndex(coords.x, coords.y, coords.z)] = (entry & 0x0F) | (sky_level << 4);
+    uint8_t entry = _sky_light[GetChunkIndex(coords.x, coords.y, coords.z)];
+    _sky_light[GetChunkIndex(coords.x, coords.y, coords.z)] = (entry & 0x0F) | (sky_level << 4);
 }
 
 // Level must be in the range [0, 15]
 void Lightmap::SetSkyLevel(uint8_t sky_level, int x, int y, int z)
 {
-    uint8_t entry = _map[GetChunkIndex(x, y, z)];
-    _map[GetChunkIndex(x, y, z)] = (entry & 0x0F) | (sky_level << 4);
+    uint8_t entry = _sky_light[GetChunkIndex(x, y, z)];
+    _sky_light[GetChunkIndex(x, y, z)] = (entry & 0x0F) | (sky_level << 4);
+}
+
+// Level must be in the range [0, 15]
+void Lightmap::SetSkyLevel(uint8_t sky_level, uint32_t idx)
+{
+    uint8_t entry = _sky_light[idx];
+    _sky_light[idx] = (entry & 0x0F) | (sky_level << 4);
 }
 
 uint8_t Lightmap::GetBlockLevel(glm::ivec3 coords) const
 {
-    uint8_t entry = _map[GetChunkIndex(coords.x, coords.y, coords.z)];
+    uint8_t entry = _block_light[GetChunkIndex(coords.x, coords.y, coords.z)];
     return (entry & 0x0f);
 }
 
 uint8_t Lightmap::GetBlockLevel(int x, int y, int z) const
 {
-    uint8_t entry = _map[GetChunkIndex(x, y, z)];
+    uint8_t entry = _block_light[GetChunkIndex(x, y, z)];
+    return (entry & 0x0f);
+}
+
+uint8_t Lightmap::GetBlockLevel(uint32_t idx) const
+{
+    uint8_t entry = _block_light[idx];
     return (entry & 0x0f);
 }
 
 // Level must be in the range [0, 15]
 void Lightmap::SetBlockLevel(uint8_t block_level, glm::ivec3 coords)
 {
-    uint8_t entry = _map[GetChunkIndex(coords.x, coords.y, coords.z)];
-    _map[GetChunkIndex(coords.x, coords.y, coords.z)] = (entry & 0xF0) | block_level;
+    uint8_t entry = _block_light[GetChunkIndex(coords.x, coords.y, coords.z)];
+    _block_light[GetChunkIndex(coords.x, coords.y, coords.z)] = (entry & 0xF0) | block_level;
 }
 
 // Level must be in the range [0, 15]
 void Lightmap::SetBlockLevel(uint8_t block_level, int x, int y, int z)
 {
-    uint8_t entry = _map[GetChunkIndex(x, y, z)];
-    _map[GetChunkIndex(x, y, z)] = (entry & 0xF0) | block_level;
+    uint8_t entry = _block_light[GetChunkIndex(x, y, z)];
+    _block_light[GetChunkIndex(x, y, z)] = (entry & 0xF0) | block_level;
+}
+
+// Level must be in the range [0, 15]
+void Lightmap::SetBlockLevel(uint8_t block_level, uint32_t idx)
+{
+    uint8_t entry = _block_light[idx];
+    _block_light[idx] = (entry & 0xF0) | block_level;
 }

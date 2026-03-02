@@ -18,19 +18,27 @@ class ChunkManager;
 class Lightmap
 {
     private:
-        uint8_t *_map;
+        uint8_t *_block_light;
+        uint8_t *_sky_light;
 
     public:
         Lightmap();
         ~Lightmap();
         uint8_t GetSkyLevel(glm::ivec3 coords) const;
         uint8_t GetSkyLevel(int x, int y, int z) const;
+        uint8_t GetSkyLevel(uint32_t idx) const;
+
         void SetSkyLevel(uint8_t level, glm::ivec3 coords);
         void SetSkyLevel(uint8_t level, int x, int y, int z);
+        void SetSkyLevel(uint8_t level, uint32_t idx);
+
         uint8_t GetBlockLevel(glm::ivec3 coords) const;
         uint8_t GetBlockLevel(int x, int y, int z) const;
+        uint8_t GetBlockLevel(uint32_t idx) const;
+
         void SetBlockLevel(uint8_t level, glm::ivec3 coords);
         void SetBlockLevel(uint8_t level, int x, int y, int z);
+        void SetBlockLevel(uint8_t level, uint32_t idx);
 };
 
 enum class ChunkState
