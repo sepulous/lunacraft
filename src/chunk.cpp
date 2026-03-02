@@ -848,8 +848,7 @@ void Chunk::BuildVertices()
         //
         // Lighting
         //
-        // These calculations were reverse engineered from an unknown version of
-        // the original game (definitely at least v1.91).
+        // These calculations were reverse engineered from the latest version of the original game (v2.01)
         //
 
         glm::vec2 light;

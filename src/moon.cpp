@@ -41,8 +41,8 @@ Moon::Moon(int moon_id, MoonSettings moon_settings)
         moon_data_file.close();
     }
 
-    // Choose random fog color (this code was reverse engineered from an
-    // unknown version of the original game; definitely at least v1.91)
+    // Choose random fog color. This code was reverse engineered from the
+    // latest version of the original game (v2.01).
 
     RNG rng;
 

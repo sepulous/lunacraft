@@ -1896,9 +1896,8 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, MoonSettings settin
     // Trees
     //
 
-    // These calculations were reverse-engineered from an unknown version of the
-    // original game (definitely at least v1.91). Charlie's chunks were much
-    // bigger than mine, so I did my best to make the densities match.
+    // These calculations were reverse-engineered from the latest version of the original game (v2.01).
+    // Charlie's chunks were much bigger than mine, so I did my best to make the densities match.
     int green_tree_count = settings.tree_cover * (rng.Range(0.0f, 1.0f) * rng.Range(0.0f, 1.0f) - 0.1f) * 9;
     int wood_tree_count = settings.tree_cover * (rng.Range(0.0f, 1.0f) * rng.Range(0.0f, 1.0f) - 0.2f) * 7;
     int color_tree_count = settings.tree_cover * (rng.Range(0.0f, 1.0f) * rng.Range(0.0f, 1.0f) - 0.4f) * 4;
