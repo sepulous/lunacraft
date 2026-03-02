@@ -5,3 +5,6 @@ Lunacraft
 .ignore/
 moons/
 options.dat
+gen_build.sh
+build.sh
+install_and_run.sh
