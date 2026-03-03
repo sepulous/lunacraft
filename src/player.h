@@ -22,6 +22,7 @@ class Player : public Entity
     private:
         Camera _camera;
         Inventory _inventory;
+        bool _in_control = true;
         bool _inventory_changed = false; // For UI updating. I don't love this system...
         glm::vec3 _input_direction;
         int _health = 100;
@@ -44,15 +45,14 @@ class Player : public Entity
         Mesh _sprite_mesh;
         Mesh _block_mesh;
 
-        // Punching animation
+        // Animation variables
         float _time_punching = 0;
-        float _arm_extent = 0;
-
-        // Bob animation
         float _time_walking = 0;
-        float _arm_bob = 0;
-
         float _time_flying = 0;
+        float _arm_extent = 0;
+        float _arm_bob = 0;
+        float _arm_shake = 0;
+        float _drill_bit_angle = 0;
 
     public:
         Player();
@@ -62,6 +62,10 @@ class Player : public Entity
         void FixedUpdate() override;
 
         PlayerData GetPlayerData();
+
+        bool IsInControl();
+        void EnableControl();
+        void DisableControl();
 
         void UpdateCamera();
         Camera &GetCamera();

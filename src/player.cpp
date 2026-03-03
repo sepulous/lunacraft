@@ -174,29 +174,65 @@ void Player::Update(float delta_time)
 {
     _input_direction = glm::vec3(0);
 
-    auto forward = GetForward();
-    auto right = GetRight();
-    if (Input::IsKeyHeld(GLFW_KEY_W))
-        _input_direction += forward;
-    if (Input::IsKeyHeld(GLFW_KEY_S))
-        _input_direction -= forward;
-    if (Input::IsKeyHeld(GLFW_KEY_A))
-        _input_direction -= right;
-    if (Input::IsKeyHeld(GLFW_KEY_D))
-        _input_direction += right;
-    if (Input::IsKeyHeld(GLFW_KEY_SPACE) && _is_grounded)
-        _is_jumping = true;
-
-    if (glm::length(_input_direction) > 0)
-        _input_direction = glm::normalize(_input_direction);
-
-    // Use medkit
-    if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT) && _inventory.GetSelectedItem() == ItemID::medkit && _health < 100)
+    if (_in_control)
     {
-        _health += 25 + RNG{}.Range(0, 9);
-        _health = glm::clamp(_health, 0, 100);
-        _inventory.inventory[0][_inventory.selected_hotbar_slot] = {ItemID::none, 0};
-        SoundSystem::Play(SoundSystem::Sound::MEDKIT);
+        auto forward = GetForward();
+        auto right = GetRight();
+        if (Input::IsKeyHeld(GLFW_KEY_W))
+            _input_direction += forward;
+        if (Input::IsKeyHeld(GLFW_KEY_S))
+            _input_direction -= forward;
+        if (Input::IsKeyHeld(GLFW_KEY_A))
+            _input_direction -= right;
+        if (Input::IsKeyHeld(GLFW_KEY_D))
+            _input_direction += right;
+        if (Input::IsKeyHeld(GLFW_KEY_SPACE) && _is_grounded)
+            _is_jumping = true;
+
+        if (glm::length(_input_direction) > 0)
+            _input_direction = glm::normalize(_input_direction);
+
+        // Use medkit
+        if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT) && _inventory.GetSelectedItem() == ItemID::medkit && _health < 100)
+        {
+            _health += 25 + RNG{}.Range(0, 9);
+            _health = glm::clamp(_health, 0, 100);
+            _inventory.inventory[0][_inventory.selected_hotbar_slot] = {ItemID::none, 0};
+            SoundSystem::Play(SoundSystem::Sound::MEDKIT);
+        }
+
+        // Decide whether we're flying
+        if (Input::IsKeyHeld(GLFW_KEY_SPACE) && _jetpack_energy > 0)
+        {
+            _time_since_started_flying += delta_time;
+            if (_time_since_started_flying > 0.5f)
+                _is_flying = true;
+        }
+        else if (Input::IsKeyReleased(GLFW_KEY_SPACE) || _jetpack_energy < 1)
+        {
+            _time_since_started_flying = 0;
+            _is_flying = false;
+        }
+
+        // Punching
+        if (Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_LEFT) && !ItemIsDrill(_inventory.GetSelectedItem()) && !ItemIsPistol(_inventory.GetSelectedItem()))
+        {
+            _time_punching += delta_time;
+            _arm_extent = 0.2f * glm::pow(glm::sin(7.0f * _time_punching), 2);
+        }
+        else if (_time_punching != 0) // Animation should stop
+        {
+            if (glm::abs(_arm_extent) < 0.01f)
+            {
+                _arm_extent = 0;
+                _time_punching = 0;
+            }
+            else
+            {
+                _time_punching += delta_time;
+                _arm_extent = 0.2f * glm::pow(glm::sin(7.0f * _time_punching), 2);
+            }
+        }
     }
 
     // Regen health
@@ -221,19 +257,6 @@ void Player::Update(float delta_time)
         _time_since_last_suit_update += delta_time;
     }
 
-    // Decide whether we're flying
-    if (Input::IsKeyHeld(GLFW_KEY_SPACE) && _jetpack_energy > 0)
-    {
-        _time_since_started_flying += delta_time;
-        if (_time_since_started_flying > 0.5f)
-            _is_flying = true;
-    }
-    else if (Input::IsKeyReleased(GLFW_KEY_SPACE) || _jetpack_energy < 1)
-    {
-        _time_since_started_flying = 0;
-        _is_flying = false;
-    }
-
     // Deplete/regen jetpack energy
     if (_is_flying && _time_since_last_jetpack_update > 0.055f)
     {
@@ -248,26 +271,6 @@ void Player::Update(float delta_time)
     else
     {
         _time_since_last_jetpack_update += delta_time;
-    }
-
-    // Punching
-    if (Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_LEFT) && !ItemIsDrill(_inventory.GetSelectedItem()) && !ItemIsPistol(_inventory.GetSelectedItem()))
-    {
-        _time_punching += delta_time;
-        _arm_extent = 0.2f * glm::pow(glm::sin(7.0f * _time_punching), 2);
-    }
-    else if (_time_punching != 0) // Animation should stop
-    {
-        if (glm::abs(_arm_extent) < 0.01f)
-        {
-            _arm_extent = 0;
-            _time_punching = 0;
-        }
-        else
-        {
-            _time_punching += delta_time;
-            _arm_extent = 0.2f * glm::pow(glm::sin(7.0f * _time_punching), 2);
-        }
     }
 
     // Walking (animation)
@@ -358,19 +361,37 @@ void Player::FixedUpdate()
     _was_grounded = _is_grounded;
 }
 
+bool Player::IsInControl()
+{
+    return _in_control;
+}
+
+void Player::EnableControl()
+{
+    _in_control = true;
+}
+
+void Player::DisableControl()
+{
+    _in_control = false;
+}
+
 void Player::UpdateCamera()
 {
-    auto mouse_delta = Input::GetMouseDelta();
-    _camera.yaw += mouse_delta.x * _camera.sensitivity;
-    _camera.pitch += mouse_delta.y * _camera.sensitivity;
-    _camera.pitch = glm::clamp(_camera.pitch, -89.8f, 89.8f);
+    if (_in_control)
+    {
+        auto mouse_delta = Input::GetMouseDelta();
+        _camera.yaw += mouse_delta.x * _camera.sensitivity;
+        _camera.pitch += mouse_delta.y * _camera.sensitivity;
+        _camera.pitch = glm::clamp(_camera.pitch, -89.8f, 89.8f);
 
-    glm::vec3 direction;
-    direction.x = cos(glm::radians(_camera.yaw)) * cos(glm::radians(_camera.pitch));
-    direction.y = sin(glm::radians(_camera.pitch));
-    direction.z = sin(glm::radians(_camera.yaw)) * cos(glm::radians(_camera.pitch));
-    _camera.forward = glm::normalize(direction);
-    _camera.right = glm::normalize(glm::cross(_camera.forward, _camera.up));
+        glm::vec3 direction;
+        direction.x = cos(glm::radians(_camera.yaw)) * cos(glm::radians(_camera.pitch));
+        direction.y = sin(glm::radians(_camera.pitch));
+        direction.z = sin(glm::radians(_camera.yaw)) * cos(glm::radians(_camera.pitch));
+        _camera.forward = glm::normalize(direction);
+        _camera.right = glm::normalize(glm::cross(_camera.forward, _camera.up));
+    }
 }
 
 PlayerData Player::GetPlayerData()
