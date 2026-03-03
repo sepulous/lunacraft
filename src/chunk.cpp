@@ -378,20 +378,11 @@ void Chunk::BuildLightmapInternal()
         if (y < 127)
         {
             uint32_t n = idx + 1;
-            bool pushed = false;
-            
-            if (sky_prop > _lightmap.GetSkyLevel(n))
-            {
-                _lightmap.SetSkyLevel(sky_prop, n);
-                queue.push_back(n);
-                pushed = true;
-            }
 
             if (block_prop > _lightmap.GetBlockLevel(n))
             {
                 _lightmap.SetBlockLevel(block_prop, n);
-                if (!pushed)
-                    queue.push_back(n);
+                queue.push_back(n);
             }
         }
 
@@ -615,20 +606,11 @@ void Chunk::BuildLightmapExternal()
         if (y < 127)
         {
             uint32_t n = idx + 1;
-            bool pushed = false;
-            
-            if (sky_prop > _lightmap.GetSkyLevel(n))
-            {
-                _lightmap.SetSkyLevel(sky_prop, n);
-                queue.push_back(n);
-                pushed = true;
-            }
 
             if (block_prop > _lightmap.GetBlockLevel(n))
             {
                 _lightmap.SetBlockLevel(block_prop, n);
-                if (!pushed)
-                    queue.push_back(n);
+                queue.push_back(n);
             }
         }
 
