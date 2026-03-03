@@ -18,5 +18,6 @@ class EntityManager
         void AddEntity(Entity *entity);
         void FixedUpdate();
         void Update(float delta_time);
-        void RunPhysics(int steps, float interp);
+        void PhysicsStep();
+        void Interpolate(double interp);
 };

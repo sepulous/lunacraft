@@ -32,7 +32,7 @@ void EntityManager::Update(float delta_time)
         entity->Update(delta_time);
 }
 
-void EntityManager::RunPhysics(int steps, float interp)
+void EntityManager::PhysicsStep()
 {
     auto TestAABBWorld = [this](const AABB &box) {
         float min_x = glm::round(box.center.x - box.extents.x);
@@ -66,72 +66,74 @@ void EntityManager::RunPhysics(int steps, float interp)
     for (Entity *entity : _entities)
     {
         glm::vec3 next_position = entity->GetPosition();
-        for (int i = 0; i < steps; i++)
+        entity->SetPrevPosition(entity->GetPosition());
+
+        // Gravity
+        if (!entity->IsGrounded())
+            entity->SetVelocity(entity->GetVelocity() - glm::vec3(0, 4.0f * FIXED_DELTA_TIME, 0));
+
+        // X
+        next_position.x += entity->GetVelocity().x * FIXED_DELTA_TIME;
+        entity->GetAABB().center.x = next_position.x;
+        if (TestAABBWorld(entity->GetAABB()))
         {
-            entity->SetPrevPosition(entity->GetPosition());
+            next_position.x = entity->GetPosition().x; // Don't actually move
+            entity->GetAABB().center.x = entity->GetPosition().x;
+            entity->SetVelocity({0, entity->GetVelocity().y, entity->GetVelocity().z});
+        }
 
-            // Gravity
-            if (!entity->IsGrounded())
-                entity->SetVelocity(entity->GetVelocity() - glm::vec3(0, 4.0f * FIXED_DELTA_TIME, 0));
+        // Z
+        next_position.z += entity->GetVelocity().z * FIXED_DELTA_TIME;
+        entity->GetAABB().center.z = next_position.z;
+        if (TestAABBWorld(entity->GetAABB()))
+        {
+            next_position.z = entity->GetPosition().z; // Don't actually move
+            entity->GetAABB().center.z = entity->GetPosition().z;
+            entity->SetVelocity({entity->GetVelocity().x, entity->GetVelocity().y, 0});
+        }
 
-            // X
-            next_position.x += entity->GetVelocity().x * FIXED_DELTA_TIME;
-            entity->GetAABB().center.x = next_position.x;
-            if (TestAABBWorld(entity->GetAABB()))
+        // Y
+        next_position.y += entity->GetVelocity().y * FIXED_DELTA_TIME;
+        entity->GetAABB().center.y = next_position.y;
+        if (TestAABBWorld(entity->GetAABB()))
+        {
+            if (entity->GetVelocity().y <= 0)
             {
-                next_position.x = entity->GetPosition().x; // Don't actually move
-                entity->GetAABB().center.x = entity->GetPosition().x;
-                entity->SetVelocity({0, entity->GetVelocity().y, entity->GetVelocity().z});
-            }
+                entity->SetGrounded(true);
 
-            // Z
-            next_position.z += entity->GetVelocity().z * FIXED_DELTA_TIME;
-            entity->GetAABB().center.z = next_position.z;
-            if (TestAABBWorld(entity->GetAABB()))
-            {
-                next_position.z = entity->GetPosition().z; // Don't actually move
-                entity->GetAABB().center.z = entity->GetPosition().z;
-                entity->SetVelocity({entity->GetVelocity().x, entity->GetVelocity().y, 0});
-            }
+                // Decide whether on ice
+                auto entity_voxel_g = GetNearestVoxel(entity->GetPosition());
+                auto entity_voxel_l = GlobalToLocalVoxel(entity_voxel_g);
+                auto entity_chunk = _chunk_manager->GetChunk(VoxelToChunk(entity_voxel_g));
+                BlockID foot_block = entity_chunk->GetBlocks()[GetChunkIndex(entity_voxel_l - glm::ivec3{0, 1, 0})]; // Can go out of bounds...
+                entity->SetIsOnIce(foot_block == BlockID::water);
 
-            // Y
-            next_position.y += entity->GetVelocity().y * FIXED_DELTA_TIME;
-            entity->GetAABB().center.y = next_position.y;
-            if (TestAABBWorld(entity->GetAABB()))
-            {
-                if (entity->GetVelocity().y <= 0)
-                {
-                    entity->SetGrounded(true);
-
-                    // Decide whether on ice
-                    auto entity_voxel_g = GetNearestVoxel(entity->GetPosition());
-                    auto entity_voxel_l = GlobalToLocalVoxel(entity_voxel_g);
-                    auto entity_chunk = _chunk_manager->GetChunk(VoxelToChunk(entity_voxel_g));
-                    BlockID foot_block = entity_chunk->GetBlocks()[GetChunkIndex(entity_voxel_l - glm::ivec3{0, 1, 0})]; // Can go out of bounds...
-                    entity->SetIsOnIce(foot_block == BlockID::water);
-
-                    // Snap to ground to avoid sinking
-                    float floor_feet = glm::floor(entity->GetPosition().y - entity->GetAABB().extents.y);
-                    next_position.y = floor_feet + entity->GetAABB().extents.y + 0.5f;
-                    entity->GetAABB().center.y = next_position.y;
-                }
-                else
-                {
-                    next_position.y = entity->GetPosition().y;
-                    entity->GetAABB().center.y = entity->GetPosition().y;
-                }
-                
-                entity->SetVelocity({entity->GetVelocity().x, 0, entity->GetVelocity().z});
+                // Snap to ground to avoid sinking
+                float floor_feet = glm::floor(entity->GetPosition().y - entity->GetAABB().extents.y);
+                next_position.y = floor_feet + entity->GetAABB().extents.y + 0.5f;
+                entity->GetAABB().center.y = next_position.y;
             }
             else
             {
-                entity->SetGrounded(false);
+                next_position.y = entity->GetPosition().y;
+                entity->GetAABB().center.y = entity->GetPosition().y;
             }
-
-            entity->SetNextPosition(next_position);
+            
+            entity->SetVelocity({entity->GetVelocity().x, 0, entity->GetVelocity().z});
+        }
+        else
+        {
+            entity->SetGrounded(false);
         }
 
-        // Interpolate position
+        entity->SetNextPosition(next_position);
+    }
+}
+
+void EntityManager::Interpolate(double interp)
+{
+    for (Entity *entity : _entities)
+    {
         entity->SetPosition(glm::mix(entity->GetPrevPosition(), entity->GetNextPosition(), interp));
         entity->GetAABB().center = entity->GetPosition();
     }

@@ -167,18 +167,25 @@ void Moon::Update(double delta_time)
     _world_time += delta_time;
     _accumulator += delta_time;
 
-    glm::ivec3 old_player_chunk = VoxelToChunk(GetNearestVoxel(_player->GetPosition())); // Save before allowing player to move
-
+    //
     // Fixed updates
-    if (_accumulator >= FIXED_DELTA_TIME)
-        _entity_manager.FixedUpdate();
+    //
 
-    // Physics
-    int physics_steps = 0;
-    if (_accumulator >= FIXED_DELTA_TIME)
-        physics_steps = (int)((_accumulator - FIXED_DELTA_TIME) / FIXED_DELTA_TIME) + 1;
-    _accumulator -= physics_steps * FIXED_DELTA_TIME;
-    _entity_manager.RunPhysics(physics_steps, _accumulator / FIXED_DELTA_TIME);
+    int fixed_steps = (int)(_accumulator / FIXED_DELTA_TIME);
+    _accumulator -= fixed_steps * FIXED_DELTA_TIME;
+
+    for (int i = 0; i < fixed_steps; i++)
+    {
+        _entity_manager.FixedUpdate();
+        _entity_manager.PhysicsStep();
+    }
+
+    double interp = _accumulator / FIXED_DELTA_TIME;
+    _entity_manager.Interpolate(interp);
+
+    //
+    // Per-frame updates
+    //
 
     // Non-physics updates
     _entity_manager.Update(delta_time);
@@ -190,7 +197,7 @@ void Moon::Update(double delta_time)
     _chunk_manager.HandleChunkJobs();
 
     // Handle player modifications
-    if (_selection_block.IsActive())
+    if (_selection_block.IsActive() && _player->IsInControl())
     {
         if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT))
         {
@@ -261,7 +268,6 @@ void Moon::Render(const glm::mat4 &projection)
         fog_color.a = 0;
     block_shader.SetVec4("u_fog_color", fog_color);
     block_shader.SetFloat("u_fog_distance", options.render_distance * (CHUNK_SIZE / 1.5f));
-
     Plane frustum[6];
     GetFrustumPlanes(view_projection, frustum);
     _chunk_manager.RenderChunks(frustum);
@@ -314,7 +320,7 @@ void Moon::UpdateSelectionBlock()
     while (distance < PLAYER_REACH)
     {
         BlockID block = _chunk_manager.GetChunk(VoxelToChunk(voxel))->GetBlocks()[GetChunkIndex(GlobalToLocalVoxel(voxel))];
-        if (BlockIsOpaque(block))
+        if (block != BlockID::air)
         {
             _selection_block.SetPosition(voxel);
             _selection_block.SetAdjacentPosition(last_voxel);
