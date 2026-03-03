@@ -834,12 +834,10 @@ void Chunk::BuildVertices()
 
         // Determine global base vertex position
         glm::vec3 base_pos;
-        if (normal.x != 0)
-            base_pos = {quad.base_coords.x - normal.x*0.5f, quad.base_coords.y - 0.5f, quad.base_coords.z - 0.5f};
-        else if (normal.y != 0)
-            base_pos = {quad.base_coords.x - 0.5f, quad.base_coords.y - normal.y*0.5f, quad.base_coords.z - 0.5f};
+        if (normal.y != 0)
+            base_pos = {quad.base_coords.x + _coords.x*CHUNK_SIZE - 0.5f, quad.base_coords.y + (quad.back_face ? 0.5f : 0.5f), quad.base_coords.z + _coords.z*CHUNK_SIZE -0.5f};
         else
-            base_pos = {quad.base_coords.x - 0.5f, quad.base_coords.y - 0.5f, quad.base_coords.z - normal.z*0.5f};
+            base_pos = {quad.base_coords.x + _coords.x*CHUNK_SIZE - 0.5f, quad.base_coords.y - 0.5f, quad.base_coords.z + _coords.z*CHUNK_SIZE - 0.5f};
 
         // Determine texture tiling repeats
         int quad_width = glm::length(quad.du);
@@ -867,7 +865,7 @@ void Chunk::BuildVertices()
             dot = 0;
 
         uint8_t _sky_light, _block_light;
-        glm::ivec3 light_sample_voxel_coords = quad.base_coords - glm::ivec3(normal);
+        glm::ivec3 light_sample_voxel_coords = LocalToGlobalVoxel(quad.base_coords, _coords) - glm::ivec3(normal);
         glm::ivec3 light_sample_chunk_coords = VoxelToChunk(light_sample_voxel_coords);
         if (light_sample_chunk_coords == _coords)
         {
