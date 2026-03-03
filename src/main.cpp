@@ -69,7 +69,7 @@ int main()
             initial_viewport_dims.y - (initial_viewport_dims.y / 2.0f),
             initial_viewport_dims.x,
             initial_viewport_dims.y,
-            0 // Refresh rate is ignored in windowed mode
+            mode->refreshRate
         );
     }
     
@@ -80,8 +80,10 @@ int main()
         return -1;
     }
 
+    bool vsync = false;
+
     glfwMakeContextCurrent(window);
-    glfwSwapInterval(0);
+    glfwSwapInterval((int)vsync);
 
     glfwShowWindow(window);
     glfwFocusWindow(window);
@@ -274,10 +276,13 @@ int main()
             // Updates
             //
 
+            auto player = moon->GetPlayer();
+
             // Play random song periodically
             if (current_time >= next_music_time)
             {
                 RNG rng;
+
                 int song = rng.Range(1, 4);
                 if (song == 1)
                     SoundSystem::Play(SoundSystem::Sound::SONG_2);
@@ -296,7 +301,7 @@ int main()
             {
                 DebugInfo debug_info;
                 debug_info.fps = (int)(1 / delta_time);
-                debug_info.player_pos = moon->GetPlayer()->GetCamera().position;
+                debug_info.player_pos = player->GetCamera().position;
                 debug_info.seed = moon->GetSettings().seed;
                 ui_debug_menu.Update(debug_info);
                 last_debug_update_time = current_time;
@@ -305,14 +310,17 @@ int main()
             // Update inventory
             ui_inventory.Update(Moon::GetCurrentMoon()->GetPlayer());
 
-            // Handle quit/resume buttons (this combines Update and Input; let's try to do better)
+            // Handle quit/resume buttons
             if (ui_pause_menu.IsActive())
             {
+                if (player->IsInControl())
+                    player->DisableControl();
+
                 ui_pause_menu.Update();
                 if (ui_pause_menu.QuitClicked())
                 {
                     // Save player data
-                    PlayerData player_data = moon->GetPlayer()->GetPlayerData();
+                    PlayerData player_data = player->GetPlayerData();
                     std::ofstream player_data_file(Storage::MOONS / (std::string("moon") + std::to_string(moon->GetID())) / "player.dat", std::ios::binary);
                     player_data_file.write(reinterpret_cast<char *>(&player_data), sizeof(PlayerData));
                     player_data_file.close();
@@ -342,11 +350,15 @@ int main()
             else
             {
                 ui_debug_menu.SetActive(OptionsManager::GetOptions().show_debug_info);
-                if (!ui_inventory.IsActive())
-                {
-                    moon->GetPlayer()->UpdateCamera();
-                    moon->GetPlayer()->SetCameraSensitivity(0.05f * OptionsManager::GetOptions().sensitivity);
-                }
+
+                if (ui_inventory.IsActive())
+                    player->DisableControl();
+                else
+                    player->EnableControl();
+
+                player->SetCameraSensitivity(0.05f * OptionsManager::GetOptions().sensitivity);
+                player->UpdateCamera();
+
                 moon->Update(delta_time);
             }
 
@@ -365,10 +377,7 @@ int main()
             }
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-            auto viewport_dimensions = Viewport::GetDimensions();
-            glm::mat4 projection = glm::perspective(glm::radians(45.0), (double)viewport_dimensions.x / (double)viewport_dimensions.y, 0.1, 500.0); // This only really needs to be recomputed when the viewport changes
-
-            moon->Render(projection);
+            moon->Render(Viewport::GetProjectionMatrix());
             ui_game.Render();
         }
 
@@ -446,7 +455,7 @@ void SetFullscreen(GLFWwindow *window, bool fullscreen)
             height - ((float)height / 2.0f),
             width,
             height,
-            0 // Refresh rate is ignored in windowed mode
+            mode->refreshRate
         );
     }
 }
