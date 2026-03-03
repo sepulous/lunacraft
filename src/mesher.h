@@ -85,12 +85,6 @@ std::vector<BlockQuad> GreedyMesh(BlockID *blocks, const Lightmap &lightmap, std
                     left_block = blocks[GetChunkIndex(left_block_coords)];
                 }
 
-                /*
-                 *  Need to rethink how to sample light here. If we render the left block,
-                 *  we sample where the right block is, and vice versa. We use neighbor
-                 *  lightmaps on edges.
-                 */
-
                 if (ShouldRenderFace(left_block, right_block) && !ShouldRenderFace(right_block, left_block))
                 {
                     uint8_t light = lightmap.GetCombinedLight(right_block_coords);
