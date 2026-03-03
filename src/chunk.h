@@ -39,6 +39,9 @@ class Lightmap
         void SetBlockLevel(uint8_t level, glm::ivec3 coords);
         void SetBlockLevel(uint8_t level, int x, int y, int z);
         void SetBlockLevel(uint8_t level, uint32_t idx);
+
+        uint8_t GetCombinedLight(glm::ivec3 coords) const;
+        uint8_t GetCombinedLight(int x, int y, int z) const;
 };
 
 enum class ChunkState

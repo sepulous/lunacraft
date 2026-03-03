@@ -29,17 +29,18 @@ struct BlockQuad
     a 1x1 quad, and extend its height until a different mask value is reached. We then extend this new quad's width as far as possible to get the final quad.
     Finally, all mask positions covered by the final quad are marked as non-renderable, and we continue iterating through this column.
 */
-std::vector<BlockQuad> GreedyMesh(BlockID *blocks, std::array<Chunk *, 4> neighbors)
+std::vector<BlockQuad> GreedyMesh(BlockID *blocks, const Lightmap &lightmap, std::array<Chunk *, 4> neighbors)
 {
     struct MaskEntry
     {
         BlockID block;
+        uint8_t light;
         bool back_face;
 
         MaskEntry() { block = BlockID::air, back_face = false; }
-        MaskEntry(BlockID block, bool back_face) : block(block), back_face(back_face) {}
-        bool operator==(const MaskEntry& other) { return block == other.block && back_face == other.back_face; }
-        bool operator!=(const MaskEntry& other) { return block != other.block || back_face != other.back_face; }
+        MaskEntry(BlockID block, uint8_t light, bool back_face) : block(block), light(light), back_face(back_face) {}
+        bool operator==(const MaskEntry& other) { return block == other.block && light == other.light && back_face == other.back_face; }
+        bool operator!=(const MaskEntry& other) { return block != other.block || light != other.light || back_face != other.back_face; }
     };
 
     std::vector<MaskEntry> mask;
@@ -67,20 +68,48 @@ std::vector<BlockQuad> GreedyMesh(BlockID *blocks, std::array<Chunk *, 4> neighb
         {
             for (int block_y = 0; block_y < WORLD_HEIGHT_LIMIT; block_y++)
             {
+                glm::ivec3 left_block_coords;
                 BlockID left_block;
-                BlockID right_block = blocks[GetChunkIndex(block_x, block_y, block_z)];
+
+                glm::ivec3 right_block_coords = {block_x, block_y, block_z};
+                BlockID right_block = blocks[GetChunkIndex(right_block_coords)];
 
                 if (block_x == 0)
-                    left_block = left_neighbor->GetBlocks()[GetChunkIndex(CHUNK_SIZE - 1, block_y, block_z)];
+                {
+                    left_block_coords = {CHUNK_SIZE - 1, block_y, block_z};
+                    left_block = left_neighbor->GetBlocks()[GetChunkIndex(left_block_coords)];
+                }
                 else
-                    left_block = blocks[GetChunkIndex(block_x - 1, block_y, block_z)];
+                {
+                    left_block_coords = {block_x - 1, block_y, block_z};
+                    left_block = blocks[GetChunkIndex(left_block_coords)];
+                }
+
+                /*
+                 *  Need to rethink how to sample light here. If we render the left block,
+                 *  we sample where the right block is, and vice versa. We use neighbor
+                 *  lightmaps on edges.
+                 */
 
                 if (ShouldRenderFace(left_block, right_block) && !ShouldRenderFace(right_block, left_block))
-                    mask.emplace_back(left_block, false);
+                {
+                    uint8_t light = lightmap.GetCombinedLight(right_block_coords);
+                    mask.emplace_back(left_block, light, false);
+                }
                 else if (ShouldRenderFace(right_block, left_block) && !ShouldRenderFace(left_block, right_block))
-                    mask.emplace_back(right_block, true);
+                {
+                    uint8_t light;
+                    if (block_x == 0)
+                        light = left_neighbor->GetLightmap().GetCombinedLight(left_block_coords);
+                    else
+                        light = lightmap.GetCombinedLight(left_block_coords);
+
+                    mask.emplace_back(right_block, light, true);
+                }
                 else
-                    mask.emplace_back(BlockID::air, false); // Don't render
+                {
+                    mask.emplace_back(BlockID::air, 0, false); // Don't render
+                }
             }
         }
 
@@ -158,20 +187,42 @@ std::vector<BlockQuad> GreedyMesh(BlockID *blocks, std::array<Chunk *, 4> neighb
         {
             for (int block_y = 0; block_y < WORLD_HEIGHT_LIMIT; block_y++)
             {
+                glm::ivec3 back_block_coords;
                 BlockID back_block;
-                BlockID front_block = blocks[GetChunkIndex(block_x, block_y, block_z)];
+
+                glm::ivec3 front_block_coords = {block_x, block_y, block_z};
+                BlockID front_block = blocks[GetChunkIndex(front_block_coords)];
 
                 if (block_z == 0)
-                    back_block = (BlockID)back_neighbor->GetBlocks()[GetChunkIndex(block_x, block_y, CHUNK_SIZE - 1)];
+                {
+                    back_block_coords = {block_x, block_y, CHUNK_SIZE - 1};
+                    back_block = back_neighbor->GetBlocks()[GetChunkIndex(back_block_coords)];
+                }
                 else
-                    back_block = (BlockID)blocks[GetChunkIndex(block_x, block_y, block_z - 1)];
+                {
+                    back_block_coords = {block_x, block_y, block_z - 1};
+                    back_block = blocks[GetChunkIndex(back_block_coords)];
+                }
 
                 if (ShouldRenderFace(back_block, front_block) && !ShouldRenderFace(front_block, back_block))
-                    mask.emplace_back(back_block, false);
+                {
+                    uint8_t light = lightmap.GetCombinedLight(front_block_coords);
+                    mask.emplace_back(back_block, light, false);
+                }
                 else if (ShouldRenderFace(front_block, back_block) && !ShouldRenderFace(back_block, front_block))
-                    mask.emplace_back(front_block, true);
+                {
+                    uint8_t light;
+                    if (block_z == 0)
+                        light = back_neighbor->GetLightmap().GetCombinedLight(back_block_coords);
+                    else
+                        light = lightmap.GetCombinedLight(back_block_coords);
+
+                    mask.emplace_back(front_block, light, true);
+                }
                 else
-                    mask.emplace_back(BlockID::air, false); // Don't render
+                {
+                    mask.emplace_back(BlockID::air, 0, false); // Don't render
+                }
             }
         }
 
@@ -251,19 +302,27 @@ std::vector<BlockQuad> GreedyMesh(BlockID *blocks, std::array<Chunk *, 4> neighb
             {
                 if (block_y < WORLD_HEIGHT_LIMIT - 1) // Skip rendering top of chunk
                 {
-                    BlockID bottom_block = (BlockID)blocks[GetChunkIndex(block_x, block_y, block_z)];  // These blocks are on opposite sides of the plane
-                    BlockID top_block = (BlockID)blocks[GetChunkIndex(block_x, block_y + 1, block_z)]; //
+                    BlockID bottom_block = blocks[GetChunkIndex(block_x, block_y, block_z)];  // These blocks are on opposite sides of the plane
+                    BlockID top_block = blocks[GetChunkIndex(block_x, block_y + 1, block_z)]; //
 
                     if (ShouldRenderFace(bottom_block, top_block) && !ShouldRenderFace(top_block, bottom_block))
-                        mask.emplace_back(bottom_block, false);
+                    {
+                        uint8_t light = lightmap.GetCombinedLight(block_x, block_y + 1, block_z);
+                        mask.emplace_back(bottom_block, light, false);
+                    }
                     else if (ShouldRenderFace(top_block, bottom_block) && !ShouldRenderFace(bottom_block, top_block))
-                        mask.emplace_back(top_block, true);
+                    {
+                        uint8_t light = lightmap.GetCombinedLight(block_x, block_y, block_z);
+                        mask.emplace_back(top_block, light, true);
+                    }
                     else
-                        mask.emplace_back(BlockID::air, false); // Don't render
+                    {
+                        mask.emplace_back(BlockID::air, 0, false); // Don't render
+                    }
                 }
                 else
                 {
-                    mask.emplace_back(BlockID::air, false);
+                    mask.emplace_back(BlockID::air, 0, false);
                 }
             }
         }

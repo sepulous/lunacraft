@@ -720,6 +720,15 @@ void Chunk::UpdateVertexLighting()
 
     auto neighbors = _chunk_manager->GetNeighbors(_coords);
 
+    float world_time = Moon::GetCurrentMoon()->GetWorldTime();
+    float snapped_world_time = (((int)world_time % (LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE)) / SECONDS_PER_LIGHT_PHASE) * SECONDS_PER_LIGHT_PHASE; // Snap world time to beginning of phase so all chunks in the same phase agree on ambient_light
+    float sin_world_time = glm::sin((snapped_world_time + SECONDS_PER_LIGHT_PHASE) * (2 * 3.14159f / (LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE))); // The offset initializes moon on Phase 1
+    glm::vec3 sunlight_direction = Moon::GetCurrentMoon()->GetSunlightDirection();
+    float ambient_light = 0.5f * sin_world_time;
+    if (ambient_light < 0)
+        ambient_light *= -0.5f;
+    float sunlight_factor = ambient_light + 0.5f;
+
     // We need to determine the global voxel position of the base of the quad (the inverse of what we do in BuildVertices), but some
     // vertex positions include offsets (du and dv), so we can't always do this directly. But we submit vertices in groups of six,
     // and for the first one in each group we always have vertex.position == quad.base_coords, so we can use the first one to determine
@@ -732,24 +741,13 @@ void Chunk::UpdateVertexLighting()
             auto &first = vertices->at(i);
 
             glm::ivec3 voxel_g;
-            if (first.face_normal.x != 0)
-                voxel_g = {first.position.x + first.face_normal.x*0.5f, first.position.y + 0.5f, first.position.z + 0.5f};
-            else if (first.face_normal.y != 0)
-                voxel_g = {first.position.x + 0.5f, first.position.y + first.face_normal.y*0.5f, first.position.z + 0.5f};
+            if (first.face_normal.y != 0)
+                voxel_g = {first.position.x + 0.5f, first.position.y + 0.5f, first.position.z + 0.5f};
             else
-                voxel_g = {first.position.x + 0.5f, first.position.y + 0.5f, first.position.z + first.face_normal.z*0.5f};
+                voxel_g = {first.position.x + 0.5f, first.position.y - 0.5f, first.position.z + 0.5f};
 
-            glm::vec3 light;
-
-            float world_time = Moon::GetCurrentMoon()->GetWorldTime();
-            float snapped_world_time = (((int)world_time % 330) / 30) * 30; // Snap world time to beginning of phase so all chunks in the same phase agree on ambient_light
-            float sin_world_time = glm::sin((snapped_world_time + SECONDS_PER_LIGHT_PHASE) * (2 * 3.14159f / (LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE))); // The offset initializes moon on Phase 1
-            glm::vec3 sunlight_direction = Moon::GetCurrentMoon()->GetSunlightDirection();
-            float ambient_light = 0.5f * sin_world_time;
-            if (ambient_light < 0)
-                ambient_light *= -0.5f;
-            float sunlight_factor = ambient_light + 0.5f;
-
+            glm::vec2 light;
+            
             float dot = glm::dot(sunlight_direction, first.face_normal);
             if (dot < 0)
                 dot = 0;
@@ -784,13 +782,13 @@ void Chunk::UpdateVertexLighting()
 
             if (sin_world_time > 0)
             {
-                light = glm::vec3(glm::max(scaled_sky_light, block_light) / 100.0f);
+                light = glm::vec2(glm::max(scaled_sky_light, block_light) / 100.0f);
             }
             else
             {
                 float red_green = glm::clamp(block_light / 100.0f + scaled_sky_light * sunlight_factor * 0.01f, 0.0f, 1.0f);
                 float blue = glm::clamp(block_light / 100.0f + scaled_sky_light * 0.01f, 0.0f, 1.0f);
-                light = {red_green, red_green, blue};
+                light = {red_green, blue};
             }
 
             vertices->at(i).light = light;
@@ -809,10 +807,18 @@ void Chunk::BuildVertices()
 {
     SetState(ChunkState::BUILDING_VERTICES);
 
+    // These calculations were reverse engineered from the latest version of the original game (v2.01)
+    float world_time = Moon::GetCurrentMoon()->GetWorldTime();
+    float snapped_world_time = (((int)world_time % (LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE)) / SECONDS_PER_LIGHT_PHASE) * SECONDS_PER_LIGHT_PHASE; // Snap world time to beginning of phase so all chunks in the same phase agree on ambient_light
+    float sin_world_time = glm::sin((snapped_world_time + SECONDS_PER_LIGHT_PHASE) * (2 * 3.14159f / (LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE))); // The offset initializes moon on Phase 1
+    glm::vec3 sunlight_direction = Moon::GetCurrentMoon()->GetSunlightDirection();
+    float ambient_light = 0.5f * sin_world_time;
+    if (ambient_light < 0)
+        ambient_light *= -0.5f;
+    float sunlight_factor = ambient_light + 0.5f;
+
     auto neighbors = _chunk_manager->GetNeighbors(_coords);
-
-    std::vector<BlockQuad> quads = GreedyMesh(_blocks, neighbors);
-
+    std::vector<BlockQuad> quads = GreedyMesh(_blocks, _lightmap, neighbors);
     auto tile_origins = GetAtlasTileOrigins();
 
     _opaque_vertices.clear();
@@ -835,7 +841,7 @@ void Chunk::BuildVertices()
         // Determine global base vertex position
         glm::vec3 base_pos;
         if (normal.y != 0)
-            base_pos = {quad.base_coords.x + _coords.x*CHUNK_SIZE - 0.5f, quad.base_coords.y + (quad.back_face ? 0.5f : 0.5f), quad.base_coords.z + _coords.z*CHUNK_SIZE -0.5f};
+            base_pos = {quad.base_coords.x + _coords.x*CHUNK_SIZE - 0.5f, quad.base_coords.y + 0.5f, quad.base_coords.z + _coords.z*CHUNK_SIZE -0.5f};
         else
             base_pos = {quad.base_coords.x + _coords.x*CHUNK_SIZE - 0.5f, quad.base_coords.y - 0.5f, quad.base_coords.z + _coords.z*CHUNK_SIZE - 0.5f};
 
@@ -846,31 +852,20 @@ void Chunk::BuildVertices()
         //
         // Lighting
         //
-        // These calculations were reverse engineered from the latest version of the original game (v2.01)
-        //
-
-        glm::vec2 light;
-
-        float world_time = Moon::GetCurrentMoon()->GetWorldTime();
-        float snapped_world_time = (((int)world_time % 330) / 30) * 30; // Snap world time to beginning of phase so all chunks in the same phase agree on ambient_light
-        float sin_world_time = glm::sin((snapped_world_time + SECONDS_PER_LIGHT_PHASE) * (2 * 3.14159f / (LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE))); // The offset initializes moon on Phase 1
-        glm::vec3 sunlight_direction = Moon::GetCurrentMoon()->GetSunlightDirection();
-        float ambient_light = 0.5f * sin_world_time;
-        if (ambient_light < 0)
-            ambient_light *= -0.5f;
-        float sunlight_factor = ambient_light + 0.5f;
 
         float dot = glm::dot(sunlight_direction, normal);
         if (dot < 0)
             dot = 0;
 
-        uint8_t _sky_light, _block_light;
+        glm::vec2 v_light;
+
+        uint8_t sky_light, block_light;
         glm::ivec3 light_sample_voxel_coords = LocalToGlobalVoxel(quad.base_coords, _coords) - glm::ivec3(normal);
         glm::ivec3 light_sample_chunk_coords = VoxelToChunk(light_sample_voxel_coords);
         if (light_sample_chunk_coords == _coords)
         {
-            _sky_light = _lightmap.GetSkyLevel(GlobalToLocalVoxel(light_sample_voxel_coords));
-            _block_light = _lightmap.GetBlockLevel(GlobalToLocalVoxel(light_sample_voxel_coords));
+            sky_light = _lightmap.GetSkyLevel(GlobalToLocalVoxel(light_sample_voxel_coords));
+            block_light = _lightmap.GetBlockLevel(GlobalToLocalVoxel(light_sample_voxel_coords));
         }
         else
         {
@@ -878,16 +873,16 @@ void Chunk::BuildVertices()
             {
                 if (neighbor->GetCoords() == light_sample_chunk_coords)
                 {
-                    _sky_light = neighbor->GetLightmap().GetSkyLevel(GlobalToLocalVoxel(light_sample_voxel_coords));
-                    _block_light = neighbor->GetLightmap().GetBlockLevel(GlobalToLocalVoxel(light_sample_voxel_coords));
+                    sky_light = neighbor->GetLightmap().GetSkyLevel(GlobalToLocalVoxel(light_sample_voxel_coords));
+                    block_light = neighbor->GetLightmap().GetBlockLevel(GlobalToLocalVoxel(light_sample_voxel_coords));
                     break;
                 }
             }
         }
-        float sky_light = (float)_sky_light * (100.0f / 9.0f);      // Apparently Charlie's light values were in [0, 100]. Mine are in [0, 9], 
-        float block_light = (float)_block_light * (100.0f / 9.0f);  // so let's scale to [0, 100] so his code works as-is
+        float sky_light_f = (float)sky_light * (100.0f / 9.0f);      // Apparently Charlie's light values were in [0, 100]. Mine are in [0, 9], 
+        float block_light_f = (float)block_light * (100.0f / 9.0f);  // so let's scale to [0, 100] so his code works as-is
 
-        float corrected_sky_light = (sky_light * ambient_light + (1.0 - ambient_light) * sky_light * dot) * sunlight_factor;
+        float corrected_sky_light = (sky_light_f * ambient_light + (1.0 - ambient_light) * sky_light_f * dot) * sunlight_factor;
         float scaled_sky_light;
         if (corrected_sky_light != 0)
             scaled_sky_light = ((corrected_sky_light / 100.0) * 68.0) + 32;
@@ -896,21 +891,21 @@ void Chunk::BuildVertices()
 
         if (sin_world_time > 0)
         {
-            light = glm::vec2(glm::max(scaled_sky_light, block_light) / 100.0f);
+            v_light = glm::vec2(glm::max(scaled_sky_light, block_light_f) / 100.0f);
         }
         else
         {
-            float red_green = glm::clamp(block_light / 100.0f + scaled_sky_light * sunlight_factor * 0.01f, 0.0f, 1.0f);
-            float blue = glm::clamp(block_light / 100.0f + scaled_sky_light * 0.01f, 0.0f, 1.0f);
-            light = {red_green, blue};
+            float red_green = glm::clamp(block_light_f / 100.0f + scaled_sky_light * sunlight_factor * 0.01f, 0.0f, 1.0f);
+            float blue = glm::clamp(block_light_f / 100.0f + scaled_sky_light * 0.01f, 0.0f, 1.0f);
+            v_light = {red_green, blue};
         }
 
         // Push vertices
         auto &vertices = BlockIsOpaque(quad.block) ? _opaque_vertices : _transparent_vertices;
-        vertices.emplace_back(base_pos,                     glm::vec4{0,          0,           tile_origin}, normal, light);
-        vertices.emplace_back(base_pos + quad.dv,           glm::vec4{0,          quad_height, tile_origin}, normal, light);
-        vertices.emplace_back(base_pos + quad.dv + quad.du, glm::vec4{quad_width, quad_height, tile_origin}, normal, light);
-        vertices.emplace_back(base_pos + quad.du,           glm::vec4{quad_width, 0,           tile_origin}, normal, light);
+        vertices.emplace_back(base_pos,                     glm::vec4{0,          0,           tile_origin}, normal, v_light);
+        vertices.emplace_back(base_pos + quad.dv,           glm::vec4{0,          quad_height, tile_origin}, normal, v_light);
+        vertices.emplace_back(base_pos + quad.dv + quad.du, glm::vec4{quad_width, quad_height, tile_origin}, normal, v_light);
+        vertices.emplace_back(base_pos + quad.du,           glm::vec4{quad_width, 0,           tile_origin}, normal, v_light);
 
         // Push indices
         auto &indices = BlockIsOpaque(quad.block) ? _opaque_indices : _transparent_indices;
@@ -1033,4 +1028,14 @@ void Lightmap::SetBlockLevel(uint8_t block_level, uint32_t idx)
 {
     uint8_t entry = _block_light[idx];
     _block_light[idx] = (entry & 0xF0) | block_level;
+}
+
+uint8_t Lightmap::GetCombinedLight(glm::ivec3 coords) const
+{
+    return (_sky_light[GetChunkIndex(coords)] << 4) | _block_light[GetChunkIndex(coords)];
+}
+
+uint8_t Lightmap::GetCombinedLight(int x, int y, int z) const
+{
+    return (_sky_light[GetChunkIndex(x, y, z)] << 4) | _block_light[GetChunkIndex(x, y, z)];
 }
