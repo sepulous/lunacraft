@@ -42,6 +42,8 @@ class Lightmap
 
         uint8_t GetCombinedLight(glm::ivec3 coords) const;
         uint8_t GetCombinedLight(int x, int y, int z) const;
+
+        void ClearBlockLight();
 };
 
 enum class ChunkState

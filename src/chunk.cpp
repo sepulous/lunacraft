@@ -267,6 +267,11 @@ void Chunk::BuildLightmapInternal()
     std::vector<uint32_t> queue;
     queue.reserve(BLOCKS_IN_CHUNK);
 
+    // Right now I'm removing block light by completely rebuilding lightmaps, rather than just unpropagating it.
+    // The latter is obviously much more efficient, but I need a non-annoying way to supply neighbor chunks with
+    // the information they need to unpropagate.
+    _lightmap.ClearBlockLight();
+
     for (int x = 0; x < S; x++)
     {
         int x_base = x * SX;
@@ -1020,4 +1025,9 @@ uint8_t Lightmap::GetCombinedLight(glm::ivec3 coords) const
 uint8_t Lightmap::GetCombinedLight(int x, int y, int z) const
 {
     return (_sky_light[GetChunkIndex(x, y, z)] << 4) | _block_light[GetChunkIndex(x, y, z)];
+}
+
+void Lightmap::ClearBlockLight()
+{
+    std::memset(_block_light, 0, BLOCKS_IN_CHUNK * sizeof(uint8_t));
 }

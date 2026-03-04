@@ -177,6 +177,7 @@ void ChunkManager::HandlePlayerModification(glm::ivec3 voxel, BlockID block_plac
                 .chunk = neighbor,
                 .requires_neighbors = true,
                 .tasks = {
+                    ChunkTask::BUILD_LIGHTMAP_INTERNAL,
                     ChunkTask::BUILD_LIGHTMAP_EXTERNAL,
                     ChunkTask::UPDATE_VERTEX_LIGHTING
                 }
@@ -200,6 +201,7 @@ void ChunkManager::HandlePlayerModification(glm::ivec3 voxel, BlockID block_plac
                 .chunk = neighbor,
                 .requires_neighbors = true,
                 .tasks = {
+                    ChunkTask::BUILD_LIGHTMAP_INTERNAL,
                     ChunkTask::BUILD_LIGHTMAP_EXTERNAL,
                     vertex_task
                 }
