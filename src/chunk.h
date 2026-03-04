@@ -105,12 +105,19 @@ public:
     void MarkForDelete();
     bool IsMarkedForDelete();
 
+// Job control
+public:
+    void MarkAsDirty(); // Main thread (when job is submitted)
+    void MarkAsClean(); // Worker thread (when job is finished)
+    bool IsDirty();
+
 private:
     void SetState(ChunkState state);
 
 private:
     ChunkManager *_chunk_manager;
     std::atomic<ChunkState> _state{ChunkState::CREATED};
+    std::atomic<bool> _dirty{false};
     bool _has_uploaded_vertices = false;
     bool _is_border_chunk;
     glm::ivec3 _coords;

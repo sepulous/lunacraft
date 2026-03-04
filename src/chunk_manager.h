@@ -30,6 +30,7 @@ struct ChunkTask
     static void (Chunk::*BUILD_LIGHTMAP_EXTERNAL)();
     static void (Chunk::*UPDATE_VERTEX_LIGHTING)();
     static void (Chunk::*BUILD_VERTICES)();
+    static void (Chunk::*MARK_AS_CLEAN)();
 };
 
 struct ChunkJob

@@ -162,6 +162,21 @@ bool Chunk::IsMarkedForDelete()
     return _marked_for_delete.load(std::memory_order_relaxed);
 }
 
+void Chunk::MarkAsDirty()
+{
+    _dirty.store(true, std::memory_order_release);
+}
+
+void Chunk::MarkAsClean()
+{
+    _dirty.store(false, std::memory_order_release);
+}
+
+bool Chunk::IsDirty()
+{
+    return _dirty.load(std::memory_order_acquire);
+}
+
 //
 // Upload chunk's vertex data to the GPU.
 //
