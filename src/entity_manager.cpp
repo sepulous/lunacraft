@@ -123,7 +123,11 @@ void EntityManager::PhysicsStep()
         }
         else
         {
-            entity->SetGrounded(false);
+            // Only unground them if their feet aren't where the grounding code puts them
+            float floor_feet = glm::floor(entity->GetPosition().y - entity->GetAABB().extents.y);
+            float actual_feet = entity->GetPosition().y - entity->GetAABB().extents.y;
+            if (glm::abs(actual_feet - (floor_feet + 0.5f)) > 0.01f)
+                entity->SetGrounded(false);
         }
 
         entity->SetNextPosition(next_position);
