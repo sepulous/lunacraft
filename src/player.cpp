@@ -273,8 +273,8 @@ void Player::Update(float delta_time)
         _time_since_last_jetpack_update += delta_time;
     }
 
-    // Walking (animation)
-    if (glm::length(_input_direction) > 0)
+    // Walking (bob animation)
+    if (glm::length(_input_direction) > 0 && _is_grounded)
     {
         _time_walking += delta_time;
         _arm_bob = 0.01f * glm::pow(glm::sin(5.0f * _time_walking), 2);
