@@ -73,7 +73,7 @@ Inventory::Inventory(bool is_creative)
         spacesuit[1] = {ItemID::battery, 1};
     }
 
-    _is_creative = is_creative;
+    is_creative_ = is_creative;
 }
 
 bool Inventory::HasSpaceForItem(ItemID item)
@@ -103,7 +103,7 @@ bool Inventory::ItemIsStackable(ItemID item)
 
 bool Inventory::IsCreative()
 {
-    return _is_creative;
+    return is_creative_;
 }
 
 // Returns index of slot that was added to

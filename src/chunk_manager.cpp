@@ -32,17 +32,17 @@ void (Chunk::*ChunkTask::MARK_AS_CLEAN)() = &Chunk::MarkAsClean;
 
 ChunkManager::~ChunkManager()
 {
-    glDeleteTextures(1, &_texture_atlas);
+    glDeleteTextures(1, &texture_atlas_);
 
     // Stop worker pool
-    delete _worker_pool;
+    delete worker_pool_;
 
     // Free chunks
-    for (auto [chunk_id, chunk] : _chunks)
+    for (auto [chunk_id, chunk] : chunks_)
         delete chunk;
 
     // Free block memory
-    for (auto &memory : _block_memory)
+    for (auto &memory : block_memory_)
         free(memory.blocks);
 }
 
@@ -54,8 +54,8 @@ void ChunkManager::Init(int moon_id, MoonSettings moon_settings)
     std::filesystem::path atlas_path = Storage::IMAGES / "texture_atlas.png";
     unsigned char *texture_atlas_data = stbi_load(reinterpret_cast<const char *>(atlas_path.u8string().c_str()), &width, &height, &nrChannels, 0);
 
-    glGenTextures(1, &_texture_atlas);
-    glBindTexture(GL_TEXTURE_2D, _texture_atlas);
+    glGenTextures(1, &texture_atlas_);
+    glBindTexture(GL_TEXTURE_2D, texture_atlas_);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -71,22 +71,22 @@ void ChunkManager::Init(int moon_id, MoonSettings moon_settings)
         std::filesystem::create_directory(chunk_dir);
 
     // Reserve for maximum number of possible memory blocks (including border chunks)
-    _block_memory.reserve((2*MAX_RENDER_DISTANCE + 3) * (2*MAX_RENDER_DISTANCE + 3));
+    block_memory_.reserve((2*MAX_RENDER_DISTANCE + 3) * (2*MAX_RENDER_DISTANCE + 3));
 
     // Start worker pool
-    _worker_pool = new ChunkWorkerPool{};
+    worker_pool_ = new ChunkWorkerPool{};
 }
 
 void ChunkManager::HandleChunkJobs()
 {
-    int jobs_to_handle = _job_queue.size(); // Jobs can be requeued, so we should only get this once at the beginning
+    int jobs_to_handle = job_queue_.size(); // Jobs can be requeued, so we should only get this once at the beginning
     for (int i = 0; i < jobs_to_handle; i++)
     {
-        if (_job_queue.front().chunk->IsDirty())
+        if (job_queue_.front().chunk->IsDirty())
             continue;
 
-        auto job = std::move(_job_queue.front());
-        _job_queue.pop();
+        auto job = std::move(job_queue_.front());
+        job_queue_.pop();
 
         if (job.requires_neighbors)
         {
@@ -98,7 +98,7 @@ void ChunkManager::HandleChunkJobs()
             if (neighbors_ready) // All tasks can be done
             {
                 job.chunk->MarkAsDirty();
-                _worker_pool->SubmitJob({job.chunk, job.tasks});
+                worker_pool_->SubmitJob({job.chunk, job.tasks});
             }
             else // External tasks cannot be done, but there may be internal tasks that can
             {
@@ -108,7 +108,7 @@ void ChunkManager::HandleChunkJobs()
 
                 if (it == job.tasks.begin()) // All tasks are external, so just requeue the job
                 {
-                    _job_queue.push(std::move(job));
+                    job_queue_.push(std::move(job));
                 }
                 else
                 {
@@ -117,31 +117,31 @@ void ChunkManager::HandleChunkJobs()
                     // Submit internal tasks
                     std::vector<void (Chunk::*)()> internal_tasks{job.tasks.begin(), it};
                     internal_tasks.push_back(ChunkTask::MARK_AS_CLEAN);
-                    _worker_pool->SubmitJob({job.chunk, internal_tasks});
+                    worker_pool_->SubmitJob({job.chunk, internal_tasks});
 
                     // Requeue remaining external tasks
                     job.tasks = std::vector<void (Chunk::*)()>{it, job.tasks.end()};
-                    _job_queue.push(std::move(job));
+                    job_queue_.push(std::move(job));
                 }
             }
         }
         else // Purely internal job; just submit everything
         {
             job.chunk->MarkAsDirty();
-            _worker_pool->SubmitJob({job.chunk, job.tasks});
+            worker_pool_->SubmitJob({job.chunk, job.tasks});
         }
     }
 }
 
 void ChunkManager::UploadReadyChunks()
 {
-    for (auto it = _chunks.begin(); it != _chunks.end(); ++it)
+    for (auto it = chunks_.begin(); it != chunks_.end(); ++it)
     {
         Chunk *chunk = it->second;
         if (!chunk->IsBorderChunk() && chunk->GetState() == ChunkState::READY_TO_UPLOAD) // Shouldn't waste GPU memory with border chunks. Most are never rendered.
         {
             chunk->UploadVertices();
-            _loaded_chunk_count++;
+            loaded_chunk_count_++;
         }
     }
 }
@@ -150,7 +150,7 @@ void ChunkManager::HandlePlayerModification(glm::ivec3 voxel, BlockID block_plac
 {
     // Get chunk
     auto chunk_coords = VoxelToChunk(voxel);
-    auto chunk = _chunks.at(ChunkCoordsToID(chunk_coords));
+    auto chunk = chunks_.at(ChunkCoordsToID(chunk_coords));
 
     // Remove block
     auto local = GlobalToLocalVoxel(voxel);
@@ -158,7 +158,7 @@ void ChunkManager::HandlePlayerModification(glm::ivec3 voxel, BlockID block_plac
 
     // Rebuild this chunk
     chunk->PinNeighbors();
-    _job_queue.push({
+    job_queue_.push({
         .chunk = chunk,
         .requires_neighbors = true,
         .tasks = {
@@ -170,14 +170,14 @@ void ChunkManager::HandlePlayerModification(glm::ivec3 voxel, BlockID block_plac
     });
 
     // Rebuild neighbor chunks
-    auto neighbor_chunks = GetNeighbors(chunk_coords);
+    auto neighborchunks_ = GetNeighbors(chunk_coords);
     auto voxel_local = GlobalToLocalVoxel(voxel);
     if (voxel_local.x != 0 && voxel_local.x != CHUNK_SIZE - 1 && voxel_local.z != 0 && voxel_local.z != CHUNK_SIZE - 1) // Not on chunk border
     {
-        for (auto &neighbor : neighbor_chunks)
+        for (auto &neighbor : neighborchunks_)
         {
             neighbor->PinNeighbors();
-            _job_queue.push({
+            job_queue_.push({
                 .chunk = neighbor,
                 .requires_neighbors = true,
                 .tasks = {
@@ -200,9 +200,9 @@ void ChunkManager::HandlePlayerModification(glm::ivec3 voxel, BlockID block_plac
             // border was modified, the neighbor must remesh; otherwise, it only needs to update lighting.
             auto vertex_task = voxel_local[indices[i]] == borders[i] ? ChunkTask::BUILD_VERTICES
                                                                      : ChunkTask::UPDATE_VERTEX_LIGHTING;
-            auto neighbor = neighbor_chunks[i];
+            auto neighbor = neighborchunks_[i];
             neighbor->PinNeighbors();
-            _job_queue.push({
+            job_queue_.push({
                 .chunk = neighbor,
                 .requires_neighbors = true,
                 .tasks = {
@@ -218,14 +218,14 @@ void ChunkManager::HandlePlayerModification(glm::ivec3 voxel, BlockID block_plac
 
 void ChunkManager::RenderChunks(Plane frustum[6])
 {
-    glBindTexture(GL_TEXTURE_2D, _texture_atlas);
+    glBindTexture(GL_TEXTURE_2D, texture_atlas_);
     glDepthFunc(GL_LESS);
 
-    std::vector<Chunk *> visible_chunks;
-    visible_chunks.reserve(32);
+    std::vector<Chunk *> visiblechunks_;
+    visiblechunks_.reserve(32);
 
     // Render opaque blocks
-    for (auto it = _chunks.begin(); it != _chunks.end(); ++it)
+    for (auto it = chunks_.begin(); it != chunks_.end(); ++it)
     {
         Chunk *chunk = it->second;
         if (chunk->HasUploadedVertices() && !chunk->IsBorderChunk())
@@ -236,13 +236,13 @@ void ChunkManager::RenderChunks(Plane frustum[6])
             if (ChunkInFrustum(frustum, x0, z0))
             {
                 chunk->RenderOpaques();
-                visible_chunks.push_back(chunk);
+                visiblechunks_.push_back(chunk);
             }
         }
     }
 
     // Render transparent blocks
-    for (Chunk *chunk : visible_chunks)
+    for (Chunk *chunk : visiblechunks_)
     {
         chunk->RenderTransparents();
     }
@@ -250,13 +250,13 @@ void ChunkManager::RenderChunks(Plane frustum[6])
 
 void ChunkManager::UpdateGlobalLighting()
 {
-    for (auto it = _chunks.begin(); it != _chunks.end(); ++it)
+    for (auto it = chunks_.begin(); it != chunks_.end(); ++it)
     {
         Chunk *chunk = it->second;
         if (!chunk->IsBorderChunk())
         {
             chunk->PinNeighbors();
-            _job_queue.push({
+            job_queue_.push({
                 .chunk = chunk,
                 .requires_neighbors = true,
                 .tasks = {
@@ -286,17 +286,17 @@ void ChunkManager::CreateInitialPatch()
                                 || z == player_chunk.z - render_distance - 1
                                 || z == player_chunk.z + render_distance + 1;
 
-            _chunks.emplace(chunk_id, new Chunk(glm::ivec3{x, 0, z}, is_border_chunk, this)); // This must succeed so the new chunk isn't leaked
+            chunks_.emplace(chunk_id, new Chunk(glm::ivec3{x, 0, z}, is_border_chunk, this)); // This must succeed so the new chunk isn't leaked
         }
     }
 
     // Chunks expect their neighbors to exist when building, so we defer it
-    for (auto it = _chunks.begin(); it != _chunks.end(); ++it)
+    for (auto it = chunks_.begin(); it != chunks_.end(); ++it)
     {
         auto chunk = it->second;
         if (chunk->IsBorderChunk())
         {
-            _job_queue.push({
+            job_queue_.push({
                 .chunk = chunk,
                 .requires_neighbors = false,
                 .tasks = {
@@ -309,7 +309,7 @@ void ChunkManager::CreateInitialPatch()
         else
         {
             chunk->PinNeighbors();
-            _job_queue.push({
+            job_queue_.push({
                 .chunk = chunk,
                 .requires_neighbors = true,
                 .tasks = {
@@ -340,7 +340,7 @@ std::array<Chunk *, 4> ChunkManager::GetNeighbors(glm::ivec3 chunk_coords)
     for (auto &neighbor : neighbor_coords)
     {
         auto chunk_id = ChunkCoordsToID(neighbor);
-        neighbors[idx] = _chunks.at(chunk_id); // Existence of neighbors should be guaranteed
+        neighbors[idx] = chunks_.at(chunk_id); // Existence of neighbors should be guaranteed
         idx++;
     }
 
@@ -353,7 +353,7 @@ void ChunkManager::AdjustChunkPatch()
     auto render_distance = OptionsManager::GetOptions().render_distance;
 
     // Remove all chunks outside the patch + border
-    for (auto it = _chunks.begin(); it != _chunks.end(); )
+    for (auto it = chunks_.begin(); it != chunks_.end(); )
     {
         auto &chunk = it->second;
 
@@ -373,15 +373,15 @@ void ChunkManager::AdjustChunkPatch()
                 // auto file_path = chunk->GetFilePath();
                 // auto blocks = chunk->GetBlocks();
                 // auto chunk_id = chunk->GetID();
-                // _worker_pool->SubmitJob([this, file_path, blocks, chunk_id]() {
+                // worker_pool_->SubmitJob([this, file_path, blocks, chunk_id]() {
                 //     WriteChunkToDisk(file_path, blocks);
                 //     ReuseBlockMemory(chunk_id);
                 // });
 
                 // Erase chunk
                 delete chunk;
-                it = _chunks.erase(it);
-                _loaded_chunk_count--;
+                it = chunks_.erase(it);
+                loaded_chunk_count_--;
             }
         }
         else
@@ -404,9 +404,9 @@ void ChunkManager::AdjustChunkPatch()
                                 || z == player_chunk.z + render_distance + 1
                                 || z == player_chunk.z - render_distance - 1;
 
-            if (_chunks.contains(chunk_id))
+            if (chunks_.contains(chunk_id))
             {
-                auto chunk = _chunks.at(chunk_id);
+                auto chunk = chunks_.at(chunk_id);
                 if (on_new_border) // Mark as border chunk
                 {
                     chunk->SetIsBorderChunk(true);
@@ -422,7 +422,7 @@ void ChunkManager::AdjustChunkPatch()
             {
                 // We can't build yet, as we haven't guaranteed the existence of all neighbors, so we must defer
                 Chunk *chunk = new Chunk(glm::ivec3{x, 0, z}, on_new_border, this);
-                _chunks.emplace(chunk_id, chunk);
+                chunks_.emplace(chunk_id, chunk);
                 to_build.push_back(chunk);
             }
         }
@@ -432,7 +432,7 @@ void ChunkManager::AdjustChunkPatch()
     for (auto chunk : to_convert)
     {
         chunk->PinNeighbors();
-        _job_queue.push({
+        job_queue_.push({
             .chunk = chunk,
             .requires_neighbors = true,
             .tasks = {
@@ -448,7 +448,7 @@ void ChunkManager::AdjustChunkPatch()
     {
         if (chunk->IsBorderChunk())
         {
-            _job_queue.push({
+            job_queue_.push({
                 .chunk = chunk,
                 .requires_neighbors = false,
                 .tasks = {
@@ -461,7 +461,7 @@ void ChunkManager::AdjustChunkPatch()
         else
         {
             chunk->PinNeighbors();
-            _job_queue.push({
+            job_queue_.push({
                 .chunk = chunk,
                 .requires_neighbors = true,
                 .tasks = {
@@ -479,7 +479,7 @@ void ChunkManager::AdjustChunkPatch()
 BlockID *ChunkManager::GetBlockMemory(uint64_t chunk_id)
 {
     // Check for free memory blocks
-    for (auto &memory : _block_memory)
+    for (auto &memory : block_memory_)
     {
         if (!memory.in_use)
         {
@@ -495,13 +495,13 @@ BlockID *ChunkManager::GetBlockMemory(uint64_t chunk_id)
         .in_use = true,
         .owner = chunk_id
     };
-    _block_memory.push_back(new_memory);
+    block_memory_.push_back(new_memory);
     return new_memory.blocks;
 }
 
 void ChunkManager::ReuseBlockMemory(uint64_t chunk_id)
 {
-    for (auto &memory : _block_memory)
+    for (auto &memory : block_memory_)
     {
         if (memory.owner == chunk_id)
         {
@@ -514,24 +514,24 @@ void ChunkManager::ReuseBlockMemory(uint64_t chunk_id)
 Chunk *ChunkManager::GetChunk(glm::ivec3 chunk_coords)
 {
     auto chunk_id = ChunkCoordsToID(chunk_coords);
-    if (_chunks.contains(chunk_id))
-        return _chunks.at(chunk_id);
+    if (chunks_.contains(chunk_id))
+        return chunks_.at(chunk_id);
     else
         return nullptr;
 }
 
 ChunkWorkerPool *ChunkManager::GetWorkerPool()
 {
-    return _worker_pool;
+    return worker_pool_;
 }
 
 int ChunkManager::GetLoadedChunkCount()
 {
-    return _loaded_chunk_count;
+    return loaded_chunk_count_;
 }
 
 void ChunkManager::WriteAllChunksToDisk()
 {
-    for (auto &[chunk_id, chunk] : _chunks)
+    for (auto &[chunk_id, chunk] : chunks_)
         WriteChunkToDisk(chunk->GetFilePath(), chunk->GetBlocks());
 }

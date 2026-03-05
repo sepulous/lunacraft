@@ -5,14 +5,14 @@
 class Entity
 {
     protected:
-        AABB _aabb;
-        glm::vec3 _prev_position;
-        glm::vec3 _next_position;
-        glm::vec3 _position;
-        glm::vec3 _velocity;
-        bool _is_on_ice = false;
-        bool _is_jumping = false;
-        bool _is_grounded = false;
+        AABB aabb_;
+        glm::vec3 prev_position_;
+        glm::vec3 next_position_;
+        glm::vec3 position_;
+        glm::vec3 velocity_;
+        bool is_on_ice_ = false;
+        bool is_jumping_ = false;
+        bool is_grounded_ = false;
 
     public:
         virtual ~Entity() = default;

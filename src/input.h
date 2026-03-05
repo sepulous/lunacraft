@@ -45,10 +45,10 @@ public:
 
 // State
 private:
-    static ButtonState _keyboard_state[GLFW_KEY_LAST + 1];
-    static ButtonState _mouse_state[GLFW_MOUSE_BUTTON_LAST + 1];
-    static glm::dvec2 _mouse_position;
-    static glm::dvec2 _mouse_delta;
-    static int _mouse_scroll;
-    static unsigned int _last_char_input;
+    static ButtonState keyboard_state_[GLFW_KEY_LAST + 1];
+    static ButtonState mouse_state_[GLFW_MOUSE_BUTTON_LAST + 1];
+    static glm::dvec2 mouse_position_;
+    static glm::dvec2 mouse_delta_;
+    static int mouse_scroll_;
+    static unsigned int last_char_input_;
 };

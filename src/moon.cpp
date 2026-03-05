@@ -17,7 +17,7 @@
 
 #include "input.h" // TEMP
 
-Moon *Moon::_current_moon;
+Moon *Moon::current_moon_;
 
 Moon::Moon(int moon_id, MoonSettings moon_settings)
 {
@@ -52,95 +52,95 @@ Moon::Moon(int moon_id, MoonSettings moon_settings)
     float comp2 = (1.0 - (1.0 - _rand) * 0.85) * 0.9;
 
     if (_case == 1)
-        _base_fog_color = {0.9, comp2, 0.135, 1};
+        base_fog_color_ = {0.9, comp2, 0.135, 1};
     else if (_case == 2)
-        _base_fog_color = {comp1, 0.9, 0.135, 1};
+        base_fog_color_ = {comp1, 0.9, 0.135, 1};
     else if (_case == 3)
-        _base_fog_color = {0.135, 0.9, comp2, 1};
+        base_fog_color_ = {0.135, 0.9, comp2, 1};
     else if (_case == 4)
-        _base_fog_color = {0.135, comp1, 0.9, 1};
+        base_fog_color_ = {0.135, comp1, 0.9, 1};
     else if (_case == 5)
-        _base_fog_color = {comp2, 0.135, 0.9, 1};
+        base_fog_color_ = {comp2, 0.135, 0.9, 1};
     else
-        _base_fog_color = {0.9, 0.135, comp1, 1};
+        base_fog_color_ = {0.9, 0.135, comp1, 1};
 
     int render_distance = OptionsManager::GetOptions().render_distance;
-    _initial_chunk_count = (2*render_distance + 1) * (2*render_distance + 1);
-    _id = moon_id;
-    _settings = moon_settings;
-    _world_time = moon_settings.world_time;
-    _player = new Player;
-    _current_moon = this;
-    _chunk_manager.Init(moon_id, moon_settings);
-    _entity_manager.LinkChunkManager(&_chunk_manager);
-    _entity_manager.AddEntity(_player);
+    initial_chunk_count_ = (2*render_distance + 1) * (2*render_distance + 1);
+    id_ = moon_id;
+    settings_ = moon_settings;
+    world_time_ = moon_settings.world_time;
+    player_ = new Player;
+    current_moon_ = this;
+    chunk_manager_.Init(moon_id, moon_settings);
+    entity_manager_.LinkChunkManager(&chunk_manager_);
+    entity_manager_.AddEntity(player_);
 }
 
 Moon::~Moon()
 {
-    _current_moon = nullptr;
+    current_moon_ = nullptr;
 
     // Save world time to file
-    _settings.world_time = _world_time;
-    std::filesystem::path moon_data_path = Storage::MOONS / (std::string("moon") + std::to_string(_id)) / "moon.dat";
+    settings_.world_time = world_time_;
+    std::filesystem::path moon_data_path = Storage::MOONS / (std::string("moon") + std::to_string(id_)) / "moon.dat";
     std::ofstream moon_data_file(moon_data_path, std::ios::binary);
-    moon_data_file.write(reinterpret_cast<char *>(&_settings), sizeof(MoonSettings));
+    moon_data_file.write(reinterpret_cast<char *>(&settings_), sizeof(MoonSettings));
     moon_data_file.close();
 }
 
 Moon *Moon::GetCurrentMoon()
 {
-    return _current_moon;
+    return current_moon_;
 }
 
 Player *Moon::GetPlayer()
 {
-    return _player;
+    return player_;
 }
 
 ChunkManager &Moon::GetChunkManager()
 {
-    return _chunk_manager;
+    return chunk_manager_;
 }
 
 EntityManager &Moon::GetEntityManager()
 {
-    return _entity_manager;
+    return entity_manager_;
 }
 
 glm::vec4 Moon::GetFogColor()
 {
-    float factor = glm::sin((_world_time + SECONDS_PER_LIGHT_PHASE) * (2 * 3.1416 / (LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE))); // The offset initializes moon on Phase 1
+    float factor = glm::sin((world_time_ + SECONDS_PER_LIGHT_PHASE) * (2 * 3.1416 / (LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE))); // The offset initializes moon on Phase 1
     if (factor < 0)
         factor = 0;
-    glm::vec3 fog_rgb = factor * glm::vec3(_base_fog_color);
-    return {fog_rgb, _base_fog_color.a};
+    glm::vec3 fog_rgb = factor * glm::vec3(base_fog_color_);
+    return {fog_rgb, base_fog_color_.a};
 }
 
 int Moon::GetID()
 {
-    return _id;
+    return id_;
 }
 
 float Moon::GetLoadProgress()
 {
-    int loaded_chunks = _chunk_manager.GetLoadedChunkCount();
-    return (float)loaded_chunks / (float)_initial_chunk_count;
+    int loaded_chunks = chunk_manager_.GetLoadedChunkCount();
+    return (float)loaded_chunks / (float)initial_chunk_count_;
 }
 
 MoonSettings Moon::GetSettings()
 {
-    return _settings;
+    return settings_;
 }
 
 double Moon::GetWorldTime()
 {
-    return _world_time;
+    return world_time_;
 }
 
 glm::vec3 Moon::GetSunlightDirection()
 {
-    int phase = ((int)(_world_time + SECONDS_PER_LIGHT_PHASE) / SECONDS_PER_LIGHT_PHASE) % LIGHT_PHASES; // The offset initializes moon on Phase 1
+    int phase = ((int)(world_time_ + SECONDS_PER_LIGHT_PHASE) / SECONDS_PER_LIGHT_PHASE) % LIGHT_PHASES; // The offset initializes moon on Phase 1
     float main_light_angle_deg;
     if (phase <= 6) // Day
     {
@@ -164,84 +164,84 @@ glm::vec3 Moon::GetSunlightDirection()
 
 void Moon::Update(double delta_time)
 {
-    _world_time += delta_time;
-    _accumulator += delta_time;
+    world_time_ += delta_time;
+    accumulator_ += delta_time;
 
     //
     // Fixed updates
     //
 
-    int fixed_steps = (int)(_accumulator / FIXED_DELTA_TIME);
-    _accumulator -= fixed_steps * FIXED_DELTA_TIME;
+    int fixed_steps = (int)(accumulator_ / FIXED_DELTA_TIME);
+    accumulator_ -= fixed_steps * FIXED_DELTA_TIME;
 
     for (int i = 0; i < fixed_steps; i++)
     {
-        _entity_manager.FixedUpdate();
-        _entity_manager.PhysicsStep();
+        entity_manager_.FixedUpdate();
+        entity_manager_.PhysicsStep();
     }
 
-    double interp = _accumulator / FIXED_DELTA_TIME;
-    _entity_manager.Interpolate(interp);
+    double interp = accumulator_ / FIXED_DELTA_TIME;
+    entity_manager_.Interpolate(interp);
 
     //
     // Per-frame updates
     //
 
     // Non-physics updates
-    _entity_manager.Update(delta_time);
+    entity_manager_.Update(delta_time);
 
     // Update selection block
     UpdateSelectionBlock();
 
     // Handle chunk jobs
-    _chunk_manager.HandleChunkJobs();
+    chunk_manager_.HandleChunkJobs();
 
     // Handle player modifications
-    if (_selection_block.IsActive() && _player->IsInControl())
+    if (selection_block_.IsActive() && player_->IsInControl())
     {
         if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT))
         {
-            _chunk_manager.HandlePlayerModification(_selection_block.GetPosition());
+            chunk_manager_.HandlePlayerModification(selection_block_.GetPosition());
         }
         else if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT))
         {
-            auto &inventory = _player->GetInventory();
+            auto &inventory = player_->GetInventory();
             auto &selected = inventory.inventory[0][inventory.selected_hotbar_slot];
             if (ItemIsBlock(selected.item))
             {
                 BlockID block = ItemIDToBlockID(selected.item);
                 if (block != BlockID::air)
                 {
-                    if (!_settings.is_creative)
+                    if (!settings_.is_creative)
                     {
                         selected.amount--;
                         if (selected.amount < 1)
                             selected = {ItemID::none, 0};
                     }
 
-                    _chunk_manager.HandlePlayerModification(_selection_block.GetAdjacentPosition(), block);
+                    chunk_manager_.HandlePlayerModification(selection_block_.GetAdjacentPosition(), block);
                 }
             }
         }
     }
 
     // Update lighting
-    int light_phase = ((int)(_world_time + SECONDS_PER_LIGHT_PHASE) / SECONDS_PER_LIGHT_PHASE) % LIGHT_PHASES; // The offset initializes moon on Phase 1
-    if (light_phase != _current_light_phase)
+    int light_phase = ((int)(world_time_ + SECONDS_PER_LIGHT_PHASE) / SECONDS_PER_LIGHT_PHASE) % LIGHT_PHASES; // The offset initializes moon on Phase 1
+    if (light_phase != current_light_phase_)
     {
-        _current_light_phase = light_phase;
-        _chunk_manager.UpdateGlobalLighting();
+        current_light_phase_ = light_phase;
+        chunk_manager_.UpdateGlobalLighting();
     }
     
     // Load new chunks around player (and unload old ones)
-    if (_world_time - _last_patch_update >= 0.2)
+    if (world_time_ - last_patch_update_ >= 0.2)
     {
-        _chunk_manager.AdjustChunkPatch();
-        _last_patch_update = _world_time;
+        chunk_manager_.AdjustChunkPatch();
+        last_patch_update_ = world_time_;
     }
 
     // Upload any new chunks that are ready to the GPU
-    _chunk_manager.UploadReadyChunks();
+    chunk_manager_.UploadReadyChunks();
 }
 
 void Moon::Render(const glm::mat4 &projection)
@@ -252,7 +252,7 @@ void Moon::Render(const glm::mat4 &projection)
 
     Options options = OptionsManager::GetOptions();
 
-    Camera player_camera = _player->GetCamera();
+    Camera player_camera = player_->GetCamera();
     glm::mat4 view = glm::lookAt(player_camera.position, player_camera.position + player_camera.forward, player_camera.up);
     glm::mat4 view_projection = projection * view;
 
@@ -270,12 +270,12 @@ void Moon::Render(const glm::mat4 &projection)
     block_shader.SetFloat("u_fog_distance", options.render_distance * (CHUNK_SIZE / 1.5f));
     Plane frustum[6];
     GetFrustumPlanes(view_projection, frustum);
-    _chunk_manager.RenderChunks(frustum);
+    chunk_manager_.RenderChunks(frustum);
 
-    _selection_block.Render(view_projection);
+    selection_block_.Render(view_projection);
 
     //glDisable(GL_DEPTH_TEST);
-    _player->RenderArm(view_projection);
+    player_->RenderArm(view_projection);
     //glEnable(GL_DEPTH_TEST);
 
     //
@@ -284,14 +284,14 @@ void Moon::Render(const glm::mat4 &projection)
 
     view = glm::mat4(glm::mat3(view));
     view_projection = projection * view;
-    float skybox_angle = (_world_time + SECONDS_PER_LIGHT_PHASE) * (2 * 3.1416f / (LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE)); // The offset initializes moon on Phase 1
-    _skybox.Update(view_projection, skybox_angle);
-    _skybox.Render();
+    float skybox_angle = (world_time_ + SECONDS_PER_LIGHT_PHASE) * (2 * 3.1416f / (LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE)); // The offset initializes moon on Phase 1
+    skybox_.Update(view_projection, skybox_angle);
+    skybox_.Render();
 }
 
 void Moon::UpdateSelectionBlock()
 {
-    auto camera = _player->GetCamera();
+    auto camera = player_->GetCamera();
 
     auto origin = camera.position;
     glm::ivec3 voxel = GetNearestVoxel(origin);
@@ -316,15 +316,15 @@ void Moon::UpdateSelectionBlock()
 
     float distance = 0.0f;
     const float PLAYER_REACH = 9.0f;
-    _selection_block.SetActive(false);
+    selection_block_.SetActive(false);
     while (distance < PLAYER_REACH)
     {
-        BlockID block = _chunk_manager.GetChunk(VoxelToChunk(voxel))->GetBlocks()[GetChunkIndex(GlobalToLocalVoxel(voxel))];
+        BlockID block = chunk_manager_.GetChunk(VoxelToChunk(voxel))->GetBlocks()[GetChunkIndex(GlobalToLocalVoxel(voxel))];
         if (block != BlockID::air)
         {
-            _selection_block.SetPosition(voxel);
-            _selection_block.SetAdjacentPosition(last_voxel);
-            _selection_block.SetActive(true);
+            selection_block_.SetPosition(voxel);
+            selection_block_.SetAdjacentPosition(last_voxel);
+            selection_block_.SetActive(true);
             break;
         }
 
@@ -389,47 +389,47 @@ SelectionBlock::SelectionBlock()
          0.505f,  0.505f,  0.505f,  1.0f, 0.0f,
     };
 
-    _mesh.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
-    _mesh.SetVertexData(vertices, sizeof(vertices) / (5 * sizeof(float)));
-    _mesh.SetTexture(Storage::IMAGES / "selection_block.png");
+    mesh_.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
+    mesh_.SetVertexData(vertices, sizeof(vertices) / (5 * sizeof(float)));
+    mesh_.SetTexture(Storage::IMAGES / "selection_block.png");
 }
 
 void SelectionBlock::SetPosition(const glm::ivec3 &position)
 {
-    _position = position;
+    position_ = position;
 }
 
 glm::ivec3 SelectionBlock::GetPosition()
 {
-    return _position;
+    return position_;
 }
 
 void SelectionBlock::SetAdjacentPosition(const glm::ivec3 &position)
 {
-    _adjacent_position = position;
+    adjacent_position_ = position;
 }
 
 glm::ivec3 SelectionBlock::GetAdjacentPosition()
 {
-    return _adjacent_position;
+    return adjacent_position_;
 }
 
 void SelectionBlock::SetActive(bool active)
 {
-    _active = active;
+    active_ = active;
 }
 
 bool SelectionBlock::IsActive()
 {
-    return _active;
+    return active_;
 }
 
 void SelectionBlock::Render(const glm::mat4 &view_projection)
 {
-    if (_active)
+    if (active_)
     {
-        auto mvp_matrix = glm::translate(view_projection, glm::vec3{_position});
-        _mesh.Render([&](Shader *shader) {
+        auto mvp_matrix = glm::translate(view_projection, glm::vec3{position_});
+        mesh_.Render([&](Shader *shader) {
             shader->SetMat4("u_mvp_matrix", mvp_matrix);
         });
     }

@@ -10,7 +10,7 @@ public:
     static glm::mat4 GetProjectionMatrix();
 
 private:
-    static glm::dvec2 _dimensions;
-    static glm::dvec2 _last_mouse_pos;
-    static glm::mat4 _proj_matrix;
+    static glm::dvec2 dimensions_;
+    static glm::dvec2 last_mouse_pos_;
+    static glm::mat4 proj_matrix_;
 };

@@ -26,10 +26,10 @@ public:
 private:
     void WorkerLoop();
 
-    std::vector<std::thread> _workers;
-    std::queue<WorkerJob> _jobs;
+    std::vector<std::thread> workers_;
+    std::queue<WorkerJob> jobs_;
 
-    std::mutex _jobs_mutex;
-    std::condition_variable _jobs_cv;
-    bool stop = false;
+    std::mutex jobs_mutex_;
+    std::condition_variable jobs_cv_;
+    bool stop_ = false;
 };

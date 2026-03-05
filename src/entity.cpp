@@ -3,75 +3,75 @@
 
 AABB &Entity::GetAABB() noexcept
 {
-    return _aabb;
+    return aabb_;
 }
 
 void Entity::SetPosition(const glm::vec3& position) noexcept
 {
-    _position = position;
+    position_ = position;
 }
 
 glm::vec3 Entity::GetPosition() noexcept
 {
-    return _position;
+    return position_;
 }
 
 void Entity::SetPrevPosition(const glm::vec3& prev_position) noexcept
 {
-    _prev_position = prev_position;
+    prev_position_ = prev_position;
 }
 
 glm::vec3 Entity::GetPrevPosition() noexcept
 {
-    return _prev_position;
+    return prev_position_;
 }
 
 void Entity::SetNextPosition(const glm::vec3& next_position) noexcept
 {
-    _next_position = next_position;
+    next_position_ = next_position;
 }
 
 glm::vec3 Entity::GetNextPosition() noexcept
 {
-    return _next_position;
+    return next_position_;
 }
 
 void Entity::SetVelocity(const glm::vec3& velocity) noexcept
 {
-    _velocity = velocity;
+    velocity_ = velocity;
 }
 
 glm::vec3 Entity::GetVelocity() noexcept
 {
-    return _velocity;
+    return velocity_;
 }
 
 void Entity::SetIsOnIce(bool on_ice) noexcept
 {
-    _is_on_ice = on_ice;
+    is_on_ice_ = on_ice;
 }
 
 bool Entity::IsOnIce() noexcept
 {
-    return _is_on_ice;
+    return is_on_ice_;
 }
 
 void Entity::SetJumping(bool value) noexcept
 {
-    _is_jumping = value;
+    is_jumping_ = value;
 }
 
 bool Entity::IsJumping() noexcept
 {
-    return _is_jumping;
+    return is_jumping_;
 }
 
 void Entity::SetGrounded(bool value) noexcept
 {
-    _is_grounded = value;
+    is_grounded_ = value;
 }
 
 bool Entity::IsGrounded() noexcept
 {
-    return _is_grounded;
+    return is_grounded_;
 }

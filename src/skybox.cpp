@@ -60,18 +60,18 @@ Skybox::Skybox()
         1.0f, -1.0f,  1.0f
     };
 
-    glGenVertexArrays(1, &_vao);
-    glBindVertexArray(_vao);
+    glGenVertexArrays(1, &vao_);
+    glBindVertexArray(vao_);
     
-    glGenBuffers(1, &_vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, _vbo);
+    glGenBuffers(1, &vbo_);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_);
     glBufferData(GL_ARRAY_BUFFER, sizeof(skybox_vertices), skybox_vertices, GL_STATIC_DRAW);
     
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
-    glGenTextures(1, &_texture);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, _texture);
+    glGenTextures(1, &texture_);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, texture_);
 
     std::vector<std::filesystem::path> faces = {
         Storage::IMAGES / "skybox" / "skybox_right.png",
@@ -106,9 +106,9 @@ Skybox::Skybox()
 
 Skybox::~Skybox()
 {
-    glDeleteVertexArrays(1, &_vao);
-    glDeleteBuffers(1, &_vbo);
-    glDeleteTextures(1, &_texture);
+    glDeleteVertexArrays(1, &vao_);
+    glDeleteBuffers(1, &vbo_);
+    glDeleteTextures(1, &texture_);
 }
 
 void Skybox::Update(const glm::mat4 &view_projection, float skybox_angle)
@@ -128,8 +128,8 @@ void Skybox::Render()
 {
     ShaderManager::SKYBOX_SHADER.Use();
     glDepthFunc(GL_LEQUAL);
-    glBindVertexArray(_vao);
+    glBindVertexArray(vao_);
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, _texture);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, texture_);
     glDrawArrays(GL_TRIANGLES, 0, 36);
 }

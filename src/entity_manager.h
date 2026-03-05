@@ -8,8 +8,8 @@
 class EntityManager
 {
     private:
-        ChunkManager *_chunk_manager;
-        std::vector<Entity *> _entities;
+        ChunkManager *chunk_manager_;
+        std::vector<Entity *> entities_;
 
     public:
         EntityManager() = default;

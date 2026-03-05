@@ -20,42 +20,42 @@ struct PlayerData
 class Player : public Entity
 {
     private:
-        Camera _camera;
-        Inventory _inventory;
-        bool _in_control = true;
-        bool _inventory_changed = false; // For UI updating. I don't love this system...
-        glm::vec3 _input_direction;
-        int _health = 100;
-        int _suit_status = 100;
-        int _jetpack_energy = 20;
-        bool _was_grounded = false;
-        float _fall_time = 0;
-        bool _is_flying = false;
-        float _time_since_last_health_update = 0;
-        float _time_since_last_suit_update = 0;
-        float _time_since_last_jetpack_update = 0;
-        float _time_since_started_flying = 0;
-        ItemID _last_held_sprite = ItemID::none; // So held item textures only update when necessary
-        ItemID _last_held_block = ItemID::none;  //
-        Mesh _arm_mesh;
-        Mesh _pistol_base_mesh;
-        Mesh _pistol_slide_mesh;
-        Mesh _drill_base_mesh;
-        Mesh _drill_bit_mesh;
-        Mesh _sprite_mesh;
-        Mesh _block_mesh;
+        Camera camera_;
+        Inventory inventory_;
+        bool in_control_ = true;
+        bool inventory_changed_ = false; // For UI updating. I don't love this system...
+        glm::vec3 input_direction_;
+        int health_ = 100;
+        int suit_status_ = 100;
+        int jetpack_energy_ = 20;
+        bool was_grounded_ = false;
+        float fall_time_ = 0;
+        bool is_flying_ = false;
+        float time_since_last_health_update_ = 0;
+        float time_since_last_suit_update_ = 0;
+        float time_since_last_jetpack_update_ = 0;
+        float time_since_started_flying_ = 0;
+        ItemID last_held_sprite_ = ItemID::none; // So held item textures only update when necessary
+        ItemID last_held_block_ = ItemID::none;  //
+        Mesh arm_mesh_;
+        Mesh pistol_base_mesh_;
+        Mesh pistol_slide_mesh_;
+        Mesh drill_base_mesh_;
+        Mesh drill_bit_mesh_;
+        Mesh sprite_mesh_;
+        Mesh block_mesh_;
 
         // Animation variables
-        float _time_punching = 0;
-        float _time_walking = 0;
-        float _time_flying = 0;
-        float _time_drilling = 0;
-        float _arm_extent = 0;
-        float _arm_bob = 0;
-        float _arm_shake = 0;
-        float _drill_bit_extent = 0;
-        float _drill_bit_angular_speed = 0;
-        float _drill_bit_rotation = 0;
+        float time_punching_ = 0;
+        float time_walking_ = 0;
+        float time_flying_ = 0;
+        float time_drilling_ = 0;
+        float arm_extent_ = 0;
+        float arm_bob_ = 0;
+        float arm_shake_ = 0;
+        float drill_bit_extent_ = 0;
+        float drill_bit_angular_speed_ = 0;
+        float drill_bit_rotation_ = 0;
 
     public:
         Player();

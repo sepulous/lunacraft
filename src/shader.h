@@ -11,10 +11,10 @@ using VertexAttribs = std::vector<std::pair<size_t, int>>;
 class Shader
 {
     private:
-        GLuint _id;
-        std::filesystem::path _vertex_shader_path;
-        std::filesystem::path _fragment_shader_path;
-        VertexAttribs _vertex_attribs;
+        GLuint id_;
+        std::filesystem::path vertex_shader_path_;
+        std::filesystem::path fragment_shader_path_;
+        VertexAttribs vertex_attribs_;
 
     public:
         Shader();

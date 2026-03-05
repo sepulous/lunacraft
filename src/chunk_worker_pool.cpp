@@ -12,29 +12,29 @@ ChunkWorkerPool::ChunkWorkerPool()
         worker_count = 1;
 
     for (size_t i = 0; i < worker_count; ++i)
-        _workers.emplace_back(&ChunkWorkerPool::WorkerLoop, this);
+        workers_.emplace_back(&ChunkWorkerPool::WorkerLoop, this);
 }
 
 ChunkWorkerPool::~ChunkWorkerPool()
 {
     {
-        std::lock_guard<std::mutex> lock(_jobs_mutex);
-        stop = true;
+        std::lock_guard<std::mutex> lock(jobs_mutex_);
+        stop_ = true;
     }
 
-    _jobs_cv.notify_all();
+    jobs_cv_.notify_all();
 
-    for (auto &worker : _workers)
+    for (auto &worker : workers_)
         worker.join();
 }
 
 void ChunkWorkerPool::SubmitJob(WorkerJob job)
 {
     {
-        std::lock_guard<std::mutex> lock(_jobs_mutex);
-        _jobs.push(std::move(job));
+        std::lock_guard<std::mutex> lock(jobs_mutex_);
+        jobs_.push(std::move(job));
     }
-    _jobs_cv.notify_one();
+    jobs_cv_.notify_one();
 }
 
 void ChunkWorkerPool::WorkerLoop()
@@ -44,16 +44,16 @@ void ChunkWorkerPool::WorkerLoop()
         WorkerJob job;
 
         {
-            std::unique_lock<std::mutex> lock(_jobs_mutex);
-            _jobs_cv.wait(lock, [this] {
-                return stop || !_jobs.empty();
+            std::unique_lock<std::mutex> lock(jobs_mutex_);
+            jobs_cv_.wait(lock, [this] {
+                return stop_ || !jobs_.empty();
             });
 
-            if (stop && _jobs.empty())
+            if (stop_ && jobs_.empty())
                 return;
 
-            job = std::move(_jobs.front());
-            _jobs.pop();
+            job = std::move(jobs_.front());
+            jobs_.pop();
         }
 
         for (auto task : job.tasks)

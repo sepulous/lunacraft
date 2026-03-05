@@ -29,10 +29,10 @@ class SelectionBlock
         void Render(const glm::mat4 &mvp_matrix);
 
     private:
-        Mesh _mesh;
-        glm::ivec3 _position;
-        glm::ivec3 _adjacent_position;
-        bool _active;
+        Mesh mesh_;
+        glm::ivec3 position_;
+        glm::ivec3 adjacent_position_;
+        bool active_;
 };
 
 class Moon
@@ -55,22 +55,22 @@ class Moon
         static Moon *GetCurrentMoon();
 
     private:
-        static Moon *_current_moon;
+        static Moon *current_moon_;
 
     private:
-        int _id = 0;
-        int _initial_chunk_count = 0;
-        int _current_light_phase = 1;
-        double _world_time = 0;
-        double _last_patch_update = 0;
-        double _accumulator = 0;
-        glm::vec4 _base_fog_color; // This doesn't change for a given moon. Use GetFogColor() to get the correct color.
-        Player *_player; // Avoids destructor call so EntityManager can destroy player
-        SelectionBlock _selection_block;
-        Skybox _skybox;
-        MoonSettings _settings;
-        ChunkManager _chunk_manager;
-        EntityManager _entity_manager;
+        int id_ = 0;
+        int initial_chunk_count_ = 0;
+        int current_light_phase_ = 1;
+        double world_time_ = 0;
+        double last_patch_update_ = 0;
+        double accumulator_ = 0;
+        glm::vec4 base_fog_color_; // This doesn't change for a given moon. Use GetFogColor() to get the correct color.
+        Player *player_; // Avoids destructor call so EntityManager can destroy player
+        SelectionBlock selection_block_;
+        Skybox skybox_;
+        MoonSettings settings_;
+        ChunkManager chunk_manager_;
+        EntityManager entity_manager_;
 
     private:
         void UpdateSelectionBlock();

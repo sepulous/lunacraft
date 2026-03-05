@@ -43,12 +43,12 @@ struct ChunkJob
 class ChunkManager
 {
     private:
-        int _loaded_chunk_count = 0;
-        GLuint _texture_atlas;
-        std::vector<BlockMemory> _block_memory;
-        std::queue<ChunkJob> _job_queue;
-        std::unordered_map<uint64_t, Chunk *> _chunks;
-        ChunkWorkerPool *_worker_pool;
+        int loaded_chunk_count_ = 0;
+        GLuint texture_atlas_;
+        std::vector<BlockMemory> block_memory_;
+        std::queue<ChunkJob> job_queue_;
+        std::unordered_map<uint64_t, Chunk *> chunks_;
+        ChunkWorkerPool *worker_pool_;
 
     public:
         ChunkManager() = default;

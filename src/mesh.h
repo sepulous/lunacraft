@@ -31,11 +31,11 @@ class Mesh
         size_t GetTypeSize(int type);
 
     private:
-        Shader *_shader = nullptr;
-        bool _setup_attribs = false;
-        size_t _bytes_per_vertex = 0;
-        size_t _vertex_count = 0;
-        GLuint _vao;
-        GLuint _vbo;
-        GLuint _tex;
+        Shader *shader_ = nullptr;
+        bool setup_attribs_ = false;
+        size_t bytes_per_vertex_ = 0;
+        size_t vertex_count_ = 0;
+        GLuint vao_;
+        GLuint vbo_;
+        GLuint tex_;
 };

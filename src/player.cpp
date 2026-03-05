@@ -10,13 +10,13 @@
 
 Player::Player()
 {
-    _position = glm::vec3(CHUNK_SIZE / 2.0f, 114.0f + 0.5f + 0.9f, CHUNK_SIZE / 2.0f);
-    _prev_position = _position;
-    _next_position = _position;
-    _velocity = glm::vec3(0);
-    _aabb.center = _position;
-    _aabb.extents = glm::vec3(0.4f, 0.9f, 0.4f);
-    _camera.position = _position + glm::vec3(0, 0.9f, 0);
+    position_ = glm::vec3(CHUNK_SIZE / 2.0f, 114.0f + 0.5f + 0.9f, CHUNK_SIZE / 2.0f);
+    prev_position_ = position_;
+    next_position_ = position_;
+    velocity_ = glm::vec3(0);
+    aabb_.center = position_;
+    aabb_.extents = glm::vec3(0.4f, 0.9f, 0.4f);
+    camera_.position = position_ + glm::vec3(0, 0.9f, 0);
 
     // Arm mesh
     float arm_vertices[] = {
@@ -36,9 +36,9 @@ Player::Player()
         -0.25f, 0.25f, 1.5f, 1.0f, 1.0f,
          0.25f, 0.25f, 1.5f, 0.5f, 1.0f,
     };
-    _arm_mesh.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
-    _arm_mesh.SetVertexData(arm_vertices, sizeof(arm_vertices) / (5 * sizeof(float)));
-    _arm_mesh.SetTexture(Storage::IMAGES / "player_arm.png");
+    arm_mesh_.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
+    arm_mesh_.SetVertexData(arm_vertices, sizeof(arm_vertices) / (5 * sizeof(float)));
+    arm_mesh_.SetTexture(Storage::IMAGES / "player_arm.png");
 
     // Drill base mesh
     float drill_uv_cutoff = 8.0f / 32.0f;
@@ -67,9 +67,9 @@ Player::Player()
         -1.0f, 1.0f, -1.0f, 1.0f, drill_uv_cutoff,
          1.0f, 1.0f, -1.0f, 0.0f, drill_uv_cutoff,
     };
-    _drill_base_mesh.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
-    _drill_base_mesh.SetVertexData(drill_base_vertices, sizeof(drill_base_vertices) / (5 * sizeof(float)));
-    _drill_base_mesh.SetTexture(Storage::IMAGES / "player_drill.png");
+    drill_base_mesh_.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
+    drill_base_mesh_.SetVertexData(drill_base_vertices, sizeof(drill_base_vertices) / (5 * sizeof(float)));
+    drill_base_mesh_.SetTexture(Storage::IMAGES / "player_drill.png");
 
     // Drill bit mesh
     float drill_bit_vertices[] = {
@@ -105,9 +105,9 @@ Player::Player()
         -1.0f, -1.0f,  6.0f, 0.0f, 1.0f,
          1.0f, -1.0f,  6.0f, 1.0f, 1.0f,
     };
-    _drill_bit_mesh.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
-    _drill_bit_mesh.SetVertexData(drill_bit_vertices, sizeof(drill_bit_vertices) / (5 * sizeof(float)));
-    _drill_bit_mesh.SetTexture(Storage::IMAGES / "player_drill.png");
+    drill_bit_mesh_.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
+    drill_bit_mesh_.SetVertexData(drill_bit_vertices, sizeof(drill_bit_vertices) / (5 * sizeof(float)));
+    drill_bit_mesh_.SetTexture(Storage::IMAGES / "player_drill.png");
 
     // Pistol base mesh
     float pistol_base_vertices[] = {
@@ -135,9 +135,9 @@ Player::Player()
         -1.0f,  1.0f, -4.0f,  0.0f,          (4.0f / 16.0f),
         -1.0f, -1.0f, -4.0f,  0.0f,           0.0f,
     };
-    _pistol_base_mesh.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
-    _pistol_base_mesh.SetVertexData(pistol_base_vertices, sizeof(pistol_base_vertices) / (5 * sizeof(float)));
-    _pistol_base_mesh.SetTexture(Storage::IMAGES / "player_pistol.png");
+    pistol_base_mesh_.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
+    pistol_base_mesh_.SetVertexData(pistol_base_vertices, sizeof(pistol_base_vertices) / (5 * sizeof(float)));
+    pistol_base_mesh_.SetTexture(Storage::IMAGES / "player_pistol.png");
 
     // Pistol slide mesh
     float pistol_slide_vertices[] = {
@@ -165,9 +165,9 @@ Player::Player()
         -1.0f, 1.0f,  1.0f, 1.0f, 0.0f,
         -1.0f, 1.0f, -1.0f, 0.5f, 0.0f,
     };
-    _pistol_slide_mesh.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
-    _pistol_slide_mesh.SetVertexData(pistol_slide_vertices, sizeof(pistol_slide_vertices) / (5 * sizeof(float)));
-    _pistol_slide_mesh.SetTexture(Storage::IMAGES / "player_pistol.png");
+    pistol_slide_mesh_.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
+    pistol_slide_mesh_.SetVertexData(pistol_slide_vertices, sizeof(pistol_slide_vertices) / (5 * sizeof(float)));
+    pistol_slide_mesh_.SetTexture(Storage::IMAGES / "player_pistol.png");
 
     // Sprite mesh
     float sprite_vertices[] = {
@@ -178,185 +178,185 @@ Player::Player()
         -1.0f, 2.0f, 0.0f, 0.0f, 1.0f,
         -1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
     };
-    _sprite_mesh.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
-    _sprite_mesh.SetVertexData(sprite_vertices, sizeof(sprite_vertices) / (5 * sizeof(float)));
+    sprite_mesh_.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
+    sprite_mesh_.SetVertexData(sprite_vertices, sizeof(sprite_vertices) / (5 * sizeof(float)));
 
     // Block mesh
-    _block_mesh.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
-    _block_mesh.SetTexture(Storage::IMAGES / "texture_atlas.png");
+    block_mesh_.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
+    block_mesh_.SetTexture(Storage::IMAGES / "texture_atlas.png");
 }
 
 void Player::Update(float delta_time)
 {
-    _input_direction = glm::vec3(0);
+    input_direction_ = glm::vec3(0);
 
-    if (_in_control)
+    if (in_control_)
     {
         auto forward = GetForward();
         auto right = GetRight();
         if (Input::IsKeyHeld(GLFW_KEY_W))
-            _input_direction += forward;
+            input_direction_ += forward;
         if (Input::IsKeyHeld(GLFW_KEY_S))
-            _input_direction -= forward;
+            input_direction_ -= forward;
         if (Input::IsKeyHeld(GLFW_KEY_A))
-            _input_direction -= right;
+            input_direction_ -= right;
         if (Input::IsKeyHeld(GLFW_KEY_D))
-            _input_direction += right;
-        if (Input::IsKeyHeld(GLFW_KEY_SPACE) && _is_grounded)
-            _is_jumping = true;
+            input_direction_ += right;
+        if (Input::IsKeyHeld(GLFW_KEY_SPACE) && is_grounded_)
+            is_jumping_ = true;
 
-        if (glm::length(_input_direction) > 0)
-            _input_direction = glm::normalize(_input_direction);
+        if (glm::length(input_direction_) > 0)
+            input_direction_ = glm::normalize(input_direction_);
 
         // Use medkit
-        if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT) && _inventory.GetSelectedItem() == ItemID::medkit && _health < 100)
+        if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT) && inventory_.GetSelectedItem() == ItemID::medkit && health_ < 100)
         {
-            _health += 25 + RNG{}.Range(0, 9);
-            _health = glm::clamp(_health, 0, 100);
-            _inventory.inventory[0][_inventory.selected_hotbar_slot] = {ItemID::none, 0};
+            health_ += 25 + RNG{}.Range(0, 9);
+            health_ = glm::clamp(health_, 0, 100);
+            inventory_.inventory[0][inventory_.selected_hotbar_slot] = {ItemID::none, 0};
             SoundSystem::Play(SoundSystem::Sound::MEDKIT);
         }
 
         // Decide whether we're flying
-        if (Input::IsKeyHeld(GLFW_KEY_SPACE) && _jetpack_energy > 0)
+        if (Input::IsKeyHeld(GLFW_KEY_SPACE) && jetpack_energy_ > 0)
         {
-            _time_since_started_flying += delta_time;
-            if (_time_since_started_flying > 0.5f)
-                _is_flying = true;
+            time_since_started_flying_ += delta_time;
+            if (time_since_started_flying_ > 0.5f)
+                is_flying_ = true;
         }
-        else if (Input::IsKeyReleased(GLFW_KEY_SPACE) || _jetpack_energy < 1)
+        else if (Input::IsKeyReleased(GLFW_KEY_SPACE) || jetpack_energy_ < 1)
         {
-            _time_since_started_flying = 0;
-            _is_flying = false;
+            time_since_started_flying_ = 0;
+            is_flying_ = false;
         }
 
         // Punching
-        if (Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_LEFT) && !ItemIsDrill(_inventory.GetSelectedItem()) && !ItemIsPistol(_inventory.GetSelectedItem()))
+        if (Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_LEFT) && !ItemIsDrill(inventory_.GetSelectedItem()) && !ItemIsPistol(inventory_.GetSelectedItem()))
         {
-            _time_punching += delta_time;
-            _arm_extent = 0.2f * glm::pow(glm::sin(7.0f * _time_punching), 2);
+            time_punching_ += delta_time;
+            arm_extent_ = 0.2f * glm::pow(glm::sin(7.0f * time_punching_), 2);
         }
-        else if (_time_punching != 0) // Animation should stop
+        else if (time_punching_ != 0) // Animation should stop
         {
-            if (glm::abs(_arm_extent) < 0.01f)
+            if (glm::abs(arm_extent_) < 0.01f)
             {
-                _arm_extent = 0;
-                _time_punching = 0;
+                arm_extent_ = 0;
+                time_punching_ = 0;
             }
             else
             {
-                _time_punching += delta_time;
-                _arm_extent = 0.2f * glm::pow(glm::sin(7.0f * _time_punching), 2);
+                time_punching_ += delta_time;
+                arm_extent_ = 0.2f * glm::pow(glm::sin(7.0f * time_punching_), 2);
             }
         }
 
         // Drilling
-        if (Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_LEFT) && ItemIsDrill(_inventory.GetSelectedItem()))
+        if (Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_LEFT) && ItemIsDrill(inventory_.GetSelectedItem()))
         {
-            _time_drilling += delta_time;
+            time_drilling_ += delta_time;
 
-            float arm_shake_freq = glm::clamp(15.0f * _time_drilling, 20.0f, 50.0f);
-            _arm_shake = 0.005f * glm::pow(glm::sin(arm_shake_freq * _time_drilling), 2);
-            _arm_extent = glm::clamp(_arm_extent + 0.0001f * _time_drilling, 0.0f, 0.2f);
+            float arm_shake_freq = glm::clamp(15.0f * time_drilling_, 20.0f, 50.0f);
+            arm_shake_ = 0.005f * glm::pow(glm::sin(arm_shake_freq * time_drilling_), 2);
+            arm_extent_ = glm::clamp(arm_extent_ + 0.0001f * time_drilling_, 0.0f, 0.2f);
 
-            _drill_bit_angular_speed = glm::clamp(3.0f * _time_drilling, 0.0f, 40.0f);
-            _drill_bit_rotation = _drill_bit_angular_speed * _time_drilling;
-            _drill_bit_extent = glm::clamp(_drill_bit_extent + 0.0001f * _time_drilling, 0.0f, 0.2f);
+            drill_bit_angular_speed_ = glm::clamp(3.0f * time_drilling_, 0.0f, 40.0f);
+            drill_bit_rotation_ = drill_bit_angular_speed_ * time_drilling_;
+            drill_bit_extent_ = glm::clamp(drill_bit_extent_ + 0.0001f * time_drilling_, 0.0f, 0.2f);
         }
-        else if (_time_drilling != 0) // Animation should stop
+        else if (time_drilling_ != 0) // Animation should stop
         {
-            _arm_shake = 0;
+            arm_shake_ = 0;
 
-            if (glm::abs(_arm_extent) < 0.01f)
+            if (glm::abs(arm_extent_) < 0.01f)
             {
-                _arm_extent = 0;
-                _arm_shake = 0;
-                _drill_bit_extent = 0;
-                _drill_bit_rotation = 0;
+                arm_extent_ = 0;
+                arm_shake_ = 0;
+                drill_bit_extent_ = 0;
+                drill_bit_rotation_ = 0;
             }
             else
             {
-                // For the sake of simplicity, we now reinterpret _time_drilling as the time
+                // For the sake of simplicity, we now reinterpret time_drilling_ as the time
                 // elapsed since the animation started ending
-                if (_time_drilling != 0)
-                    _time_drilling = 0;
+                if (time_drilling_ != 0)
+                    time_drilling_ = 0;
                     
-                _time_drilling += delta_time;
+                time_drilling_ += delta_time;
 
-                _arm_extent = glm::clamp(_arm_extent - 0.2f * _time_drilling, 0.0f, 2.0f);
+                arm_extent_ = glm::clamp(arm_extent_ - 0.2f * time_drilling_, 0.0f, 2.0f);
 
-                _drill_bit_rotation += _drill_bit_angular_speed * _time_drilling;
-                _drill_bit_extent = glm::clamp(_drill_bit_extent - 0.2f * _time_drilling, 0.0f, 0.2f);
+                drill_bit_rotation_ += drill_bit_angular_speed_ * time_drilling_;
+                drill_bit_extent_ = glm::clamp(drill_bit_extent_ - 0.2f * time_drilling_, 0.0f, 0.2f);
             }
         }
     }
 
     // Regen health
-    if (_suit_status > 0 && _time_since_last_health_update > 0.5f)
+    if (suit_status_ > 0 && time_since_last_health_update_ > 0.5f)
     {
-        _health = glm::clamp(_health + 1, 0, 100);
-        _time_since_last_health_update = 0;
+        health_ = glm::clamp(health_ + 1, 0, 100);
+        time_since_last_health_update_ = 0;
     }
     else
     {
-        _time_since_last_health_update += delta_time;
+        time_since_last_health_update_ += delta_time;
     }
 
     // Regen suit status
-    if (CanRegenSuit() && _time_since_last_suit_update > GetSuitRegenInterval())
+    if (CanRegenSuit() && time_since_last_suit_update_ > GetSuitRegenInterval())
     {
-        _suit_status = glm::clamp(_suit_status + 1, 0, 100);
-        _time_since_last_suit_update = 0;
+        suit_status_ = glm::clamp(suit_status_ + 1, 0, 100);
+        time_since_last_suit_update_ = 0;
     }
     else
     {
-        _time_since_last_suit_update += delta_time;
+        time_since_last_suit_update_ += delta_time;
     }
 
     // Deplete/regen jetpack energy
-    if (_is_flying && _time_since_last_jetpack_update > 0.055f)
+    if (is_flying_ && time_since_last_jetpack_update_ > 0.055f)
     {
-        _jetpack_energy = glm::clamp(_jetpack_energy - 1, 0, GetMaxJetpackEnergy());
-        _time_since_last_jetpack_update = 0;
+        jetpack_energy_ = glm::clamp(jetpack_energy_ - 1, 0, GetMaxJetpackEnergy());
+        time_since_last_jetpack_update_ = 0;
     }
-    else if (!_is_flying && _time_since_last_jetpack_update > 1.0f)
+    else if (!is_flying_ && time_since_last_jetpack_update_ > 1.0f)
     {
-        _jetpack_energy = glm::clamp(_jetpack_energy + 1, 0, GetMaxJetpackEnergy());
-        _time_since_last_jetpack_update = 0;
+        jetpack_energy_ = glm::clamp(jetpack_energy_ + 1, 0, GetMaxJetpackEnergy());
+        time_since_last_jetpack_update_ = 0;
     }
     else
     {
-        _time_since_last_jetpack_update += delta_time;
+        time_since_last_jetpack_update_ += delta_time;
     }
 
     // Walking (bob animation)
-    if (glm::length(_input_direction) > 0 && _is_grounded)
+    if (glm::length(input_direction_) > 0 && is_grounded_)
     {
-        _time_walking += delta_time;
-        _arm_bob = 0.01f * glm::pow(glm::sin(5.0f * _time_walking), 2);
+        time_walking_ += delta_time;
+        arm_bob_ = 0.01f * glm::pow(glm::sin(5.0f * time_walking_), 2);
     }
-    else if (_time_walking != 0)
+    else if (time_walking_ != 0)
     {
-        if (glm::abs(_arm_bob) < 0.001f)
+        if (glm::abs(arm_bob_) < 0.001f)
         {
-            _arm_bob = 0;
-            _time_walking = 0;
+            arm_bob_ = 0;
+            time_walking_ = 0;
         }
         else
         {
-            _time_walking += delta_time;
-            _arm_bob = 0.01f * glm::pow(glm::sin(5.0f * _time_walking), 2);
+            time_walking_ += delta_time;
+            arm_bob_ = 0.01f * glm::pow(glm::sin(5.0f * time_walking_), 2);
         }
     }
 
     // Camera shake when flying
-    if (_is_flying)
-        _time_flying += delta_time;
+    if (is_flying_)
+        time_flying_ += delta_time;
     else
-        _time_flying = 0;
-    _camera.pitch += 0.005f * glm::sin(80.0f * _time_flying);
+        time_flying_ = 0;
+    camera_.pitch += 0.005f * glm::sin(80.0f * time_flying_);
 
-    _camera.position = _position + glm::vec3(0, 0.9f, 0);
+    camera_.position = position_ + glm::vec3(0, 0.9f, 0);
 }
 
 void Player::FixedUpdate()
@@ -380,145 +380,145 @@ void Player::FixedUpdate()
     float alpha = friction * 8.0f;
     float beta = alpha / max_move_speed;
 
-    _velocity.x += (alpha * _input_direction.x - beta * _velocity.x) * FIXED_DELTA_TIME;
-    if (glm::abs(_velocity.x) < 0.01f)
-        _velocity.x = 0;
+    velocity_.x += (alpha * input_direction_.x - beta * velocity_.x) * FIXED_DELTA_TIME;
+    if (glm::abs(velocity_.x) < 0.01f)
+        velocity_.x = 0;
 
-    _velocity.z += (alpha * _input_direction.z - beta * _velocity.z) * FIXED_DELTA_TIME;
-    if (glm::abs(_velocity.z) < 0.01f)
-        _velocity.z = 0;
+    velocity_.z += (alpha * input_direction_.z - beta * velocity_.z) * FIXED_DELTA_TIME;
+    if (glm::abs(velocity_.z) < 0.01f)
+        velocity_.z = 0;
 
     //
     // Jumping/flying
     //
 
-    if (_is_jumping && _is_grounded)
+    if (is_jumping_ && is_grounded_)
     {
-        _velocity.y = 3.5f;
-        _is_jumping = false;
+        velocity_.y = 3.5f;
+        is_jumping_ = false;
     }
 
-    if (_is_flying)
+    if (is_flying_)
     {
-        _velocity.y = (4.0f * FIXED_DELTA_TIME) + 6.0f; // First term counteracts gravity
+        velocity_.y = (4.0f * FIXED_DELTA_TIME) + 6.0f; // First term counteracts gravity
     }
 
     // Play land sound when landing
-    if (!_was_grounded && _is_grounded)
+    if (!was_grounded_ && is_grounded_)
     {
-        if (_fall_time >= 2.0f)
+        if (fall_time_ >= 2.0f)
             SoundSystem::Play(SoundSystem::Sound::LAND);
-        _fall_time = 0;
+        fall_time_ = 0;
     }
-    else if (!_was_grounded)
+    else if (!was_grounded_)
     {
-        _fall_time += FIXED_DELTA_TIME;
+        fall_time_ += FIXED_DELTA_TIME;
     }
-    _was_grounded = _is_grounded;
+    was_grounded_ = is_grounded_;
 }
 
 bool Player::IsInControl()
 {
-    return _in_control;
+    return in_control_;
 }
 
 void Player::EnableControl()
 {
-    _in_control = true;
+    in_control_ = true;
 }
 
 void Player::DisableControl()
 {
-    _in_control = false;
+    in_control_ = false;
 }
 
 void Player::UpdateCamera()
 {
-    if (_in_control)
+    if (in_control_)
     {
         auto mouse_delta = Input::GetMouseDelta();
-        _camera.yaw += mouse_delta.x * _camera.sensitivity;
-        _camera.pitch += mouse_delta.y * _camera.sensitivity;
-        _camera.pitch = glm::clamp(_camera.pitch, -89.8f, 89.8f);
+        camera_.yaw += mouse_delta.x * camera_.sensitivity;
+        camera_.pitch += mouse_delta.y * camera_.sensitivity;
+        camera_.pitch = glm::clamp(camera_.pitch, -89.8f, 89.8f);
 
         glm::vec3 direction;
-        direction.x = cos(glm::radians(_camera.yaw)) * cos(glm::radians(_camera.pitch));
-        direction.y = sin(glm::radians(_camera.pitch));
-        direction.z = sin(glm::radians(_camera.yaw)) * cos(glm::radians(_camera.pitch));
-        _camera.forward = glm::normalize(direction);
-        _camera.right = glm::normalize(glm::cross(_camera.forward, _camera.up));
+        direction.x = cos(glm::radians(camera_.yaw)) * cos(glm::radians(camera_.pitch));
+        direction.y = sin(glm::radians(camera_.pitch));
+        direction.z = sin(glm::radians(camera_.yaw)) * cos(glm::radians(camera_.pitch));
+        camera_.forward = glm::normalize(direction);
+        camera_.right = glm::normalize(glm::cross(camera_.forward, camera_.up));
     }
 }
 
 PlayerData Player::GetPlayerData()
 {
     PlayerData player_data;
-    player_data.health = _health;
-    player_data.suit_status = _suit_status;
-    player_data.jetpack_energy = _jetpack_energy;
-    player_data.position = _position;
+    player_data.health = health_;
+    player_data.suit_status = suit_status_;
+    player_data.jetpack_energy = jetpack_energy_;
+    player_data.position = position_;
     player_data.camera_rotation = GetCameraRotation();
-    player_data.inventory = _inventory;
+    player_data.inventory = inventory_;
     return player_data;
 }
 
 Camera &Player::GetCamera()
 {
-    return _camera;
+    return camera_;
 }
 
 void Player::SetHealth(int health)
 {
-    _health = health;
+    health_ = health;
 }
 
 int Player::GetHealth()
 {
-    return _health;
+    return health_;
 }
 
 void Player::SetSuitStatus(int suit_status)
 {
-    _suit_status = suit_status;
+    suit_status_ = suit_status;
 }
 
 int Player::GetSuitStatus()
 {
-    return _suit_status;
+    return suit_status_;
 }
 
 Inventory &Player::GetInventory()
 {
-    return _inventory;
+    return inventory_;
 }
 
 void Player::SetInventory(Inventory inventory)
 {
-    _inventory = inventory;
+    inventory_ = inventory;
 }
 
 void Player::SetCameraRotation(glm::vec2 rotation)
 {
-    _camera.pitch = rotation.x;
-    _camera.yaw = rotation.y;
+    camera_.pitch = rotation.x;
+    camera_.yaw = rotation.y;
 }
 
 glm::vec2 Player::GetCameraRotation()
 {
-    return {_camera.pitch, _camera.yaw};
+    return {camera_.pitch, camera_.yaw};
 }
 
 void Player::SetCameraSensitivity(float sensitivity)
 {
-    _camera.SetSensitivity(sensitivity);
+    camera_.SetSensitivity(sensitivity);
 }
 
 glm::vec3 Player::GetForward()
 {
     return {
-        glm::cos(glm::radians(_camera.yaw)),
+        glm::cos(glm::radians(camera_.yaw)),
         0,
-        glm::sin(glm::radians(_camera.yaw))
+        glm::sin(glm::radians(camera_.yaw))
     };
 }
 
@@ -529,34 +529,34 @@ glm::vec3 Player::GetRight()
 
 void Player::RenderArm(const glm::mat4 &vp_matrix)
 {
-    auto inv_view = glm::inverse(_camera.GetViewMatrix()); // To do this in camera space
+    auto inv_view = glm::inverse(camera_.GetViewMatrix()); // To do this in camera space
 
     // Arm
     auto arm_model_matrix = glm::mat4(1.0);
-    arm_model_matrix = glm::translate(arm_model_matrix, {0.48f + _arm_shake, -0.35f + _arm_bob, -0.35f - _arm_extent});
+    arm_model_matrix = glm::translate(arm_model_matrix, {0.48f + arm_shake_, -0.35f + arm_bob_, -0.35f - arm_extent_});
     arm_model_matrix = glm::scale(arm_model_matrix, {-0.45f, 0.45f, -0.45f});
-    _arm_mesh.Render([&](Shader *shader) {
+    arm_mesh_.Render([&](Shader *shader) {
         shader->SetMat4("u_mvp_matrix", vp_matrix * inv_view * arm_model_matrix);
     });
 
-    ItemID selected_item = _inventory.GetSelectedItem();
+    ItemID selected_item = inventory_.GetSelectedItem();
     if (selected_item != ItemID::none)
     {
         if (selected_item == ItemID::slug_pistol_t1 || selected_item == ItemID::slug_pistol_t2 || selected_item == ItemID::slug_pistol_t3)
         {
             // Pistol base
             auto pistol_base_model_matrix = glm::mat4(1.0);
-            pistol_base_model_matrix = glm::translate(pistol_base_model_matrix, {0.46f, -0.15f + _arm_bob, -1.2f});
+            pistol_base_model_matrix = glm::translate(pistol_base_model_matrix, {0.46f, -0.15f + arm_bob_, -1.2f});
             pistol_base_model_matrix = glm::scale(pistol_base_model_matrix, {0.08f, 0.08f, -0.08f});
-            _pistol_base_mesh.Render([&](Shader *shader) {
+            pistol_base_mesh_.Render([&](Shader *shader) {
                 shader->SetMat4("u_mvp_matrix", vp_matrix * inv_view * pistol_base_model_matrix);
             });
 
             // Pistol slide
             auto pistol_slide_model_matrix = glm::mat4(1.0);
-            pistol_slide_model_matrix = glm::translate(pistol_slide_model_matrix, {0.44f, -0.06f + _arm_bob, -1.35f});
+            pistol_slide_model_matrix = glm::translate(pistol_slide_model_matrix, {0.44f, -0.06f + arm_bob_, -1.35f});
             pistol_slide_model_matrix = glm::scale(pistol_slide_model_matrix, {0.03f, 0.02f, -0.02f});
-            _pistol_slide_mesh.Render([&](Shader *shader) {
+            pistol_slide_mesh_.Render([&](Shader *shader) {
                 shader->SetMat4("u_mvp_matrix", vp_matrix * inv_view * pistol_slide_model_matrix);
             });
         }
@@ -564,43 +564,43 @@ void Player::RenderArm(const glm::mat4 &vp_matrix)
         {
             // Drill base
             auto drill_base_model_matrix = glm::mat4(1.0);
-            drill_base_model_matrix = glm::translate(drill_base_model_matrix, {0.5f + _arm_shake, -0.35f + _arm_bob, -1.0f - _arm_extent});
+            drill_base_model_matrix = glm::translate(drill_base_model_matrix, {0.5f + arm_shake_, -0.35f + arm_bob_, -1.0f - arm_extent_});
             drill_base_model_matrix = glm::scale(drill_base_model_matrix, {0.15f, 0.15f, -0.15f});
-            _drill_base_mesh.Render([&](Shader *shader) {
+            drill_base_mesh_.Render([&](Shader *shader) {
                 shader->SetMat4("u_mvp_matrix", vp_matrix * inv_view * drill_base_model_matrix);
             });
 
             // Drill bit
             auto drill_bit_model_matrix = glm::mat4(1.0);
-            drill_bit_model_matrix = glm::translate(drill_bit_model_matrix, {0.5f + _arm_shake, -0.35f + _arm_bob, -1.5f - _arm_extent - _drill_bit_extent});
-            drill_bit_model_matrix = glm::rotate(drill_bit_model_matrix, _drill_bit_rotation, {0, 0, 1});
+            drill_bit_model_matrix = glm::translate(drill_bit_model_matrix, {0.5f + arm_shake_, -0.35f + arm_bob_, -1.5f - arm_extent_ - drill_bit_extent_});
+            drill_bit_model_matrix = glm::rotate(drill_bit_model_matrix, drill_bit_rotation_, {0, 0, 1});
             drill_bit_model_matrix = glm::scale(drill_bit_model_matrix, {0.05f, 0.05f, -0.05f});
-            _drill_bit_mesh.Render([&](Shader *shader) {
+            drill_bit_mesh_.Render([&](Shader *shader) {
                 shader->SetMat4("u_mvp_matrix", vp_matrix * inv_view * drill_bit_model_matrix);
             });
         }
         else if (ItemIsSprite(selected_item))
         {
             auto sprite_model_matrix = glm::mat4(1.0);
-            sprite_model_matrix = glm::translate(sprite_model_matrix, {0.362f, -0.335f + _arm_bob, -0.95f - _arm_extent});
+            sprite_model_matrix = glm::translate(sprite_model_matrix, {0.362f, -0.335f + arm_bob_, -0.95f - arm_extent_});
             sprite_model_matrix = glm::scale(sprite_model_matrix, {0.14f, 0.14f, -0.14f});
 
-            if (_last_held_sprite != selected_item)
+            if (last_held_sprite_ != selected_item)
             {
-                _sprite_mesh.SetTexture(Storage::IMAGES / "items" / GetItemFile(selected_item));
-                _last_held_sprite = selected_item;
+                sprite_mesh_.SetTexture(Storage::IMAGES / "items" / GetItemFile(selected_item));
+                last_held_sprite_ = selected_item;
             }
-            _sprite_mesh.Render([&](Shader *shader) {
+            sprite_mesh_.Render([&](Shader *shader) {
                 shader->SetMat4("u_mvp_matrix", vp_matrix * inv_view * sprite_model_matrix);
             });
         }
         else
         {
             auto block_model_matrix = glm::mat4(1.0);
-            block_model_matrix = glm::translate(block_model_matrix, {0.38f, -0.25f + _arm_bob, -1.0f - _arm_extent});
+            block_model_matrix = glm::translate(block_model_matrix, {0.38f, -0.25f + arm_bob_, -1.0f - arm_extent_});
             block_model_matrix = glm::scale(block_model_matrix, {0.14f, 0.14f, -0.14f});
             
-            if (_last_held_block != selected_item)
+            if (last_held_block_ != selected_item)
             {
                 auto tile_origins = GetAtlasTileOrigins();
                 glm::vec2 tile_origin_side = tile_origins[ItemIDToBlockID(selected_item)][1];
@@ -631,10 +631,10 @@ void Player::RenderArm(const glm::mat4 &vp_matrix)
                     -1.0f, 1.0f,  1.0f, tile_origin_side.x + tile_size, tile_origin_side.y,
                     -1.0f, 1.0f, -1.0f, tile_origin_side.x,             tile_origin_side.y,
                 };
-                _block_mesh.SetVertexData(block_vertices, sizeof(block_vertices) / (5 * sizeof(float)));
-                _last_held_block = selected_item;
+                block_mesh_.SetVertexData(block_vertices, sizeof(block_vertices) / (5 * sizeof(float)));
+                last_held_block_ = selected_item;
             }
-            _block_mesh.Render([&](Shader *shader) {
+            block_mesh_.Render([&](Shader *shader) {
                 shader->SetMat4("u_mvp_matrix", vp_matrix * inv_view * block_model_matrix);
             });
         }
@@ -646,7 +646,7 @@ float Player::GetMaxMoveSpeed()
 {
     float max_speed;
 
-    auto battery_item = _inventory.spacesuit[1].item;
+    auto battery_item = inventory_.spacesuit[1].item;
     if (battery_item == ItemID::battery)
         max_speed = 4.74f;
     else if (battery_item == ItemID::power_crystal)
@@ -664,14 +664,14 @@ float Player::GetMaxMoveSpeed()
 
 bool Player::CanRegenSuit()
 {
-    auto battery_item = _inventory.spacesuit[1].item;
+    auto battery_item = inventory_.spacesuit[1].item;
     return battery_item == ItemID::battery || battery_item == ItemID::power_crystal || battery_item == ItemID::energy_orb;
 }
 
 // In seconds
 float Player::GetSuitRegenInterval()
 {
-    auto battery_item = _inventory.spacesuit[1].item;
+    auto battery_item = inventory_.spacesuit[1].item;
     if (battery_item == ItemID::battery)
         return 3.3f;
     else if (battery_item == ItemID::power_crystal)
@@ -684,17 +684,17 @@ float Player::GetSuitRegenInterval()
 
 void Player::SetJetpackEnergy(int energy)
 {
-    _jetpack_energy = energy;
+    jetpack_energy_ = energy;
 }
 
 int Player::GetJetpackEnergy()
 {
-    return _jetpack_energy;
+    return jetpack_energy_;
 }
 
 int Player::GetMaxJetpackEnergy()
 {
-    auto jetpack_item = _inventory.spacesuit[0].item;
+    auto jetpack_item = inventory_.spacesuit[0].item;
     if (jetpack_item == ItemID::jetpack_t1)
         return 20;
     else if (jetpack_item == ItemID::jetpack_t2)

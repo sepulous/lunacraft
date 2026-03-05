@@ -115,32 +115,32 @@ private:
     void SetState(ChunkState state);
 
 private:
-    ChunkManager *_chunk_manager;
-    std::atomic<ChunkState> _state{ChunkState::CREATED};
-    std::atomic<bool> _dirty{false};
-    bool _has_uploaded_vertices = false;
-    bool _is_border_chunk;
-    glm::ivec3 _coords;
-    BlockID *_blocks;
-    Lightmap _lightmap;
+    ChunkManager *chunk_manager_;
+    std::atomic<ChunkState> state_{ChunkState::CREATED};
+    std::atomic<bool> dirty_{false};
+    bool has_uploaded_vertices_ = false;
+    bool is_border_chunk_;
+    glm::ivec3 coords_;
+    BlockID *blocks_;
+    Lightmap lightmap_;
 
     // Opaque vertices
-    std::vector<BlockVertex> _opaque_vertices;
-    std::vector<uint16_t> _opaque_indices;
-    size_t _reserved_opaque_vertex_count = 0;
-    GLuint _opaque_vao;
-    GLuint _opaque_vbo;
-    GLuint _opaque_ebo;
+    std::vector<BlockVertex> opaque_vertices_;
+    std::vector<uint16_t> opaque_indices_;
+    size_t reserved_opaque_vertex_count_ = 0;
+    GLuint opaque_vao_;
+    GLuint opaque_vbo_;
+    GLuint opaque_ebo_;
 
     // Transparent vertices
-    std::vector<BlockVertex> _transparent_vertices;
-    std::vector<uint16_t> _transparent_indices;
-    size_t _reserved_transparent_vertex_count = 0;
-    GLuint _transparent_vao;
-    GLuint _transparent_vbo;
-    GLuint _transparent_ebo;
+    std::vector<BlockVertex> transparent_vertices_;
+    std::vector<uint16_t> transparent_indices_;
+    size_t reserved_transparent_vertex_count_ = 0;
+    GLuint transparent_vao_;
+    GLuint transparent_vbo_;
+    GLuint transparent_ebo_;
 
     // Lifetime control
-    std::atomic<int> _pins{0};
-    std::atomic<bool> _marked_for_delete{false};
+    std::atomic<int> pins_{0};
+    std::atomic<bool> marked_for_delete_{false};
 };

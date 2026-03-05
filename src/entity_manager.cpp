@@ -6,29 +6,29 @@
 
 EntityManager::~EntityManager()
 {
-    for (Entity *entity : _entities)
+    for (Entity *entity : entities_)
         delete entity;
 }
 
 void EntityManager::LinkChunkManager(ChunkManager *chunk_manager)
 {
-    _chunk_manager = chunk_manager;
+    chunk_manager_ = chunk_manager;
 }
 
 void EntityManager::AddEntity(Entity *entity)
 {
-    _entities.push_back(entity);
+    entities_.push_back(entity);
 }
 
 void EntityManager::FixedUpdate()
 {
-    for (Entity *entity : _entities)
+    for (Entity *entity : entities_)
         entity->FixedUpdate();
 }
 
 void EntityManager::Update(float delta_time)
 {
-    for (Entity *entity : _entities)
+    for (Entity *entity : entities_)
         entity->Update(delta_time);
 }
 
@@ -47,7 +47,7 @@ void EntityManager::PhysicsStep()
             for (int z = min_z; z <= max_z; z++)
             {
                 glm::ivec3 box_chunk_coords = VoxelToChunk({x, 0, z});
-                auto chunk = _chunk_manager->GetChunk(box_chunk_coords);
+                auto chunk = chunk_manager_->GetChunk(box_chunk_coords);
                 if (chunk != nullptr)
                 {
                     for (int y = min_y; y <= max_y; y++)
@@ -63,7 +63,7 @@ void EntityManager::PhysicsStep()
         return false;
     };
 
-    for (Entity *entity : _entities)
+    for (Entity *entity : entities_)
     {
         glm::vec3 next_position = entity->GetPosition();
         entity->SetPrevPosition(entity->GetPosition());
@@ -104,7 +104,7 @@ void EntityManager::PhysicsStep()
                 // Decide whether on ice
                 auto entity_voxel_g = GetNearestVoxel(entity->GetPosition());
                 auto entity_voxel_l = GlobalToLocalVoxel(entity_voxel_g);
-                auto entity_chunk = _chunk_manager->GetChunk(VoxelToChunk(entity_voxel_g));
+                auto entity_chunk = chunk_manager_->GetChunk(VoxelToChunk(entity_voxel_g));
                 BlockID foot_block = entity_chunk->GetBlocks()[GetChunkIndex(entity_voxel_l - glm::ivec3{0, 1, 0})]; // Can go out of bounds...
                 entity->SetIsOnIce(foot_block == BlockID::water);
 
@@ -136,7 +136,7 @@ void EntityManager::PhysicsStep()
 
 void EntityManager::Interpolate(double interp)
 {
-    for (Entity *entity : _entities)
+    for (Entity *entity : entities_)
     {
         entity->SetPosition(glm::mix(entity->GetPrevPosition(), entity->GetNextPosition(), interp));
         entity->GetAABB().center = entity->GetPosition();

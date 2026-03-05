@@ -7,9 +7,9 @@
 class Skybox
 {
     private:
-        GLuint _vao;
-        GLuint _vbo;
-        GLuint _texture;
+        GLuint vao_;
+        GLuint vbo_;
+        GLuint texture_;
 
     public:
         Skybox();

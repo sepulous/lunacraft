@@ -9,66 +9,66 @@ using Sound = SoundSystem::Sound;
 
 typedef std::tuple<Sound, bool, std::unique_ptr<Soundlib::SoundSource>> ActiveSound;
 
-std::vector<ActiveSound> SoundSystem::_active_sounds;
-std::unordered_map<Sound, Soundlib::Sound> SoundSystem::_sound_map;
-float SoundSystem::_sfx_volume;
-float SoundSystem::_music_volume;
+std::vector<ActiveSound> SoundSystem::active_sounds_;
+std::unordered_map<Sound, Soundlib::Sound> SoundSystem::sound_map_;
+float SoundSystem::sfx_volume_;
+float SoundSystem::music_volume_;
 
 void SoundSystem::Init()
 {
     Soundlib::Init();
 
-    _sound_map[Sound::SONG_1].LoadSound((Storage::SOUNDS / "theme1.mp3").string());
-    _sound_map[Sound::SONG_2].LoadSound((Storage::SOUNDS / "theme2.mp3").string());
-    _sound_map[Sound::SONG_3].LoadSound((Storage::SOUNDS / "theme3.mp3").string());
-    _sound_map[Sound::SONG_4].LoadSound((Storage::SOUNDS / "theme4.mp3").string());
-    _sound_map[Sound::SONG_5].LoadSound((Storage::SOUNDS / "theme5.mp3").string());
-    _sound_map[Sound::BLOCK_BREAK].LoadSound((Storage::SOUNDS / "blockbreak.wav").string());
-    _sound_map[Sound::BLOCK_PLACE].LoadSound((Storage::SOUNDS / "blockplace.wav").string());
-    _sound_map[Sound::CRAFT].LoadSound((Storage::SOUNDS / "craft.wav").string());
-    _sound_map[Sound::DING].LoadSound((Storage::SOUNDS / "ding.wav").string());
-    _sound_map[Sound::DRILL].LoadSound((Storage::SOUNDS / "drill.wav").string());
-    _sound_map[Sound::DRILL2].LoadSound((Storage::SOUNDS / "drill2.wav").string());
-    _sound_map[Sound::DRILL3].LoadSound((Storage::SOUNDS / "drill3.wav").string());
-    _sound_map[Sound::FRIENDLY_SUMMON].LoadSound((Storage::SOUNDS / "friendlysummon.wav").string());
-    _sound_map[Sound::HURT].LoadSound((Storage::SOUNDS / "hurt.wav").string());
-    _sound_map[Sound::JETPACK].LoadSound((Storage::SOUNDS / "jetpack.wav").string());
-    _sound_map[Sound::JUMP].LoadSound((Storage::SOUNDS / "jump.wav").string());
-    _sound_map[Sound::LAND].LoadSound((Storage::SOUNDS / "land.wav").string());
-    _sound_map[Sound::LASER].LoadSound((Storage::SOUNDS / "lasergun.wav").string());
-    _sound_map[Sound::MEDKIT].LoadSound((Storage::SOUNDS / "medkit.wav").string());
-    _sound_map[Sound::PICKUP].LoadSound((Storage::SOUNDS / "pickup.wav").string());
+    sound_map_[Sound::SONG_1].LoadSound((Storage::SOUNDS / "theme1.mp3").string());
+    sound_map_[Sound::SONG_2].LoadSound((Storage::SOUNDS / "theme2.mp3").string());
+    sound_map_[Sound::SONG_3].LoadSound((Storage::SOUNDS / "theme3.mp3").string());
+    sound_map_[Sound::SONG_4].LoadSound((Storage::SOUNDS / "theme4.mp3").string());
+    sound_map_[Sound::SONG_5].LoadSound((Storage::SOUNDS / "theme5.mp3").string());
+    sound_map_[Sound::BLOCK_BREAK].LoadSound((Storage::SOUNDS / "blockbreak.wav").string());
+    sound_map_[Sound::BLOCK_PLACE].LoadSound((Storage::SOUNDS / "blockplace.wav").string());
+    sound_map_[Sound::CRAFT].LoadSound((Storage::SOUNDS / "craft.wav").string());
+    sound_map_[Sound::DING].LoadSound((Storage::SOUNDS / "ding.wav").string());
+    sound_map_[Sound::DRILL].LoadSound((Storage::SOUNDS / "drill.wav").string());
+    sound_map_[Sound::DRILL2].LoadSound((Storage::SOUNDS / "drill2.wav").string());
+    sound_map_[Sound::DRILL3].LoadSound((Storage::SOUNDS / "drill3.wav").string());
+    sound_map_[Sound::FRIENDLY_SUMMON].LoadSound((Storage::SOUNDS / "friendlysummon.wav").string());
+    sound_map_[Sound::HURT].LoadSound((Storage::SOUNDS / "hurt.wav").string());
+    sound_map_[Sound::JETPACK].LoadSound((Storage::SOUNDS / "jetpack.wav").string());
+    sound_map_[Sound::JUMP].LoadSound((Storage::SOUNDS / "jump.wav").string());
+    sound_map_[Sound::LAND].LoadSound((Storage::SOUNDS / "land.wav").string());
+    sound_map_[Sound::LASER].LoadSound((Storage::SOUNDS / "lasergun.wav").string());
+    sound_map_[Sound::MEDKIT].LoadSound((Storage::SOUNDS / "medkit.wav").string());
+    sound_map_[Sound::PICKUP].LoadSound((Storage::SOUNDS / "pickup.wav").string());
 }
 
 void SoundSystem::Exit()
 {
-    for (auto &[sound, is_global, source] : _active_sounds)
+    for (auto &[sound, is_global, source] : active_sounds_)
         source->Stop();
-    _active_sounds.clear();
+    active_sounds_.clear();
 
     Soundlib::Exit();
 }
 
 void SoundSystem::Update(Options options)
 {
-    _sfx_volume = options.sfx_volume;
-    _music_volume = options.music_volume;
+    sfx_volume_ = options.sfx_volume;
+    music_volume_ = options.music_volume;
 
-    for (auto it = _active_sounds.begin(); it != _active_sounds.end(); )
+    for (auto it = active_sounds_.begin(); it != active_sounds_.end(); )
     {
         auto &[sound_id, is_global, sound_source] = *it;
 
         if (sound_source->GetState() == Soundlib::SourceState::STOPPED) // Remove finished sounds
         {
-            it = _active_sounds.erase(it);
+            it = active_sounds_.erase(it);
         }
         else
         {
             // Update volumes
             if (sound_id <= Sound::SONG_5)
-                sound_source->SetGain(_music_volume);
+                sound_source->SetGain(music_volume_);
             else
-                sound_source->SetGain(_sfx_volume);
+                sound_source->SetGain(sfx_volume_);
 
             // Update positions of global sounds
             if (is_global)
@@ -82,28 +82,28 @@ void SoundSystem::Update(Options options)
 // Plays global Soundlib::Sound (without distance attenuation)
 void SoundSystem::Play(Sound sound)
 {
-    auto source = std::make_unique<Soundlib::SoundSource>(_sound_map[sound]);
+    auto source = std::make_unique<Soundlib::SoundSource>(sound_map_[sound]);
     source->SetPosition(Soundlib::GetListenerPosition());
     source->SetRolloffFactor(0);
     if (sound <= Sound::SONG_5)
-        source->SetGain(_music_volume);
+        source->SetGain(music_volume_);
     else
-        source->SetGain(_sfx_volume);
+        source->SetGain(sfx_volume_);
     source->Play();
-    _active_sounds.emplace_back(sound, true, std::move(source));
+    active_sounds_.emplace_back(sound, true, std::move(source));
 }
 
 // Plays positioned Soundlib::Sound (with distance attenuation)
 void SoundSystem::PlayAt(Sound sound, glm::vec3 position)
 {
-    auto source = std::make_unique<Soundlib::SoundSource>(_sound_map[sound]);
+    auto source = std::make_unique<Soundlib::SoundSource>(sound_map_[sound]);
     source->SetPosition({position.x, position.y, position.z});
     if (sound <= Sound::SONG_5)
-        source->SetGain(_music_volume);
+        source->SetGain(music_volume_);
     else
-        source->SetGain(_sfx_volume);
+        source->SetGain(sfx_volume_);
     source->Play();
-    _active_sounds.emplace_back(sound, false, std::move(source));
+    active_sounds_.emplace_back(sound, false, std::move(source));
 }
 
 void SoundSystem::SetPlayerPosition(glm::vec3 position)

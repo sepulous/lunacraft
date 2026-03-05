@@ -24,10 +24,6 @@ class UIGame;
 class UILoadMoonMenu;
 class UIResetMoonMenu;
 class UIOptionsMenu;
-class UIPauseMenu;
-class UIDebugMenu;
-class UIMoonSettingsMenu;
-class UIInventory;
 
 // UI elements
 class UITextBox;
@@ -47,11 +43,11 @@ glm::mat4 UIGetVirtualToWindow();
 class UIImage
 {
     private:
-        Mesh _quad;
-        glm::vec2 _position;
-        glm::vec2 _size;
-        glm::vec4 _crop;
-        float _aspect_ratio;
+        Mesh quad_;
+        glm::vec2 position_;
+        glm::vec2 size_;
+        glm::vec4 crop_;
+        float aspect_ratio_;
         
     public:
         UIImage(GLint filtering = GL_LINEAR);
@@ -68,25 +64,25 @@ class UIImage
 class UIText
 {
     private:
-        static GLuint _atlas_texture;
-        static stbtt_packedchar _packed_chars[95];
-        static stbtt_aligned_quad _aligned_quads[95];
-        static void _SetupFont();
+        static GLuint atlas_texture_;
+        static stbtt_packedchar packed_chars_[95];
+        static stbtt_aligned_quad aligned_quads_[95];
+        static void SetupFont_();
 
     private:
-        GLuint _vao;
-        GLuint _vbo;
-        std::string _text;
-        float _font_size;
-        glm::vec2 _position;
-        glm::vec4 _color;
+        GLuint vao_;
+        GLuint vbo_;
+        std::string text_;
+        float font_size_;
+        glm::vec2 position_;
+        glm::vec4 color_;
 
     public:
         UIText();
         UIText(std::string text, float font_size, glm::vec2 position, glm::vec4 color);
         void SetText(std::string text);
         void SetPosition(glm::vec2 position);
-        glm::vec2 GetPosition() { return _position; }
+        glm::vec2 GetPosition() { return position_; }
         void SetFontSize(float font_size);
         void SetColor(glm::vec4 color);
         void Render();
@@ -97,15 +93,15 @@ class UIText
 class UIButton
 {
     private:
-        UIImage _image;
-        bool _hovered = false;
-        bool _clicked = false;
-        bool _held = false;
-        glm::vec2 _position;
-        glm::vec2 _size;
-        UIText _text;
-        glm::vec2 _button_image_size;
-        std::function<void()> _ClickAction;
+        UIImage image_;
+        bool hovered_ = false;
+        bool clicked_ = false;
+        bool held_ = false;
+        glm::vec2 position_;
+        glm::vec2 size_;
+        UIText text_;
+        glm::vec2 button_image_size_;
+        std::function<void()> ClickAction_;
 
     public:
         UIButton();
@@ -118,18 +114,18 @@ class UIButton
         void Update();
         void Render();
 
-        UIText& GetText() { return _text; }
+        UIText& GetText() { return text_; }
 };
 
 class UIToggleButton
 {
     private:
-        bool _toggled = false;
-        bool _hovered = false;
-        glm::vec2 _position;
-        glm::vec2 _size;
-        UIImage _untoggled_image;
-        UIImage _toggled_image;
+        bool toggled_ = false;
+        bool hovered_ = false;
+        glm::vec2 position_;
+        glm::vec2 size_;
+        UIImage untoggled_image_;
+        UIImage toggled_image_;
 
     public:
         UIToggleButton();
@@ -146,22 +142,22 @@ class UIToggleButton
 class UISlider
 {
     private:
-        bool _discrete = false;
-        bool _clicked = false; // Necessary to drag only one slider
-        bool _hovered = false;
-        bool _held = false;
-        float _value = 0.5f;
-        float _value_min = 0.0f;
-        float _value_max = 1.0f;
-        glm::vec2 _position;
-        glm::vec2 _size;
-        UIImage _slider_bg_middle;    // This is a bit of a hack so sliders can be resized arbitrarily
-        UIImage _slider_bg_right;     // without distorting the rounded corners
-        UIImage _slider_level_left;   //
-        UIImage _slider_level_middle; //
-        UIImage _slider_handle;
-        UIImage _slider_handle_held;
-        UIText _slider_value_text;
+        bool discrete_ = false;
+        bool clicked_ = false; // Necessary to drag only one slider
+        bool hovered_ = false;
+        bool held_ = false;
+        float value_ = 0.5f;
+        float value_min_ = 0.0f;
+        float value_max_ = 1.0f;
+        glm::vec2 position_;
+        glm::vec2 size_;
+        UIImage slider_bg_middle_;    // This is a bit of a hack so sliders can be resized arbitrarily
+        UIImage slider_bg_right_;     // without distorting the rounded corners
+        UIImage slider_level_left_;   //
+        UIImage slider_level_middle_; //
+        UIImage slider_handle_;
+        UIImage slider_handle_held_;
+        UIText slider_value_text_;
 
     public:
         UISlider();
@@ -178,11 +174,11 @@ class UISlider
 class UIProgressBar
 {
     private:
-        float _level = 0; // in [0, 1]
-        glm::vec2 _position;
-        glm::vec2 _size;
-        UIButton _slider_bg;
-        UIButton _slider_level;
+        float level_ = 0; // in [0, 1]
+        glm::vec2 position_;
+        glm::vec2 size_;
+        UIButton slider_bg_;
+        UIButton slider_level_;
 
     public:
         UIProgressBar();
@@ -195,14 +191,14 @@ class UIProgressBar
 class UITextBox
 {
     private:
-        bool _active = false;
-        std::string _text_str;
-        glm::vec2 _position;
-        glm::vec2 _size;
-        UIButton _box;
-        UIText _text;
-        UIText _cursor;
-        float _cursor_time;
+        bool active_ = false;
+        std::string text_str_;
+        glm::vec2 position_;
+        glm::vec2 size_;
+        UIButton box_;
+        UIText text_;
+        UIText cursor_;
+        float cursor_time_;
 
     public:
         UITextBox();
@@ -217,12 +213,12 @@ class UITextBox
 class UILoadMoonMenu
 {
     private:
-        bool _active = false;
-        UIImage _background;
-        UIText _title;
-        UIProgressBar _progress_bar;
-        UIText _status;
-        int _stage = 0;
+        bool active_ = false;
+        UIImage background_;
+        UIText title_;
+        UIProgressBar progress_bar_;
+        UIText status_;
+        int stage_ = 0;
 
     public:
         UILoadMoonMenu();
@@ -236,25 +232,25 @@ class UILoadMoonMenu
 class UIMoonSettingsMenu
 {
     private:
-        bool _active = false;
-        bool _launch_clicked = false;
-        int _moon_id = 0;
-        MoonSettings _moon_settings;
-        UIImage _background;
-        UIText _title;
-        UIText _tree_cover;
-        UISlider _tree_cover_slider;
-        UIText _roughness;
-        UISlider _roughness_slider;
-        UIText _wildlife;
-        UISlider _wildlife_slider;
-        UIText _seed;
-        UITextBox _seed_textbox;
-        UIText _mode_description;
-        UIToggleButton _explore_button;
-        UIToggleButton _creative_button;
-        UIButton _launch_button;
-        UIButton _back_button;
+        bool active_ = false;
+        bool launch_clicked_ = false;
+        int moon_id_ = 0;
+        MoonSettings moon_settings_;
+        UIImage background_;
+        UIText title_;
+        UIText tree_cover_;
+        UISlider tree_cover_slider_;
+        UIText roughness_;
+        UISlider roughness_slider_;
+        UIText wildlife_;
+        UISlider wildlife_slider_;
+        UIText seed_;
+        UITextBox seed_textbox_;
+        UIText mode_description_;
+        UIToggleButton explore_button_;
+        UIToggleButton creative_button_;
+        UIButton launch_button_;
+        UIButton back_button_;
 
     public:
         UIMoonSettingsMenu();
@@ -273,26 +269,26 @@ class UIMoonSettingsMenu
 class UIOptionsMenu
 {
     private:
-        bool _active = false;
-        UIImage _background;
-        UIText _title;
-        UIText _sfx_volume;
-        UISlider _sfx_volume_slider;
-        UIText _music_volume;
-        UISlider _music_volume_slider;
-        UIText _sensitivity;
-        UISlider _sensitivity_slider;
-        UIText _render_distance;
-        UISlider _render_distance_slider;
-        UIText _show_gui;
-        UIToggleButton _show_gui_toggle;
-        UIText _show_fog;
-        UIToggleButton _show_fog_toggle;
-        UIText _show_debug;
-        UIToggleButton _show_debug_toggle;
-        UIText _fullscreen;
-        UIToggleButton _fullscreen_toggle;
-        UIButton _back_button;
+        bool active_ = false;
+        UIImage background_;
+        UIText title_;
+        UIText sfx_volume_;
+        UISlider sfx_volume_slider_;
+        UIText music_volume_;
+        UISlider music_volume_slider_;
+        UIText sensitivity_;
+        UISlider sensitivity_slider_;
+        UIText render_distance_;
+        UISlider render_distance_slider_;
+        UIText show_gui_;
+        UIToggleButton show_gui_toggle_;
+        UIText show_fog_;
+        UIToggleButton show_fog_toggle_;
+        UIText show_debug_;
+        UIToggleButton show_debug_toggle_;
+        UIText fullscreen_;
+        UIToggleButton fullscreen_toggle_;
+        UIButton back_button_;
 
     public:
         UIOptionsMenu();
@@ -305,12 +301,12 @@ class UIOptionsMenu
 class UIResetMoonMenu
 {
     private:
-        bool _active = false;
-        int _moon = 0;
-        UIImage _background;
-        UIText _title;
-        UIButton _cancel_button;
-        UIButton _reset_button;
+        bool active_ = false;
+        int moon_ = 0;
+        UIImage background_;
+        UIText title_;
+        UIButton cancel_button_;
+        UIButton reset_button_;
 
     public:
         UIResetMoonMenu();
@@ -326,18 +322,18 @@ class UIResetMoonMenu
 class UIMainMenu
 {
     private:
-        UIImage _lunacraft_logo;
-        UIImage _background_images[5];
-        int _current_background = 0;
-        float _current_background_time = 0;
-        UIButton _moon_buttons[4];
-        UIButton _reset_buttons[4];
-        UIButton _options_button;
-        UIButton _quit_button;
-        UIMoonSettingsMenu _moon_settings_menu;
-        UIOptionsMenu _options_menu;
-        UIResetMoonMenu _reset_moon_menu;
-        UILoadMoonMenu _load_moon_menu;
+        UIImage lunacraft_logo_;
+        UIImage background_images_[5];
+        int current_background_ = 0;
+        float current_background_time_ = 0;
+        UIButton moon_buttons_[4];
+        UIButton reset_buttons_[4];
+        UIButton options_button_;
+        UIButton quit_button_;
+        UIMoonSettingsMenu moon_settings_menu_;
+        UIOptionsMenu options_menu_;
+        UIResetMoonMenu reset_moon_menu_;
+        UILoadMoonMenu load_moon_menu_;
 
     public:
         UIMainMenu();
@@ -355,14 +351,14 @@ class UIMainMenu
 class UIPauseMenu
 {
     private:
-        bool _active = false;
-        bool _quit_clicked = false;
-        bool _resume_clicked = false;
-        UIImage _background;
-        UIButton _resume_button;
-        UIButton _options_button;
-        UIButton _quit_button;
-        UIOptionsMenu _options_menu;
+        bool active_ = false;
+        bool quit_clicked_ = false;
+        bool resume_clicked_ = false;
+        UIImage background_;
+        UIButton resume_button_;
+        UIButton options_button_;
+        UIButton quit_button_;
+        UIOptionsMenu options_menu_;
 
     public:
         UIPauseMenu();
@@ -385,8 +381,8 @@ struct DebugInfo
 class UIDebugMenu
 {
     private:
-        bool _active = false;
-        UIText _debug_text;
+        bool active_ = false;
+        UIText debug_text_;
 
     public:
         UIDebugMenu();
@@ -407,35 +403,35 @@ class UIInventory
         void SetActive(bool active);
 
     private:
-        bool _active = false;
+        bool active_ = false;
 
-        UIImage _hotbar_base;
-        UIImage _inventory_base;
+        UIImage hotbar_base_;
+        UIImage inventory_base_;
 
-        std::pair<UIImage, UIText> _inventory_slots[5][10];
+        std::pair<UIImage, UIText> inventory_slots_[5][10];
 
-        std::pair<UIImage, UIText> _assembler_input_slots[3][3];
-        std::pair<UIImage, UIText> _assembler_output_slot;
+        std::pair<UIImage, UIText> assembler_input_slots_[3][3];
+        std::pair<UIImage, UIText> assembler_output_slot_;
 
-        std::pair<UIImage, UIText> _spacesuit_slots[3];
+        std::pair<UIImage, UIText> spacesuit_slots_[3];
 
-        std::pair<UIImage, UIText> _scanner_slot;
-        UIText _scanner_text;
+        std::pair<UIImage, UIText> scanner_slot_;
+        UIText scanner_text_;
 
-        UIText _suit_status_text;
-        UIImage _suit_status_bar;
+        UIText suit_status_text_;
+        UIImage suit_status_bar_;
 
-        UIText _health_text;
-        UIImage _health_bar;
+        UIText health_text_;
+        UIImage health_bar_;
 
-        UIImage _hotbar_select;
+        UIImage hotbar_select_;
 
-        UIImage _held_item;
-        UIText _held_amount;
+        UIImage held_item_;
+        UIText held_amount_;
 
-        UIImage _jetpack_icon;
-        UIImage _jetpack_bar_bg;
-        UIImage _jetpack_bar;
+        UIImage jetpack_icon_;
+        UIImage jetpack_bar_bg_;
+        UIImage jetpack_bar_;
 
         ItemStack *GetSlotUnderMouse(glm::dvec2 mouse_pos, Inventory &inventory, std::pair<UIImage, UIText> **out_slot);
 };
@@ -451,8 +447,8 @@ class UIGame
         void Render();
 
     private:
-        UIPauseMenu _pause_menu;
-        UIDebugMenu _debug_menu;
-        UIInventory _inventory;
-        UIImage _crosshair;
+        UIPauseMenu pause_menu_;
+        UIDebugMenu debug_menu_;
+        UIInventory inventory_;
+        UIImage crosshair_;
 };

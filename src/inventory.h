@@ -24,7 +24,7 @@ class Inventory
         int Add(ItemStack stack);
 
     private:
-        bool _is_creative;
+        bool is_creative_;
         bool ItemIsStackable(ItemID item);
         
     public:
