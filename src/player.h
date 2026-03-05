@@ -49,10 +49,13 @@ class Player : public Entity
         float _time_punching = 0;
         float _time_walking = 0;
         float _time_flying = 0;
+        float _time_drilling = 0;
         float _arm_extent = 0;
         float _arm_bob = 0;
         float _arm_shake = 0;
-        float _drill_bit_angle = 0;
+        float _drill_bit_extent = 0;
+        float _drill_bit_angular_speed = 0;
+        float _drill_bit_rotation = 0;
 
     public:
         Player();

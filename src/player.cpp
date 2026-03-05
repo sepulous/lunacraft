@@ -73,13 +73,21 @@ Player::Player()
 
     // Drill bit mesh
     float drill_bit_vertices[] = {
-        // Side
+        // Left
         -1.0f, -1.0f, -6.0f, 0.0f, drill_uv_cutoff,
         -1.0f,  1.0f, -6.0f, 1.0f, drill_uv_cutoff,
         -1.0f,  1.0f,  6.0f, 1.0f, 1.0f,
         -1.0f,  1.0f,  6.0f, 1.0f, 1.0f,
         -1.0f, -1.0f,  6.0f, 0.0f, 1.0f,
         -1.0f, -1.0f, -6.0f, 0.0f, drill_uv_cutoff,
+
+        // Right
+         1.0f,  1.0f,  6.0f, 1.0f, 1.0f,
+         1.0f,  1.0f, -6.0f, 1.0f, drill_uv_cutoff,
+         1.0f, -1.0f, -6.0f, 0.0f, drill_uv_cutoff,
+         1.0f, -1.0f, -6.0f, 0.0f, drill_uv_cutoff,
+         1.0f, -1.0f,  6.0f, 0.0f, 1.0f,
+         1.0f,  1.0f,  6.0f, 1.0f, 1.0f,
 
         // Top
         -1.0f, 1.0f, -6.0f, 0.0f, drill_uv_cutoff,
@@ -88,6 +96,14 @@ Player::Player()
          1.0f, 1.0f,  6.0f, 1.0f, 1.0f,
         -1.0f, 1.0f,  6.0f, 0.0f, 1.0f,
         -1.0f, 1.0f, -6.0f, 0.0f, drill_uv_cutoff,
+
+        // Bottom
+         1.0f, -1.0f,  6.0f, 1.0f, 1.0f,
+         1.0f, -1.0f, -6.0f, 1.0f, drill_uv_cutoff,
+        -1.0f, -1.0f, -6.0f, 0.0f, drill_uv_cutoff,
+        -1.0f, -1.0f, -6.0f, 0.0f, drill_uv_cutoff,
+        -1.0f, -1.0f,  6.0f, 0.0f, 1.0f,
+         1.0f, -1.0f,  6.0f, 1.0f, 1.0f,
     };
     _drill_bit_mesh.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
     _drill_bit_mesh.SetVertexData(drill_bit_vertices, sizeof(drill_bit_vertices) / (5 * sizeof(float)));
@@ -231,6 +247,46 @@ void Player::Update(float delta_time)
             {
                 _time_punching += delta_time;
                 _arm_extent = 0.2f * glm::pow(glm::sin(7.0f * _time_punching), 2);
+            }
+        }
+
+        // Drilling
+        if (Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_LEFT) && ItemIsDrill(_inventory.GetSelectedItem()))
+        {
+            _time_drilling += delta_time;
+
+            float arm_shake_freq = glm::clamp(15.0f * _time_drilling, 20.0f, 50.0f);
+            _arm_shake = 0.005f * glm::pow(glm::sin(arm_shake_freq * _time_drilling), 2);
+            _arm_extent = glm::clamp(_arm_extent + 0.0001f * _time_drilling, 0.0f, 0.2f);
+
+            _drill_bit_angular_speed = glm::clamp(3.0f * _time_drilling, 0.0f, 40.0f);
+            _drill_bit_rotation = _drill_bit_angular_speed * _time_drilling;
+            _drill_bit_extent = glm::clamp(_drill_bit_extent + 0.0001f * _time_drilling, 0.0f, 0.2f);
+        }
+        else if (_time_drilling != 0) // Animation should stop
+        {
+            _arm_shake = 0;
+
+            if (glm::abs(_arm_extent) < 0.01f)
+            {
+                _arm_extent = 0;
+                _arm_shake = 0;
+                _drill_bit_extent = 0;
+                _drill_bit_rotation = 0;
+            }
+            else
+            {
+                // For the sake of simplicity, we now reinterpret _time_drilling as the time
+                // elapsed since the animation started ending
+                if (_time_drilling != 0)
+                    _time_drilling = 0;
+                    
+                _time_drilling += delta_time;
+
+                _arm_extent = glm::clamp(_arm_extent - 0.2f * _time_drilling, 0.0f, 2.0f);
+
+                _drill_bit_rotation += _drill_bit_angular_speed * _time_drilling;
+                _drill_bit_extent = glm::clamp(_drill_bit_extent - 0.2f * _time_drilling, 0.0f, 0.2f);
             }
         }
     }
@@ -477,7 +533,7 @@ void Player::RenderArm(const glm::mat4 &vp_matrix)
 
     // Arm
     auto arm_model_matrix = glm::mat4(1.0);
-    arm_model_matrix = glm::translate(arm_model_matrix, {0.48f, -0.35f + _arm_bob, -0.35f - _arm_extent});
+    arm_model_matrix = glm::translate(arm_model_matrix, {0.48f + _arm_shake, -0.35f + _arm_bob, -0.35f - _arm_extent});
     arm_model_matrix = glm::scale(arm_model_matrix, {-0.45f, 0.45f, -0.45f});
     _arm_mesh.Render([&](Shader *shader) {
         shader->SetMat4("u_mvp_matrix", vp_matrix * inv_view * arm_model_matrix);
@@ -508,7 +564,7 @@ void Player::RenderArm(const glm::mat4 &vp_matrix)
         {
             // Drill base
             auto drill_base_model_matrix = glm::mat4(1.0);
-            drill_base_model_matrix = glm::translate(drill_base_model_matrix, {0.5f, -0.35f + _arm_bob, -1.0f});
+            drill_base_model_matrix = glm::translate(drill_base_model_matrix, {0.5f + _arm_shake, -0.35f + _arm_bob, -1.0f - _arm_extent});
             drill_base_model_matrix = glm::scale(drill_base_model_matrix, {0.15f, 0.15f, -0.15f});
             _drill_base_mesh.Render([&](Shader *shader) {
                 shader->SetMat4("u_mvp_matrix", vp_matrix * inv_view * drill_base_model_matrix);
@@ -516,7 +572,8 @@ void Player::RenderArm(const glm::mat4 &vp_matrix)
 
             // Drill bit
             auto drill_bit_model_matrix = glm::mat4(1.0);
-            drill_bit_model_matrix = glm::translate(drill_bit_model_matrix, {0.5f, -0.35f + _arm_bob, -1.5f});
+            drill_bit_model_matrix = glm::translate(drill_bit_model_matrix, {0.5f + _arm_shake, -0.35f + _arm_bob, -1.5f - _arm_extent - _drill_bit_extent});
+            drill_bit_model_matrix = glm::rotate(drill_bit_model_matrix, _drill_bit_rotation, {0, 0, 1});
             drill_bit_model_matrix = glm::scale(drill_bit_model_matrix, {0.05f, 0.05f, -0.05f});
             _drill_bit_mesh.Render([&](Shader *shader) {
                 shader->SetMat4("u_mvp_matrix", vp_matrix * inv_view * drill_bit_model_matrix);
