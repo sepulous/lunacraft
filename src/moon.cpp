@@ -14,6 +14,7 @@
 #include "constants.h"
 #include "shader.h"
 #include "rng.h"
+#include "dropped_item.h"
 
 #include "input.h" // TEMP
 
@@ -190,18 +191,26 @@ void Moon::Update(double delta_time)
     // Non-physics updates
     entity_manager_.Update(delta_time);
 
-    // Update selection block
-    UpdateSelectionBlock();
-
     // Handle chunk jobs
     chunk_manager_.HandleChunkJobs();
 
+    // Update selection block
+    UpdateSelectionBlock(delta_time);
+
     // Handle player modifications
-    if (selection_block_.IsActive() && player_->IsInControl())
+    if (selection_block_.IsActive())
     {
-        if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT))
+        if (selection_block_.GetMineProgress() >= 1.0f)
         {
+            BlockID block_to_drop = chunk_manager_.GetBlockAt(selection_block_.GetPosition());
+            if (block_to_drop == BlockID::topsoil)
+                block_to_drop = BlockID::dirt;
+
             chunk_manager_.HandlePlayerModification(selection_block_.GetPosition());
+            selection_block_.SetMineProgress(0);
+
+            Entity *dropped_item = new DroppedItem(BlockIDToItemID(block_to_drop), 1, selection_block_.GetPosition());
+            entity_manager_.AddEntity(dropped_item);
         }
         else if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT))
         {
@@ -259,6 +268,7 @@ void Moon::Render(const glm::mat4 &projection)
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
 
+    // Render chunks
     Shader &block_shader = ShaderManager::BLOCK_SHADER;
     block_shader.Use();
     block_shader.SetMat4("u_view_projection", view_projection);
@@ -272,11 +282,11 @@ void Moon::Render(const glm::mat4 &projection)
     GetFrustumPlanes(view_projection, frustum);
     chunk_manager_.RenderChunks(frustum);
 
+    // Render selection overlay
     selection_block_.Render(view_projection);
 
-    //glDisable(GL_DEPTH_TEST);
-    player_->RenderArm(view_projection);
-    //glEnable(GL_DEPTH_TEST);
+    // Render entities
+    entity_manager_.RenderEntities(view_projection);
 
     //
     // Render skybox
@@ -289,8 +299,12 @@ void Moon::Render(const glm::mat4 &projection)
     skybox_.Render();
 }
 
-void Moon::UpdateSelectionBlock()
+void Moon::UpdateSelectionBlock(float delta_time)
 {
+    //
+    // Update selected block
+    //
+
     auto camera = player_->GetCamera();
 
     auto origin = camera.position;
@@ -322,6 +336,9 @@ void Moon::UpdateSelectionBlock()
         BlockID block = chunk_manager_.GetChunk(VoxelToChunk(voxel))->GetBlocks()[GetChunkIndex(GlobalToLocalVoxel(voxel))];
         if (block != BlockID::air)
         {
+            if (selection_block_.GetPosition() != voxel) // If selected block changes, reset mining
+                selection_block_.SetMineProgress(0);
+
             selection_block_.SetPosition(voxel);
             selection_block_.SetAdjacentPosition(last_voxel);
             selection_block_.SetActive(true);
@@ -336,6 +353,29 @@ void Moon::UpdateSelectionBlock()
         voxel[min_comp_idx] += step[min_comp_idx];
         distance = t_max[min_comp_idx];
         t_max[min_comp_idx] += t_delta[min_comp_idx];
+    }
+
+    //
+    // Update mining level
+    //
+
+    auto player_item = player_->GetInventory().GetSelectedItem();
+    bool is_mining = Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_LEFT) && !ItemIsPistol(player_item);
+    float mine_progress = selection_block_.GetMineProgress();
+    if (is_mining)
+    {
+        // blocks/sec
+        float f = player_item == ItemID::drill_t1 ? 0.7f
+                : player_item == ItemID::drill_t2 ? 1.0f
+                : player_item == ItemID::drill_t3 ? 1.5f
+                :                                   0.08f;
+
+        float new_progress = mine_progress + f*delta_time;
+        selection_block_.SetMineProgress(new_progress);
+    }
+    else if (mine_progress != 0)
+    {
+        selection_block_.SetMineProgress(0);
     }
 }
 
@@ -389,9 +429,9 @@ SelectionBlock::SelectionBlock()
          0.505f,  0.505f,  0.505f,  1.0f, 0.0f,
     };
 
-    mesh_.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
-    mesh_.SetVertexData(vertices, sizeof(vertices) / (5 * sizeof(float)));
-    mesh_.SetTexture(Storage::IMAGES / "selection_block.png");
+    overlay_.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
+    overlay_.SetVertexData(vertices, sizeof(vertices) / (5 * sizeof(float)));
+    overlay_.SetTexture(Storage::IMAGES / "selection_0.png");
 }
 
 void SelectionBlock::SetPosition(const glm::ivec3 &position)
@@ -414,6 +454,33 @@ glm::ivec3 SelectionBlock::GetAdjacentPosition()
     return adjacent_position_;
 }
 
+void SelectionBlock::SetMineProgress(float progress)
+{
+    mine_progress_ = progress;
+
+    int mine_level = glm::clamp((int)(progress / 0.2f), 0, 4);
+    if (mine_level != mine_level_)
+    {
+        if (mine_level == 0)
+            overlay_.SetTexture(Storage::IMAGES / "selection_0.png", GL_NEAREST);
+        else if (mine_level == 1)
+            overlay_.SetTexture(Storage::IMAGES / "selection_1.png", GL_NEAREST);
+        else if (mine_level == 2)
+            overlay_.SetTexture(Storage::IMAGES / "selection_2.png", GL_NEAREST);
+        else if (mine_level == 3)
+            overlay_.SetTexture(Storage::IMAGES / "selection_3.png", GL_NEAREST);
+        else if (mine_level == 4)
+            overlay_.SetTexture(Storage::IMAGES / "selection_4.png", GL_NEAREST);
+
+        mine_level_ = mine_level;
+    }
+}
+
+float SelectionBlock::GetMineProgress()
+{
+    return mine_progress_;
+}
+
 void SelectionBlock::SetActive(bool active)
 {
     active_ = active;
@@ -429,7 +496,7 @@ void SelectionBlock::Render(const glm::mat4 &view_projection)
     if (active_)
     {
         auto mvp_matrix = glm::translate(view_projection, glm::vec3{position_});
-        mesh_.Render([&](Shader *shader) {
+        overlay_.Render([&](Shader *shader) {
             shader->SetMat4("u_mvp_matrix", mvp_matrix);
         });
     }

@@ -1,6 +1,11 @@
 
 #include "entity.h"
 
+EntityType Entity::GetType() noexcept
+{
+    return type_;
+}
+
 AABB &Entity::GetAABB() noexcept
 {
     return aabb_;
@@ -44,6 +49,16 @@ void Entity::SetVelocity(const glm::vec3& velocity) noexcept
 glm::vec3 Entity::GetVelocity() noexcept
 {
     return velocity_;
+}
+
+void Entity::SetIsDead(bool value) noexcept
+{
+    is_dead_ = value;
+}
+
+bool Entity::IsDead() noexcept
+{
+    return is_dead_;
 }
 
 void Entity::SetIsOnIce(bool on_ice) noexcept

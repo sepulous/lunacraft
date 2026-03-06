@@ -520,6 +520,15 @@ Chunk *ChunkManager::GetChunk(glm::ivec3 chunk_coords)
         return nullptr;
 }
 
+BlockID ChunkManager::GetBlockAt(glm::ivec3 voxel)
+{
+    auto chunk = GetChunk(VoxelToChunk(voxel));
+    if (chunk != nullptr)
+        return chunk->GetBlocks()[GetChunkIndex(GlobalToLocalVoxel(voxel))];
+    else
+        return BlockID::air;
+}
+
 ChunkWorkerPool *ChunkManager::GetWorkerPool()
 {
     return worker_pool_;

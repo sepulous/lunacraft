@@ -63,6 +63,7 @@ class Player : public Entity
 
         void Update(float delta_time) override;
         void FixedUpdate() override;
+        void Render(const glm::mat4 &vp_matrix) override;
 
         PlayerData GetPlayerData();
 
@@ -92,8 +93,6 @@ class Player : public Entity
 
         glm::vec3 GetForward();
         glm::vec3 GetRight();
-
-        void RenderArm(const glm::mat4 &vp_matrix);
 
     private:
         float GetMaxMoveSpeed();

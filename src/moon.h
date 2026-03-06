@@ -23,15 +23,20 @@ class SelectionBlock
         void SetAdjacentPosition(const glm::ivec3 &position);
         glm::ivec3 GetAdjacentPosition();
 
+        void SetMineProgress(float progress);
+        float GetMineProgress();
+
         void SetActive(bool active);
         bool IsActive();
 
         void Render(const glm::mat4 &mvp_matrix);
 
     private:
-        Mesh mesh_;
+        Mesh overlay_;
         glm::ivec3 position_;
         glm::ivec3 adjacent_position_;
+        float mine_progress_ = 0;
+        int mine_level_ = 0;
         bool active_;
 };
 
@@ -73,5 +78,5 @@ class Moon
         EntityManager entity_manager_;
 
     private:
-        void UpdateSelectionBlock();
+        void UpdateSelectionBlock(float delta_time);
 };

@@ -28,8 +28,16 @@ void EntityManager::FixedUpdate()
 
 void EntityManager::Update(float delta_time)
 {
+    std::erase_if(entities_, [](Entity *e) { return e->IsDead(); });
+
     for (Entity *entity : entities_)
         entity->Update(delta_time);
+}
+
+void EntityManager::RenderEntities(const glm::mat4 &vp_matrix)
+{
+    for (Entity *entity : entities_)
+        entity->Render(vp_matrix);
 }
 
 void EntityManager::PhysicsStep()

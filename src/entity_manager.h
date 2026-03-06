@@ -20,4 +20,5 @@ class EntityManager
         void Update(float delta_time);
         void PhysicsStep();
         void Interpolate(double interp);
+        void RenderEntities(const glm::mat4 &vp_matrix);
 };

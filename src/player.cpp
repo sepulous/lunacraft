@@ -10,6 +10,7 @@
 
 Player::Player()
 {
+    type_ = EntityType::PLAYER;
     position_ = glm::vec3(CHUNK_SIZE / 2.0f, 114.0f + 0.5f + 0.9f, CHUNK_SIZE / 2.0f);
     prev_position_ = position_;
     next_position_ = position_;
@@ -527,7 +528,7 @@ glm::vec3 Player::GetRight()
     return glm::cross(GetForward(), glm::vec3{0, 1, 0});
 }
 
-void Player::RenderArm(const glm::mat4 &vp_matrix)
+void Player::Render(const glm::mat4 &vp_matrix)
 {
     auto inv_view = glm::inverse(camera_.GetViewMatrix()); // To do this in camera space
 
@@ -604,7 +605,7 @@ void Player::RenderArm(const glm::mat4 &vp_matrix)
             {
                 auto tile_origins = GetAtlasTileOrigins();
                 glm::vec2 tile_origin_side = tile_origins[ItemIDToBlockID(selected_item)][1];
-                glm::vec2 tile_origin_top = tile_origins[ItemIDToBlockID(selected_item)][2];
+                glm::vec2 tile_origin_top = tile_origins[ItemIDToBlockID(selected_item)][0];
                 float tile_size = 1.0f / 14.0f;
                 float block_vertices[] = {
                     // Back
@@ -624,12 +625,12 @@ void Player::RenderArm(const glm::mat4 &vp_matrix)
                     -1.0f, -1.0f,  1.0f, tile_origin_side.x,             tile_origin_side.y,
 
                     // Top
-                    -1.0f, 1.0f, -1.0f, tile_origin_side.x,             tile_origin_side.y,
-                     1.0f, 1.0f, -1.0f, tile_origin_side.x + tile_size, tile_origin_side.y,
-                     1.0f, 1.0f,  1.0f, tile_origin_side.x + tile_size, tile_origin_side.y + tile_size,
-                     1.0f, 1.0f,  1.0f, tile_origin_side.x + tile_size, tile_origin_side.y + tile_size,
-                    -1.0f, 1.0f,  1.0f, tile_origin_side.x + tile_size, tile_origin_side.y,
-                    -1.0f, 1.0f, -1.0f, tile_origin_side.x,             tile_origin_side.y,
+                    -1.0f, 1.0f, -1.0f, tile_origin_top.x,             tile_origin_top.y,
+                     1.0f, 1.0f, -1.0f, tile_origin_top.x + tile_size, tile_origin_top.y,
+                     1.0f, 1.0f,  1.0f, tile_origin_top.x + tile_size, tile_origin_top.y + tile_size,
+                     1.0f, 1.0f,  1.0f, tile_origin_top.x + tile_size, tile_origin_top.y + tile_size,
+                    -1.0f, 1.0f,  1.0f, tile_origin_top.x + tile_size, tile_origin_top.y,
+                    -1.0f, 1.0f, -1.0f, tile_origin_top.x,             tile_origin_top.y,
                 };
                 block_mesh_.SetVertexData(block_vertices, sizeof(block_vertices) / (5 * sizeof(float)));
                 last_held_block_ = selected_item;

@@ -123,6 +123,64 @@ BlockID ItemIDToBlockID(ItemID item_id)
         return map.at(item_id);
 }
 
+ItemID BlockIDToItemID(BlockID block_id)
+{
+    static auto map = []()
+    {
+        std::unordered_map<BlockID, ItemID> _map {
+            {BlockID::water, ItemID::water},
+            {BlockID::sulphur_crystal, ItemID::sulphur_crystal},
+            {BlockID::blue_crystal, ItemID::blue_crystal},
+            {BlockID::boron_crystal, ItemID::boron_crystal},
+            {BlockID::glass, ItemID::glass},
+            {BlockID::aluminum, ItemID::aluminum},
+            {BlockID::aluminum_ore, ItemID::aluminum_ore},
+            {BlockID::amethyst_ore, ItemID::amethyst_ore},
+            {BlockID::beacon, ItemID::beacon},
+            {BlockID::beryllium, ItemID::beryllium},
+            {BlockID::calcite, ItemID::calcite},
+            {BlockID::carbon, ItemID::carbon},
+            {BlockID::chalchanthite, ItemID::chalchanthite},
+            {BlockID::dirt, ItemID::dirt},
+            {BlockID::feldspar, ItemID::feldspar},
+            {BlockID::gold_ore, ItemID::gold_ore},
+            {BlockID::granite, ItemID::granite},
+            {BlockID::graphite, ItemID::graphite},
+            {BlockID::gravel, ItemID::gravel},
+            {BlockID::light, ItemID::light},
+            {BlockID::magnetite, ItemID::magnetite},
+            {BlockID::molybdenum_ore, ItemID::molybdenum_ore},
+            {BlockID::moon_bark, ItemID::moon_bark},
+            {BlockID::moon_leaf, ItemID::moon_leaf},
+            {BlockID::moon_wood, ItemID::moon_wood},
+            {BlockID::neptunium, ItemID::neptunium},
+            {BlockID::notchium, ItemID::notchium},
+            {BlockID::notchium_ore, ItemID::notchium_ore},
+            {BlockID::phosphate, ItemID::phosphate},
+            {BlockID::polymer, ItemID::polymer},
+            {BlockID::quartz_ore, ItemID::quartz_ore},
+            {BlockID::rock, ItemID::rock},
+            {BlockID::sand, ItemID::sand},
+            {BlockID::shale_gravel, ItemID::shale_gravel},
+            {BlockID::silver_ore, ItemID::silver_ore},
+            {BlockID::snow, ItemID::snow},
+            {BlockID::sulphur_ore, ItemID::sulphur_ore},
+            {BlockID::titanium, ItemID::titanium},
+            {BlockID::titanium_ore, ItemID::titanium_ore},
+            {BlockID::topsoil, ItemID::topsoil},
+            {BlockID::xenostone, ItemID::xenostone},
+            {BlockID::zircon_ore, ItemID::zircon_ore},
+        };
+
+        return _map;
+    }();
+
+    if (!map.contains(block_id))
+        return ItemID::none;
+    else
+        return map.at(block_id);
+}
+
 bool ChunkInFrustum(const Plane frustum[6], float chunk_min_x, float chunk_min_z)
 {
     for (int i = 0; i < 6; i++)

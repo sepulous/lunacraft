@@ -18,6 +18,7 @@ glm::ivec3 VoxelToChunk(const glm::ivec3 &voxel_pos) noexcept;
 glm::ivec3 GlobalToLocalVoxel(const glm::ivec3 &voxel_pos) noexcept;
 glm::ivec3 LocalToGlobalVoxel(const glm::ivec3 &voxel_pos, const glm::ivec3 &chunk_coord) noexcept;
 BlockID ItemIDToBlockID(ItemID item_id);
+ItemID BlockIDToItemID(BlockID block_id);
 bool ChunkInFrustum(const Plane frustum[6], float chunk_min_x, float chunk_min_z);
 void GetFrustumPlanes(const glm::mat4 &view_proj, Plane *frustum);
 uint64_t SplitMix64(uint64_t& x);

@@ -64,6 +64,7 @@ class ChunkManager
         BlockID *GetBlockMemory(uint64_t chunk_id);
         std::array<Chunk *, 4> GetNeighbors(glm::ivec3 chunk_coords);
         Chunk *GetChunk(glm::ivec3 chunk_coords);
+        BlockID GetBlockAt(glm::ivec3 voxel);
         ChunkWorkerPool *GetWorkerPool();
         int GetLoadedChunkCount();
         void WriteAllChunksToDisk();
