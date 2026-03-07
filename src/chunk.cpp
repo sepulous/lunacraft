@@ -130,7 +130,7 @@ void Chunk::Pin()
 
 void Chunk::PinNeighbors()
 {
-    auto neighbors = chunk_manager_->GetNeighbors(coords_);
+    auto neighbors = chunk_manager_->GetAdjacentNeighbors(coords_);
     for (auto &neighbor : neighbors)
         neighbor->Pin();
 }
@@ -142,7 +142,7 @@ void Chunk::Unpin()
 
 void Chunk::UnpinNeighbors()
 {
-    auto neighbors = chunk_manager_->GetNeighbors(coords_);
+    auto neighbors = chunk_manager_->GetAdjacentNeighbors(coords_);
     for (auto &neighbor : neighbors)
         neighbor->Unpin();
 }
@@ -511,7 +511,7 @@ void Chunk::BuildLightmapExternal()
     //
     // Initial fill
     //
-    auto neighbors = chunk_manager_->GetNeighbors(coords_);
+    auto neighbors = chunk_manager_->GetAdjacentNeighbors(coords_);
     for (auto &neighbor : neighbors)
     {
         auto neighbor_chunkcoords_ = neighbor->GetCoords();
@@ -720,7 +720,7 @@ void Chunk::UpdateVertexLighting()
 {
     SetState(ChunkState::UPDATING_VERTEX_LIGHTING);
 
-    auto neighbors = chunk_manager_->GetNeighbors(coords_);
+    auto neighbors = chunk_manager_->GetAdjacentNeighbors(coords_);
 
     float world_time = Moon::GetCurrentMoon()->GetWorldTime();
     float snapped_world_time = (((int)world_time % (LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE)) / SECONDS_PER_LIGHT_PHASE) * SECONDS_PER_LIGHT_PHASE; // Snap world time to beginning of phase so all chunks in the same phase agree on ambient_light
@@ -755,21 +755,21 @@ void Chunk::UpdateVertexLighting()
                 dot = 0;
 
             uint8_t _sky_light, _block_light;
-            glm::ivec3 light_sample_voxelcoords_ = voxel_g - glm::ivec3(first.face_normal);
-            glm::ivec3 light_sample_chunkcoords_ = VoxelToChunk(light_sample_voxelcoords_);
-            if (light_sample_chunkcoords_ == coords_)
+            glm::ivec3 light_sample_voxel_coords = voxel_g - glm::ivec3(first.face_normal);
+            glm::ivec3 light_sample_chunk_coords = VoxelToChunk(light_sample_voxel_coords);
+            if (light_sample_chunk_coords == coords_)
             {
-                _sky_light = lightmap_.GetSkyLevel(GlobalToLocalVoxel(light_sample_voxelcoords_));
-                _block_light = lightmap_.GetBlockLevel(GlobalToLocalVoxel(light_sample_voxelcoords_));
+                _sky_light = lightmap_.GetSkyLevel(GlobalToLocalVoxel(light_sample_voxel_coords));
+                _block_light = lightmap_.GetBlockLevel(GlobalToLocalVoxel(light_sample_voxel_coords));
             }
             else
             {
                 for (auto &neighbor : neighbors)
                 {
-                    if (neighbor->GetCoords() == light_sample_chunkcoords_)
+                    if (neighbor->GetCoords() == light_sample_chunk_coords)
                     {
-                        _sky_light = neighbor->GetLightmap().GetSkyLevel(GlobalToLocalVoxel(light_sample_voxelcoords_));
-                        _block_light = neighbor->GetLightmap().GetBlockLevel(GlobalToLocalVoxel(light_sample_voxelcoords_));
+                        _sky_light = neighbor->GetLightmap().GetSkyLevel(GlobalToLocalVoxel(light_sample_voxel_coords));
+                        _block_light = neighbor->GetLightmap().GetBlockLevel(GlobalToLocalVoxel(light_sample_voxel_coords));
                         break;
                     }
                 }
@@ -819,7 +819,7 @@ void Chunk::BuildVertices()
         ambient_light *= -0.5f;
     float sunlight_factor = ambient_light + 0.5f;
 
-    auto neighbors = chunk_manager_->GetNeighbors(coords_);
+    auto neighbors = chunk_manager_->GetAdjacentNeighbors(coords_);
     std::vector<BlockQuad> quads = GreedyMesh(blocks_, lightmap_, neighbors);
     auto tile_origins = GetAtlasTileOrigins();
 
@@ -861,45 +861,52 @@ void Chunk::BuildVertices()
 
         glm::vec2 v_light;
 
-        uint8_t sky_light, block_light;
-        glm::ivec3 light_sample_voxelcoords_ = LocalToGlobalVoxel(quad.base_coords, coords_) - glm::ivec3(normal);
-        glm::ivec3 light_sample_chunkcoords_ = VoxelToChunk(light_sample_voxelcoords_);
-        if (light_sample_chunkcoords_ == coords_)
+        if (quad.block == BlockID::light)
         {
-            sky_light = lightmap_.GetSkyLevel(GlobalToLocalVoxel(light_sample_voxelcoords_));
-            block_light = lightmap_.GetBlockLevel(GlobalToLocalVoxel(light_sample_voxelcoords_));
+            v_light = glm::vec2{1.0f};
         }
         else
         {
-            for (auto &neighbor : neighbors)
+            uint8_t sky_light, block_light;
+            glm::ivec3 light_sample_voxel_coords = LocalToGlobalVoxel(quad.base_coords, coords_) - glm::ivec3(normal);
+            glm::ivec3 light_sample_chunk_coords = VoxelToChunk(light_sample_voxel_coords);
+            if (light_sample_chunk_coords == coords_)
             {
-                if (neighbor->GetCoords() == light_sample_chunkcoords_)
+                sky_light = lightmap_.GetSkyLevel(GlobalToLocalVoxel(light_sample_voxel_coords));
+                block_light = lightmap_.GetBlockLevel(GlobalToLocalVoxel(light_sample_voxel_coords));
+            }
+            else
+            {
+                for (auto &neighbor : neighbors)
                 {
-                    sky_light = neighbor->GetLightmap().GetSkyLevel(GlobalToLocalVoxel(light_sample_voxelcoords_));
-                    block_light = neighbor->GetLightmap().GetBlockLevel(GlobalToLocalVoxel(light_sample_voxelcoords_));
-                    break;
+                    if (neighbor->GetCoords() == light_sample_chunk_coords)
+                    {
+                        sky_light = neighbor->GetLightmap().GetSkyLevel(GlobalToLocalVoxel(light_sample_voxel_coords));
+                        block_light = neighbor->GetLightmap().GetBlockLevel(GlobalToLocalVoxel(light_sample_voxel_coords));
+                        break;
+                    }
                 }
             }
-        }
-        float sky_light_f = (float)sky_light * (100.0f / 9.0f);      // Apparently Charlie's light values were in [0, 100]. Mine are in [0, 9], 
-        float block_light_f = (float)block_light * (100.0f / 9.0f);  // so let's scale to [0, 100] so his code works as-is
+            float sky_light_f = (float)sky_light * (100.0f / 9.0f);      // Apparently Charlie's light values were in [0, 100]. Mine are in [0, 9], 
+            float block_light_f = (float)block_light * (100.0f / 9.0f);  // so let's scale to [0, 100] so his code works as-is
 
-        float corrected_sky_light = (sky_light_f * ambient_light + (1.0 - ambient_light) * sky_light_f * dot) * sunlight_factor;
-        float scaled_sky_light;
-        if (corrected_sky_light != 0)
-            scaled_sky_light = ((corrected_sky_light / 100.0) * 68.0) + 32;
-        else
-            scaled_sky_light = 0;
+            float corrected_sky_light = (sky_light_f * ambient_light + (1.0 - ambient_light) * sky_light_f * dot) * sunlight_factor;
+            float scaled_sky_light;
+            if (corrected_sky_light != 0)
+                scaled_sky_light = ((corrected_sky_light / 100.0f) * 68.0f) + 32.0f;
+            else
+                scaled_sky_light = 0;
 
-        if (sin_world_time > 0)
-        {
-            v_light = glm::vec2(glm::max(scaled_sky_light, block_light_f) / 100.0f);
-        }
-        else
-        {
-            float red_green = glm::clamp(block_light_f / 100.0f + scaled_sky_light * sunlight_factor * 0.01f, 0.0f, 1.0f);
-            float blue = glm::clamp(block_light_f / 100.0f + scaled_sky_light * 0.01f, 0.0f, 1.0f);
-            v_light = {red_green, blue};
+            if (sin_world_time > 0)
+            {
+                v_light = glm::vec2(glm::max(scaled_sky_light, block_light_f) / 100.0f);
+            }
+            else
+            {
+                float red_green = glm::clamp(block_light_f / 100.0f + scaled_sky_light * sunlight_factor * 0.01f, 0.0f, 1.0f);
+                float blue = glm::clamp(block_light_f / 100.0f + scaled_sky_light * 0.01f, 0.0f, 1.0f);
+                v_light = {red_green, blue};
+            }
         }
 
         // Push vertices

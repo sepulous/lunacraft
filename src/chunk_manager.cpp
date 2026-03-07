@@ -90,7 +90,7 @@ void ChunkManager::HandleChunkJobs()
 
         if (job.requires_neighbors)
         {
-            auto neighbors = GetNeighbors(job.chunk->GetCoords());
+            auto neighbors = GetAdjacentNeighbors(job.chunk->GetCoords());
             bool neighbors_ready = std::none_of(neighbors.begin(), neighbors.end(), [](auto neighbor) {
                 return neighbor->GetState() < ChunkState::INTERNAL_DONE;
             });
@@ -154,6 +154,7 @@ void ChunkManager::HandlePlayerModification(glm::ivec3 voxel, BlockID block_plac
 
     // Remove block
     auto local = GlobalToLocalVoxel(voxel);
+    auto original_block = chunk->GetBlocks()[GetChunkIndex(local)];
     chunk->GetBlocks()[GetChunkIndex(local)] = block_placed;
 
     // Rebuild this chunk
@@ -168,39 +169,48 @@ void ChunkManager::HandlePlayerModification(glm::ivec3 voxel, BlockID block_plac
             ChunkTask::MARK_AS_CLEAN
         }
     });
-
+    
     // Rebuild neighbor chunks
-    auto neighborchunks_ = GetNeighbors(chunk_coords);
-    auto voxel_local = GlobalToLocalVoxel(voxel);
-    if (voxel_local.x != 0 && voxel_local.x != CHUNK_SIZE - 1 && voxel_local.z != 0 && voxel_local.z != CHUNK_SIZE - 1) // Not on chunk border
+    if (block_placed == BlockID::light || (block_placed == BlockID::air && original_block == BlockID::light)) // Block lighting change
     {
-        for (auto &neighbor : neighborchunks_)
+        // Neighbor chunks are only affected if they lie inside the range of block light (9 blocks)
+
+        glm::ivec3 light_extents[] = {
+            voxel + glm::ivec3{-9, 0,  9},
+            voxel + glm::ivec3{ 9, 0,  9},
+            voxel + glm::ivec3{ 9, 0, -9},
+            voxel + glm::ivec3{-9, 0, -9},
+        };
+
+        auto neighbor_chunks = GetAllNeighbors(chunk_coords);
+        for (auto neighbor : neighbor_chunks)
         {
-            neighbor->PinNeighbors();
-            job_queue_.push({
-                .chunk = neighbor,
-                .requires_neighbors = true,
-                .tasks = {
-                    ChunkTask::BUILD_LIGHTMAP_INTERNAL,
-                    ChunkTask::BUILD_LIGHTMAP_EXTERNAL,
-                    ChunkTask::UPDATE_VERTEX_LIGHTING,
-                    ChunkTask::MARK_AS_CLEAN
+            for (auto &light_extent : light_extents)
+            {
+                auto extent_chunk_coord = VoxelToChunk(light_extent);
+                if (neighbor->GetCoords() == extent_chunk_coord)
+                {
+                    neighbor->PinNeighbors();
+                    job_queue_.push({
+                        .chunk = neighbor,
+                        .requires_neighbors = true,
+                        .tasks = {
+                            ChunkTask::BUILD_LIGHTMAP_INTERNAL,
+                            ChunkTask::BUILD_LIGHTMAP_EXTERNAL,
+                            ChunkTask::BUILD_VERTICES,
+                            ChunkTask::MARK_AS_CLEAN
+                        }
+                    });
+                    break;
                 }
-            });
+            }
         }
     }
-    else // On chunk border
+    else
     {
-        int indices[] = {2, 0, 2, 0}; // {z, x, z, x}
-        int borders[] = {CHUNK_SIZE - 1, CHUNK_SIZE - 1, 0, 0}; // {z_max, x_max, z_min, x_min}
-        for (int i = 0; i < 4; i++)
+        auto neighbor_chunks = GetAdjacentNeighbors(chunk_coords);
+        for (auto neighbor : neighbor_chunks)
         {
-            // This is just a compact way to decide whether the modified voxel shares a border with
-            // the ith neighbor, to decide how that neighbor should update its vertices. If a shared
-            // border was modified, the neighbor must remesh; otherwise, it only needs to update lighting.
-            auto vertex_task = voxel_local[indices[i]] == borders[i] ? ChunkTask::BUILD_VERTICES
-                                                                     : ChunkTask::UPDATE_VERTEX_LIGHTING;
-            auto neighbor = neighborchunks_[i];
             neighbor->PinNeighbors();
             job_queue_.push({
                 .chunk = neighbor,
@@ -208,7 +218,7 @@ void ChunkManager::HandlePlayerModification(glm::ivec3 voxel, BlockID block_plac
                 .tasks = {
                     ChunkTask::BUILD_LIGHTMAP_INTERNAL,
                     ChunkTask::BUILD_LIGHTMAP_EXTERNAL,
-                    vertex_task,
+                    ChunkTask::BUILD_VERTICES,
                     ChunkTask::MARK_AS_CLEAN
                 }
             });
@@ -324,8 +334,8 @@ void ChunkManager::CreateInitialPatch()
     }
 }
 
-// Get chunk's neighbors in order {front, right, back, left}
-std::array<Chunk *, 4> ChunkManager::GetNeighbors(glm::ivec3 chunk_coords)
+// Get chunk's adjcent neighbors in order {front, right, back, left}
+std::array<Chunk *, 4> ChunkManager::GetAdjacentNeighbors(glm::ivec3 chunk_coords)
 {
     std::array<Chunk *, 4> neighbors;
 
@@ -334,6 +344,33 @@ std::array<Chunk *, 4> ChunkManager::GetNeighbors(glm::ivec3 chunk_coords)
         {chunk_coords.x + 1, 0, chunk_coords.z}, // Right
         {chunk_coords.x, 0, chunk_coords.z - 1}, // Back
         {chunk_coords.x - 1, 0, chunk_coords.z}  // Left
+    };
+
+    size_t idx = 0;
+    for (auto &neighbor : neighbor_coords)
+    {
+        auto chunk_id = ChunkCoordsToID(neighbor);
+        neighbors[idx] = chunks_.at(chunk_id); // Existence of neighbors should be guaranteed
+        idx++;
+    }
+
+    return neighbors;
+}
+
+// Get all chunk neighbors in order {front, right, back, left, front_right, front_left, back_right, back_left}
+std::array<Chunk *, 8> ChunkManager::GetAllNeighbors(glm::ivec3 chunk_coords)
+{
+    std::array<Chunk *, 8> neighbors;
+
+    glm::ivec3 neighbor_coords[] = {
+        {chunk_coords.x, 0, chunk_coords.z + 1}, // Front
+        {chunk_coords.x + 1, 0, chunk_coords.z}, // Right
+        {chunk_coords.x, 0, chunk_coords.z - 1}, // Back
+        {chunk_coords.x - 1, 0, chunk_coords.z}, // Left
+        {chunk_coords.x + 1, 0, chunk_coords.z + 1}, // Front right
+        {chunk_coords.x - 1, 0, chunk_coords.z + 1}, // Front left
+        {chunk_coords.x + 1, 0, chunk_coords.z - 1}, // Back right
+        {chunk_coords.x - 1, 0, chunk_coords.z - 1}, // Back left
     };
 
     size_t idx = 0;
