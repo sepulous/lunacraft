@@ -24,7 +24,6 @@ class Player : public Entity
         Camera camera_;
         Inventory inventory_;
         bool in_control_ = true;
-        bool inventory_changed_ = false; // For UI updating. I don't love this system...
         glm::vec3 input_direction_;
         int health_ = 100;
         int suit_status_ = 100;

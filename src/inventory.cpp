@@ -248,3 +248,13 @@ bool ItemStack::IsEmpty()
 {
     return item == ItemID::none || amount < 1;
 }
+
+bool ItemStack::operator==(const ItemStack &other)
+{
+    return item == other.item && amount == other.amount;
+}
+
+bool ItemStack::operator!=(const ItemStack &other)
+{
+    return item != other.item || amount != other.amount;
+}

@@ -8,9 +8,10 @@ struct ItemStack
 {
     ItemID item = ItemID::none;
     int amount = 0;
-    bool changed = true;
 
     bool IsEmpty();
+    bool operator==(const ItemStack &other);
+    bool operator!=(const ItemStack &other);
 };
 
 class Inventory

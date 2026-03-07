@@ -10,10 +10,10 @@
 #include "shader.h"
 #include "moon_settings.h"
 #include "mesh.h"
+#include "inventory.h"
 
 class ItemStack; // Forward declarations
 class Player;    //
-class Inventory; //
 
 const float VIRTUAL_UI_WIDTH = 1920.0f;
 const float VIRTUAL_UI_HEIGHT = 1080.0f;
@@ -396,7 +396,6 @@ class UIInventory
 {
     public:
         UIInventory();
-        void RebuildUI(Player *player, bool force = false);
         void Update(Player *player);
         void Render();
         bool IsActive();
@@ -404,6 +403,8 @@ class UIInventory
 
     private:
         bool active_ = false;
+        bool ui_built_ = false;
+        Inventory local_inv_;
 
         UIImage hotbar_base_;
         UIImage inventory_base_;
@@ -434,6 +435,7 @@ class UIInventory
         UIImage jetpack_bar_;
 
         ItemStack *GetSlotUnderMouse(glm::dvec2 mouse_pos, Inventory &inventory, std::pair<UIImage, UIText> **out_slot);
+        void RebuildUI(Player *player, bool force);
 };
 
 class UIGame

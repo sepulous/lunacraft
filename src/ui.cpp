@@ -1431,7 +1431,8 @@ void UIInventory::RebuildUI(Player *player, bool force)
     for (int col = 0; col < 10; col++)
     {
         auto &slot = inventory.inventory[0][col];
-        if (force || slot.changed)
+        auto &local_slot = local_inv_.inventory[0][col];
+        if (force || local_slot != slot)
         {
             auto &[slot_image, slot_amount] = inventory_slots_[0][col];
             auto icon = GetItemIcon(slot.item);
@@ -1441,7 +1442,7 @@ void UIInventory::RebuildUI(Player *player, bool force)
             else
                 slot_amount.SetText("");
 
-            slot.changed = false;
+            local_slot = slot;
         }
     }
 
@@ -1453,7 +1454,8 @@ void UIInventory::RebuildUI(Player *player, bool force)
             for (int col = 0; col < 10; col++)
             {
                 auto &slot = inventory.inventory[row][col];
-                if (force || slot.changed)
+                auto &local_slot = local_inv_.inventory[row][col];
+                if (force || local_slot != slot)
                 {
                     auto &[slot_image, slot_amount] = inventory_slots_[row][col];
                     auto icon = GetItemIcon(slot.item);
@@ -1463,7 +1465,7 @@ void UIInventory::RebuildUI(Player *player, bool force)
                     else
                         slot_amount.SetText("");
 
-                    slot.changed = false;
+                    local_slot = slot;
                 }
             }
         }
@@ -1472,7 +1474,8 @@ void UIInventory::RebuildUI(Player *player, bool force)
         for (int i = 0; i < 3; i++)
         {
             auto &slot = inventory.spacesuit[i];
-            if (force || slot.changed)
+            auto &local_slot = local_inv_.spacesuit[i];
+            if (force || local_slot != slot)
             {
                 auto &[slot_image, slot_amount] = spacesuit_slots_[i];
                 auto icon = GetItemIcon(slot.item);
@@ -1482,7 +1485,7 @@ void UIInventory::RebuildUI(Player *player, bool force)
                 else
                     slot_amount.SetText("");
 
-                slot.changed = false;
+                local_slot = slot;
             }
         }
 
@@ -1492,7 +1495,8 @@ void UIInventory::RebuildUI(Player *player, bool force)
             for (int col = 0; col < 3; col++)
             {
                 auto &slot = inventory.assembler_input[row][col];
-                if (force || slot.changed)
+                auto &local_slot = local_inv_.assembler_input[row][col];
+                if (force || local_slot != slot)
                 {
                     auto &[slot_image, slot_amount] = assembler_input_slots_[row][col];
                     auto icon = GetItemIcon(slot.item);
@@ -1502,12 +1506,12 @@ void UIInventory::RebuildUI(Player *player, bool force)
                     else
                         slot_amount.SetText("");
 
-                    slot.changed = false;
+                    local_slot = slot;
                 }
             }
         }
 
-        if (force || inventory.assembler_output.changed)
+        if (force || local_inv_.assembler_output != inventory.assembler_output)
         {
             auto icon = GetItemIcon(inventory.assembler_output.item);
             assembler_output_slot_.first.LoadImage(icon.bytes, icon.width, icon.height, icon.num_channels, GL_NEAREST);
@@ -1516,15 +1520,15 @@ void UIInventory::RebuildUI(Player *player, bool force)
             else
                 assembler_output_slot_.second.SetText("");
 
-            inventory.assembler_output.changed = false;
+            local_inv_.assembler_output = inventory.assembler_output;
         }
 
         // Scanner slot
-        if (force || inventory.scanner.changed)
+        if (force || local_inv_.scanner != inventory.scanner)
         {
             auto icon = GetItemIcon(inventory.scanner.item);
             scanner_slot_.first.LoadImage(icon.bytes, icon.width, icon.height, icon.num_channels, GL_NEAREST);
-            inventory.scanner.changed = false;
+            local_inv_.scanner = inventory.scanner;
         }
     }
 
@@ -1533,11 +1537,13 @@ void UIInventory::RebuildUI(Player *player, bool force)
     suit_status_bar_.SetSize({186 * suit_status, 18});
     health_bar_.SetCrop({0.0f, 0.0f, health, 1.0f});
     health_bar_.SetSize({186 * health, 18});
+
+    ui_built_ = true;
 }
 
 void UIInventory::Update(Player *player)
 {
-    RebuildUI(player);
+    RebuildUI(player, !ui_built_);
 
     auto &inventory = player->GetInventory();
     float suit_status = (float)player->GetSuitStatus() / 100.0f;
