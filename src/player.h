@@ -6,6 +6,7 @@
 #include "camera.h"
 #include "inventory.h"
 #include "mesh.h"
+#include "sound_system.h"
 
 struct PlayerData
 {
@@ -31,6 +32,7 @@ class Player : public Entity
         bool was_grounded_ = false;
         float fall_time_ = 0;
         bool is_flying_ = false;
+        ActiveSound *drill_sound_ = nullptr;
         float time_since_last_health_update_ = 0;
         float time_since_last_suit_update_ = 0;
         float time_since_last_jetpack_update_ = 0;

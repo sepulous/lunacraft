@@ -1,7 +1,6 @@
 
 #include "player.h"
 #include "constants.h"
-#include "sound_system.h"
 #include "input.h"
 #include "storage.h"
 #include "block.h"
@@ -252,42 +251,58 @@ void Player::Update(float delta_time)
         }
 
         // Drilling
-        if (Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_LEFT) && ItemIsDrill(inventory_.GetSelectedItem()))
+        if (ItemIsDrill(inventory_.GetSelectedItem()))
         {
-            time_drilling_ += delta_time;
-
-            float arm_shake_freq = glm::clamp(15.0f * time_drilling_, 20.0f, 50.0f);
-            arm_shake_ = 0.005f * glm::pow(glm::sin(arm_shake_freq * time_drilling_), 2);
-            arm_extent_ = glm::clamp(arm_extent_ + 0.0001f * time_drilling_, 0.0f, 0.2f);
-
-            drill_bit_angular_speed_ = glm::clamp(3.0f * time_drilling_, 0.0f, 40.0f);
-            drill_bit_rotation_ = drill_bit_angular_speed_ * time_drilling_;
-            drill_bit_extent_ = glm::clamp(drill_bit_extent_ + 0.0001f * time_drilling_, 0.0f, 0.2f);
-        }
-        else if (time_drilling_ != 0) // Animation should stop
-        {
-            arm_shake_ = 0;
-
-            if (glm::abs(arm_extent_) < 0.01f)
+            if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT))
             {
-                arm_extent_ = 0;
-                arm_shake_ = 0;
-                drill_bit_extent_ = 0;
-                drill_bit_rotation_ = 0;
+                if (inventory_.GetSelectedItem() == ItemID::drill_t3)
+                    drill_sound_ = SoundSystem::PlayLooped(SoundSystem::Sound::DRILL3);
+                else
+                    drill_sound_ = SoundSystem::PlayLooped(SoundSystem::Sound::DRILL);
             }
-            else
+            else if (Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_LEFT))
             {
-                // For the sake of simplicity, we now reinterpret time_drilling_ as the time
-                // elapsed since the animation started ending
-                if (time_drilling_ != 0)
-                    time_drilling_ = 0;
-                    
                 time_drilling_ += delta_time;
 
-                arm_extent_ = glm::clamp(arm_extent_ - 0.2f * time_drilling_, 0.0f, 2.0f);
+                float arm_shake_freq = glm::clamp(15.0f * time_drilling_, 20.0f, 50.0f);
+                arm_shake_ = 0.005f * glm::pow(glm::sin(arm_shake_freq * time_drilling_), 2);
+                arm_extent_ = glm::clamp(arm_extent_ + 0.0001f * time_drilling_, 0.0f, 0.2f);
 
-                drill_bit_rotation_ += drill_bit_angular_speed_ * time_drilling_;
-                drill_bit_extent_ = glm::clamp(drill_bit_extent_ - 0.2f * time_drilling_, 0.0f, 0.2f);
+                drill_bit_angular_speed_ = glm::clamp(3.0f * time_drilling_, 0.0f, 40.0f);
+                drill_bit_rotation_ = drill_bit_angular_speed_ * time_drilling_;
+                drill_bit_extent_ = glm::clamp(drill_bit_extent_ + 0.0001f * time_drilling_, 0.0f, 0.2f);
+            }
+            else if (Input::IsMouseButtonReleased(GLFW_MOUSE_BUTTON_LEFT) || time_drilling_ != 0)
+            {
+                if (drill_sound_ != nullptr)
+                {
+                    drill_sound_->source->Stop();
+                    drill_sound_ = nullptr;
+                }
+
+                arm_shake_ = 0;
+
+                if (glm::abs(arm_extent_) < 0.01f)
+                {
+                    arm_extent_ = 0;
+                    arm_shake_ = 0;
+                    drill_bit_extent_ = 0;
+                    drill_bit_rotation_ = 0;
+                }
+                else
+                {
+                    // For the sake of simplicity, we now reinterpret time_drilling_ as the time
+                    // elapsed since the animation started ending
+                    if (time_drilling_ != 0)
+                        time_drilling_ = 0;
+                        
+                    time_drilling_ += delta_time;
+
+                    arm_extent_ = glm::clamp(arm_extent_ - 0.2f * time_drilling_, 0.0f, 2.0f);
+
+                    drill_bit_rotation_ += drill_bit_angular_speed_ * time_drilling_;
+                    drill_bit_extent_ = glm::clamp(drill_bit_extent_ - 0.2f * time_drilling_, 0.0f, 0.2f);
+                }
             }
         }
     }
