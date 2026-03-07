@@ -4,6 +4,7 @@
 #include "helpers.h"
 #include "storage.h"
 #include "moon.h"
+#include "sound_system.h"
 
 DroppedItem::DroppedItem(ItemID item, int amount, glm::vec3 position)
 {
@@ -127,6 +128,7 @@ void DroppedItem::FixedUpdate()
     {
         SetIsDead(true);
         player_inventory.Add({item_, amount_});
+        SoundSystem::Play(SoundSystem::Sound::PICKUP);
     }
 }
 
