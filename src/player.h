@@ -33,6 +33,7 @@ class Player : public Entity
         float fall_time_ = 0;
         bool is_flying_ = false;
         ActiveSound *drill_sound_ = nullptr;
+        ActiveSound *jetpack_sound_ = nullptr;
         float time_since_last_health_update_ = 0;
         float time_since_last_suit_update_ = 0;
         float time_since_last_jetpack_update_ = 0;

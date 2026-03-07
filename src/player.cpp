@@ -202,7 +202,7 @@ void Player::Update(float delta_time)
             input_direction_ -= right;
         if (Input::IsKeyHeld(GLFW_KEY_D))
             input_direction_ += right;
-        if (Input::IsKeyHeld(GLFW_KEY_SPACE) && is_grounded_)
+        if (Input::IsKeyPressed(GLFW_KEY_SPACE) && is_grounded_)
             is_jumping_ = true;
 
         if (glm::length(input_direction_) > 0)
@@ -222,12 +222,23 @@ void Player::Update(float delta_time)
         {
             time_since_started_flying_ += delta_time;
             if (time_since_started_flying_ > 0.5f)
+            {
                 is_flying_ = true;
+
+                if (jetpack_sound_ == nullptr)
+                    jetpack_sound_ = SoundSystem::PlayLooped(SoundSystem::Sound::JETPACK);
+            }
         }
         else if (Input::IsKeyReleased(GLFW_KEY_SPACE) || jetpack_energy_ < 1)
         {
             time_since_started_flying_ = 0;
             is_flying_ = false;
+
+            if (jetpack_sound_ != nullptr)
+            {
+                jetpack_sound_->source->Stop();
+                jetpack_sound_ = nullptr;
+            }
         }
 
         // Punching
@@ -410,6 +421,7 @@ void Player::FixedUpdate()
 
     if (is_jumping_ && is_grounded_)
     {
+        SoundSystem::Play(SoundSystem::Sound::JUMP);
         velocity_.y = 3.5f;
         is_jumping_ = false;
     }
