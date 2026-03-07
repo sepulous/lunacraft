@@ -109,14 +109,7 @@ void EntityManager::PhysicsStep()
             {
                 entity->SetGrounded(true);
 
-                // Decide whether on ice
-                auto entity_voxel_g = GetNearestVoxel(entity->GetPosition());
-                auto entity_voxel_l = GlobalToLocalVoxel(entity_voxel_g);
-                auto entity_chunk = chunk_manager_->GetChunk(VoxelToChunk(entity_voxel_g));
-                BlockID foot_block = entity_chunk->GetBlocks()[GetChunkIndex(entity_voxel_l - glm::ivec3{0, 1, 0})]; // Can go out of bounds...
-                entity->SetIsOnIce(foot_block == BlockID::water);
-
-                // Snap to ground to avoid sinking
+                // Snap feet to avoid sinking
                 float floor_feet = glm::floor(entity->GetPosition().y - entity->GetAABB().extents.y);
                 next_position.y = floor_feet + entity->GetAABB().extents.y + 0.5f;
                 entity->GetAABB().center.y = next_position.y;
@@ -131,10 +124,17 @@ void EntityManager::PhysicsStep()
         }
         else
         {
-            // Only unground them if their feet aren't where the grounding code puts them
-            float floor_feet = glm::floor(entity->GetPosition().y - entity->GetAABB().extents.y);
+            // Decide whether on ice
+            auto entity_voxel_g = GetNearestVoxel(entity->GetPosition());
+            auto entity_voxel_l = GlobalToLocalVoxel(entity_voxel_g);
+            auto entity_chunk = chunk_manager_->GetChunk(VoxelToChunk(entity_voxel_g));
+            BlockID foot_block = entity_chunk->GetBlocks()[GetChunkIndex(entity_voxel_l - glm::ivec3{0, 1, 0})]; // Can go out of bounds...
+            entity->SetIsOnIce(foot_block == BlockID::water);
+
+            // Decide whether still grounded
             float actual_feet = entity->GetPosition().y - entity->GetAABB().extents.y;
-            if (glm::abs(actual_feet - (floor_feet + 0.5f)) > 0.01f)
+            float floor_feet = glm::floor(actual_feet);
+            if (glm::abs(actual_feet - (floor_feet + 0.5f)) > 0.01f || foot_block == BlockID::air)
                 entity->SetGrounded(false);
         }
 
