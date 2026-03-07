@@ -242,7 +242,9 @@ void Player::Update(float delta_time)
         }
 
         // Punching
-        if (Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_LEFT) && !ItemIsDrill(inventory_.GetSelectedItem()) && !ItemIsPistol(inventory_.GetSelectedItem()))
+        bool punch_mining = Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_LEFT) && !ItemIsDrill(inventory_.GetSelectedItem()) && !ItemIsPistol(inventory_.GetSelectedItem());
+        bool placing_block = Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_RIGHT) && ItemIsBlock(inventory_.GetSelectedItem());
+        if (punch_mining || placing_block)
         {
             time_punching_ += delta_time;
             arm_extent_ = 0.2f * glm::pow(glm::sin(7.0f * time_punching_), 2);
