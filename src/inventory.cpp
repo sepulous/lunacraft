@@ -109,8 +109,23 @@ bool Inventory::IsCreative()
 // Returns index of slot that was added to
 int Inventory::Add(ItemStack stack)
 {
+    //
     // First pass: check for existing stack
-    for (int row = 4; row >= 0; row--)
+    //
+
+    // Hotbar
+    for (int col = 0; col < 10; col++)
+    {
+        ItemStack &slot = inventory[0][col];
+        if (slot.item == stack.item)
+        {
+            slot.amount += stack.amount;
+            return col;
+        }
+    }
+
+    // Inventory
+    for (int row = 4; row > 0; row--)
     {
         for (int col = 0; col < 10; col++)
         {
@@ -123,8 +138,23 @@ int Inventory::Add(ItemStack stack)
         }
     }
 
+    //
     // Second pass: check for empty slot
-    for (int row = 4; row >= 0; row--)
+    //
+
+    // Hotbar
+    for (int col = 0; col < 10; col++)
+    {
+        ItemStack &slot = inventory[0][col];
+        if (slot.IsEmpty())
+        {
+            slot = stack;
+            return col;
+        }
+    }
+
+    // Inventory
+    for (int row = 4; row > 0; row--)
     {
         for (int col = 0; col < 10; col++)
         {
