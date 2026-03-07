@@ -15,6 +15,7 @@
 #include "shader.h"
 #include "rng.h"
 #include "dropped_item.h"
+#include "sound_system.h"
 
 #include "input.h" // TEMP
 
@@ -211,6 +212,8 @@ void Moon::Update(double delta_time)
 
             Entity *dropped_item = new DroppedItem(BlockIDToItemID(block_to_drop), 1, selection_block_.GetPosition());
             entity_manager_.AddEntity(dropped_item);
+
+            SoundSystem::PlayAt(SoundSystem::Sound::BLOCK_BREAK, selection_block_.GetPosition());
         }
         else if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT))
         {
@@ -229,6 +232,8 @@ void Moon::Update(double delta_time)
                     }
 
                     chunk_manager_.HandlePlayerModification(selection_block_.GetAdjacentPosition(), block);
+
+                    SoundSystem::PlayAt(SoundSystem::Sound::BLOCK_PLACE, selection_block_.GetAdjacentPosition());
                 }
             }
         }
