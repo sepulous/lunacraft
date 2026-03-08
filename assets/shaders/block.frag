@@ -4,7 +4,6 @@ out vec4 out_color;
 
 in vec2 v_tex;
 in vec2 v_tile_origin;
-in vec3 v_normal;
 in vec3 v_ws_position;
 in vec2 v_light;
 

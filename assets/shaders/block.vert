@@ -7,7 +7,6 @@ layout (location = 3) in vec2 in_light;
 
 out vec2 v_tex;
 out vec2 v_tile_origin;
-out vec3 v_normal;
 out vec3 v_ws_position;
 out vec2 v_light;
 
@@ -19,6 +18,5 @@ void main()
     gl_Position = u_view_projection * vec4(in_position, 1.0);
     v_tex = in_uv.xy;
     v_tile_origin = in_uv.zw;
-    v_normal = in_normal;
     v_light = in_light;
 }
