@@ -112,7 +112,7 @@ EntityManager &Moon::GetEntityManager()
 
 glm::vec4 Moon::GetFogColor()
 {
-    float factor = glm::sin((world_time_ + SECONDS_PER_LIGHT_PHASE) * (2 * 3.1416 / (LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE))); // The offset initializes moon on Phase 1
+    float factor = glm::sin(GetSkyboxAngle());
     if (factor < 0)
         factor = 0;
     glm::vec3 fog_rgb = factor * glm::vec3(base_fog_color_);
@@ -140,9 +140,24 @@ double Moon::GetWorldTime()
     return world_time_;
 }
 
+float Moon::GetSkyboxAngle()
+{
+    if (skybox_reversed_)
+        return skybox_phase_ - LIGHT_CYCLE_OMEGA * world_time_;
+    else
+        return skybox_phase_ + LIGHT_CYCLE_OMEGA * world_time_;
+}
+
+int Moon::GetLightPhase()
+{
+    float skybox_angle = GetSkyboxAngle();
+    skybox_angle *= (360.0f / (2 * 3.1416f));
+    return ((int)skybox_angle % 360) / (360.0f / LIGHT_PHASES);
+}
+
 glm::vec3 Moon::GetSunlightDirection()
 {
-    int phase = ((int)(world_time_ + SECONDS_PER_LIGHT_PHASE) / SECONDS_PER_LIGHT_PHASE) % LIGHT_PHASES; // The offset initializes moon on Phase 1
+    int phase = GetLightPhase();
     float main_light_angle_deg;
     if (phase <= 6) // Day
     {
@@ -166,8 +181,24 @@ glm::vec3 Moon::GetSunlightDirection()
 
 void Moon::Update(double delta_time)
 {
-    world_time_ += delta_time;
+    float time_scale = 1.0f;
+    ItemID player_item = player_->GetInventory().GetSelectedItem();
+    if (player_item == ItemID::chronobooster || player_item == ItemID::chronowinder)
+        time_scale = 2.0f;
+
+    world_time_ += time_scale * delta_time;
     accumulator_ += delta_time;
+
+    if (player_item == ItemID::chronowinder && !skybox_reversed_)
+    {
+        skybox_reversed_ = true;
+        skybox_phase_ += 2 * LIGHT_CYCLE_OMEGA * world_time_;
+    }
+    else if (player_item != ItemID::chronowinder && skybox_reversed_)
+    {
+        skybox_reversed_ = false;
+        skybox_phase_ -= 2 * LIGHT_CYCLE_OMEGA * world_time_;
+    }
 
     //
     // Fixed updates
@@ -240,7 +271,7 @@ void Moon::Update(double delta_time)
     }
 
     // Update lighting
-    int light_phase = ((int)(world_time_ + SECONDS_PER_LIGHT_PHASE) / SECONDS_PER_LIGHT_PHASE) % LIGHT_PHASES; // The offset initializes moon on Phase 1
+    int light_phase = GetLightPhase(); 
     if (light_phase != current_light_phase_)
     {
         current_light_phase_ = light_phase;
@@ -299,8 +330,7 @@ void Moon::Render(const glm::mat4 &projection)
 
     view = glm::mat4(glm::mat3(view));
     view_projection = projection * view;
-    float skybox_angle = (world_time_ + SECONDS_PER_LIGHT_PHASE) * (2 * 3.1416f / (LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE)); // The offset initializes moon on Phase 1
-    skybox_.Update(view_projection, skybox_angle);
+    skybox_.Update(view_projection, GetSkyboxAngle());
     skybox_.Render();
 }
 

@@ -722,9 +722,9 @@ void Chunk::UpdateVertexLighting()
 
     auto neighbors = chunk_manager_->GetAdjacentNeighbors(coords_);
 
-    float world_time = Moon::GetCurrentMoon()->GetWorldTime();
-    float snapped_world_time = (((int)world_time % (LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE)) / SECONDS_PER_LIGHT_PHASE) * SECONDS_PER_LIGHT_PHASE; // Snap world time to beginning of phase so all chunks in the same phase agree on ambient_light
-    float sin_world_time = glm::sin((snapped_world_time + SECONDS_PER_LIGHT_PHASE) * (2 * 3.14159f / (LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE))); // The offset initializes moon on Phase 1
+    // These calculations were reverse engineered from the latest version of the original game (v2.01)
+    int light_phase = Moon::GetCurrentMoon()->GetLightPhase();
+    float sin_world_time = glm::sin((light_phase * SECONDS_PER_LIGHT_PHASE) * LIGHT_CYCLE_OMEGA);
     glm::vec3 sunlight_direction = Moon::GetCurrentMoon()->GetSunlightDirection();
     float ambient_light = 0.5f * sin_world_time;
     if (ambient_light < 0)
@@ -813,14 +813,15 @@ void Chunk::BuildVertices()
     SetState(ChunkState::BUILDING_VERTICES);
 
     // These calculations were reverse engineered from the latest version of the original game (v2.01)
-    float world_time = Moon::GetCurrentMoon()->GetWorldTime();
-    float snapped_world_time = (((int)world_time % (LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE)) / SECONDS_PER_LIGHT_PHASE) * SECONDS_PER_LIGHT_PHASE; // Snap world time to beginning of phase so all chunks in the same phase agree on ambient_light
-    float sin_world_time = glm::sin((snapped_world_time + SECONDS_PER_LIGHT_PHASE) * (2 * 3.14159f / (LIGHT_PHASES * SECONDS_PER_LIGHT_PHASE))); // The offset initializes moon on Phase 1
+    int light_phase = Moon::GetCurrentMoon()->GetLightPhase();
+    float sin_world_time = glm::sin((light_phase * SECONDS_PER_LIGHT_PHASE) * LIGHT_CYCLE_OMEGA);
     glm::vec3 sunlight_direction = Moon::GetCurrentMoon()->GetSunlightDirection();
     float ambient_light = 0.5f * sin_world_time;
     if (ambient_light < 0)
         ambient_light *= -0.5f;
     float sunlight_factor = ambient_light + 0.5f;
+
+    // snapped_world_time = light_phase * SECONDS_PER_LIGHT_PHASE
 
     auto neighbors = chunk_manager_->GetAdjacentNeighbors(coords_);
     std::vector<BlockQuad> quads = GreedyMesh(blocks_, lightmap_, neighbors);
