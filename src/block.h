@@ -55,12 +55,7 @@ enum class BlockID : uint8_t
     topsoil,
     xenostone,
     zircon_ore,
-    minilight_pz,
-    minilight_nz,
-    minilight_px,
-    minilight_nx,
-    minilight_py,
-    minilight_ny
+    minilight,
 };
 
 struct BlockVertex
@@ -116,12 +111,6 @@ inline std::unordered_map<BlockID, glm::mat3x2> GetAtlasTileOrigins()
         {BlockID::blue_crystal,    glm::vec3(58, 58, 58)},
         {BlockID::boron_crystal,   glm::vec3(22, 22, 22)},
         {BlockID::glass,           glm::vec3(35, 35, 35)},
-        {BlockID::minilight_pz,    glm::vec3(9, 9, 9)},
-        {BlockID::minilight_nz,    glm::vec3(9, 9, 9)},
-        {BlockID::minilight_px,    glm::vec3(9, 9, 9)},
-        {BlockID::minilight_nx,    glm::vec3(9, 9, 9)},
-        {BlockID::minilight_py,    glm::vec3(9, 9, 9)},
-        {BlockID::minilight_ny,    glm::vec3(9, 9, 9)}
     };
 
     static auto TILE_ORIGINS = []()
@@ -156,3 +145,7 @@ inline std::unordered_map<BlockID, glm::mat3x2> GetAtlasTileOrigins()
     return TILE_ORIGINS;
 }
 
+inline bool BlockEmitsLight(BlockID block)
+{
+    return block == BlockID::light || block == BlockID::minilight;
+}

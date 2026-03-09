@@ -79,6 +79,30 @@ void ChunkManager::Init(int moon_id, MoonSettings moon_settings)
 
 void ChunkManager::HandleChunkJobs()
 {
+    // Entity loading
+    for (auto it = need_entities_.begin(); it != need_entities_.end(); )
+    {
+        auto chunk_id = *it;
+        if (chunks_.contains(chunk_id))
+        {
+            auto chunk = chunks_.at(chunk_id);
+            if (chunk->GetState() >= ChunkState::INTERNAL_DONE)
+            {
+                Moon::GetCurrentMoon()->GetEntityManager().LoadChunkEntities(chunk->GetCoords());
+                it = need_entities_.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+        else
+        {
+            it = need_entities_.erase(it);
+        }
+    }
+
+    // Worker thread jobs
     int jobs_to_handle = job_queue_.size(); // Jobs can be requeued, so we should only get this once at the beginning
     for (int i = 0; i < jobs_to_handle; i++)
     {
@@ -171,7 +195,7 @@ void ChunkManager::HandlePlayerModification(glm::ivec3 voxel, BlockID block_plac
     });
     
     // Rebuild neighbor chunks
-    if (block_placed == BlockID::light || (block_placed == BlockID::air && original_block == BlockID::light)) // Block lighting change
+    if (BlockEmitsLight(block_placed) || (block_placed == BlockID::air && BlockEmitsLight(original_block))) // Block lighting change
     {
         // Neighbor chunks are only affected if they lie inside the range of block light (9 blocks)
 
@@ -406,14 +430,10 @@ void ChunkManager::AdjustChunkPatch()
             chunk->MarkForDelete();
             if (chunk->GetPinCount() < 1)
             {
-                // // Write chunk to disk and then take block memory back
-                // auto file_path = chunk->GetFilePath();
-                // auto blocks = chunk->GetBlocks();
-                // auto chunk_id = chunk->GetID();
-                // worker_pool_->SubmitJob([this, file_path, blocks, chunk_id]() {
-                //     WriteChunkToDisk(file_path, blocks);
-                //     ReuseBlockMemory(chunk_id);
-                // });
+                WriteChunkToDisk(chunk->GetFilePath(), chunk->GetBlocks());
+                ReuseBlockMemory(chunk->GetID());
+
+                Moon::GetCurrentMoon()->GetEntityManager().UnloadChunkEntities(coords);
 
                 // Erase chunk
                 delete chunk;
@@ -444,8 +464,9 @@ void ChunkManager::AdjustChunkPatch()
             if (chunks_.contains(chunk_id))
             {
                 auto chunk = chunks_.at(chunk_id);
-                if (on_new_border) // Mark as border chunk
+                if (on_new_border) // Convert to border chunk
                 {
+                    Moon::GetCurrentMoon()->GetEntityManager().UnloadChunkEntities(chunk->GetCoords());
                     chunk->SetIsBorderChunk(true);
                 }
                 else if (chunk->IsBorderChunk()) // Mark as non-border chunk
@@ -478,6 +499,8 @@ void ChunkManager::AdjustChunkPatch()
                 ChunkTask::MARK_AS_CLEAN
             }
         });
+
+        need_entities_.push_back(ChunkCoordsToID(chunk->GetCoords()));
     }
 
     // Build new patch chunks
@@ -510,6 +533,8 @@ void ChunkManager::AdjustChunkPatch()
                 }
             });
         }
+
+        need_entities_.push_back(ChunkCoordsToID(chunk->GetCoords()));
     }
 }
 
@@ -546,6 +571,15 @@ void ChunkManager::ReuseBlockMemory(uint64_t chunk_id)
             return;
         }
     }
+}
+
+std::vector<Chunk *> ChunkManager::GetAllChunks()
+{
+    std::vector<Chunk *> chunks;
+    for (auto &[chunk_id, chunk] : chunks_)
+        chunks.push_back(chunk);
+
+    return chunks;
 }
 
 Chunk *ChunkManager::GetChunk(glm::ivec3 chunk_coords)

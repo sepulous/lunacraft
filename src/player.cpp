@@ -609,7 +609,7 @@ void Player::Render(const glm::mat4 &vp_matrix)
                 shader->SetMat4("u_mvp_matrix", vp_matrix * inv_view * drill_bit_model_matrix);
             });
         }
-        else if (ItemIsSprite(selected_item))
+        else if (ItemIsSprite(selected_item) || selected_item == ItemID::minilight)
         {
             auto sprite_model_matrix = glm::mat4(1.0);
             sprite_model_matrix = glm::translate(sprite_model_matrix, {0.362f, -0.335f + arm_bob_, -0.95f - arm_extent_});

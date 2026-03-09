@@ -14,7 +14,6 @@ bool ItemIsSprite(ItemID item)
         || item == ItemID::energy_orb
         || item == ItemID::power_crystal
         || item == ItemID::adhesive
-        || item == ItemID::minilight
         || item == ItemID::magnet
         || item == ItemID::biogel
         || item == ItemID::gold

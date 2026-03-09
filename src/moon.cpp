@@ -16,6 +16,7 @@
 #include "rng.h"
 #include "dropped_item.h"
 #include "sound_system.h"
+#include "minilight.h"
 
 #include "input.h" // TEMP
 
@@ -74,13 +75,13 @@ Moon::Moon(int moon_id, MoonSettings moon_settings)
     player_ = new Player;
     current_moon_ = this;
     chunk_manager_.Init(moon_id, moon_settings);
-    entity_manager_.LinkChunkManager(&chunk_manager_);
     entity_manager_.AddEntity(player_);
 }
 
 Moon::~Moon()
 {
-    current_moon_ = nullptr;
+    entity_manager_.SaveAllEntities();
+    chunk_manager_.WriteAllChunksToDisk();
 
     // Save world time to file
     settings_.world_time = world_time_;
@@ -88,6 +89,8 @@ Moon::~Moon()
     std::ofstream moon_data_file(moon_data_path, std::ios::binary);
     moon_data_file.write(reinterpret_cast<char *>(&settings_), sizeof(MoonSettings));
     moon_data_file.close();
+
+    current_moon_ = nullptr;
 }
 
 Moon *Moon::GetCurrentMoon()
@@ -241,6 +244,9 @@ void Moon::Update(double delta_time)
             chunk_manager_.HandlePlayerModification(selection_block_.GetPosition());
             selection_block_.SetMineProgress(0);
 
+            if (block_to_drop == BlockID::minilight)
+                entity_manager_.DestroyMinilightAt(selection_block_.GetPosition());
+
             Entity *dropped_item = new DroppedItem(BlockIDToItemID(block_to_drop), 1, selection_block_.GetPosition());
             entity_manager_.AddEntity(dropped_item);
 
@@ -263,6 +269,31 @@ void Moon::Update(double delta_time)
                     }
 
                     chunk_manager_.HandlePlayerModification(selection_block_.GetAdjacentPosition(), block);
+
+                    if (block == BlockID::minilight)
+                    {
+                        auto normal = selection_block_.GetAdjacentPosition() - selection_block_.GetPosition();
+                        MinilightDir dir;
+                        if (normal.x > 0)
+                            dir = MinilightDir::POSITIVE_X;
+                        else if (normal.x < 0)
+                            dir = MinilightDir::NEGATIVE_X;
+                        else if (normal.y > 0)
+                            dir = MinilightDir::POSITIVE_Y;
+                        else if (normal.y < 0)
+                            dir = MinilightDir::NEGATIVE_Y;
+                        else if (normal.z > 0)
+                            dir = MinilightDir::POSITIVE_Z;
+                        else
+                            dir = MinilightDir::NEGATIVE_Z;
+
+                        auto fag = selection_block_.GetAdjacentPosition();
+                        auto fag2 = VoxelToChunk(selection_block_.GetAdjacentPosition());
+                        printf("Placed minilight at (%i, %i, %i) in chunk (%i, %i)\n", fag.x, fag.y, fag.z, fag2.x, fag2.z);
+
+                        Minilight *minilight = new Minilight(selection_block_.GetAdjacentPosition(), dir);
+                        entity_manager_.AddEntity(minilight);
+                    }
 
                     SoundSystem::PlayAt(SoundSystem::Sound::BLOCK_PLACE, selection_block_.GetAdjacentPosition());
                 }
@@ -318,11 +349,11 @@ void Moon::Render(const glm::mat4 &projection)
     GetFrustumPlanes(view_projection, frustum);
     chunk_manager_.RenderChunks(frustum);
 
-    // Render selection overlay
-    selection_block_.Render(view_projection);
-
     // Render entities
     entity_manager_.RenderEntities(view_projection);
+
+    // Render selection overlay
+    selection_block_.Render(view_projection);
 
     //
     // Render skybox

@@ -20,7 +20,7 @@ DroppedItem::DroppedItem(ItemID item, int amount, glm::vec3 position)
 
     mesh_.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
 
-    if (ItemIsSprite(item))
+    if (ItemIsSprite(item) || item == ItemID::minilight)
     {
         float vertices[] = {
             -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,

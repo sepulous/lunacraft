@@ -111,7 +111,7 @@ int main()
 
     ShaderManager::CompileAllShaders();
     SoundSystem::Init();
-    SoundSystem::PlayAt(SoundSystem::Sound::SONG_1, {16, 70, 16});
+    SoundSystem::Play(SoundSystem::Sound::SONG_1);
 
     UIRescale();
     UIMainMenu ui_main_menu;
@@ -199,6 +199,7 @@ int main()
                     if (glfwRawMouseMotionSupported())
                         glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE); // More natural mouse motion
 
+                    moon->GetEntityManager().LoadInitialEntities();
                     ui_main_menu.ResetMoonSettings();
                     moon_load_progress = 0;
                     ui_main_menu.SetLoadProgressLevel(0);
@@ -325,7 +326,6 @@ int main()
                     player_data_file.close();
 
                     // Unload moon
-                    moon->GetChunkManager().WriteAllChunksToDisk();
                     delete moon;
                     moon = nullptr;
 

@@ -68,5 +68,5 @@ inline bool BlockIsInChunk(const glm::ivec3 &block_coords) noexcept
 
 inline bool ShouldRenderFace(BlockID face, BlockID neighbor_face) noexcept
 {
-    return !(face == BlockID::air || face == neighbor_face || BlockIsOpaque(neighbor_face));
+    return neighbor_face == BlockID::minilight || !(face == BlockID::air || face == neighbor_face || BlockIsOpaque(neighbor_face));
 }

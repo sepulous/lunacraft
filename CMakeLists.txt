@@ -67,6 +67,7 @@ add_executable(Lunacraft
     src/item.cpp
     src/mesh.cpp
     src/dropped_item.cpp
+    src/minilight.cpp
 
     third_party/stb_image/stb_image/stb_image.cpp
     third_party/stb_truetype/stb_truetype/stb_truetype.cpp

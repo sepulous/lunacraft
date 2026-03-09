@@ -47,12 +47,20 @@ class ChunkManager
         GLuint texture_atlas_;
         std::vector<BlockMemory> block_memory_;
         std::queue<ChunkJob> job_queue_;
+        std::vector<uint64_t> need_entities_;
         std::unordered_map<uint64_t, Chunk *> chunks_;
         ChunkWorkerPool *worker_pool_;
 
     public:
         ChunkManager() = default;
         ~ChunkManager();
+
+        ChunkManager(const ChunkManager&) = delete;
+        ChunkManager &operator=(const ChunkManager&) = delete;
+
+        ChunkManager(ChunkManager&&) = delete;
+        ChunkManager &operator=(ChunkManager&&) = delete;
+
         void Init(int moon_id, MoonSettings moon_settings);
         void HandleChunkJobs();
         void CreateInitialPatch();
@@ -65,6 +73,7 @@ class ChunkManager
         std::array<Chunk *, 4> GetAdjacentNeighbors(glm::ivec3 chunk_coords);
         std::array<Chunk *, 8> GetAllNeighbors(glm::ivec3 chunk_coords);
         Chunk *GetChunk(glm::ivec3 chunk_coords);
+        std::vector<Chunk *> GetAllChunks();
         BlockID GetBlockAt(glm::ivec3 voxel);
         ChunkWorkerPool *GetWorkerPool();
         int GetLoadedChunkCount();

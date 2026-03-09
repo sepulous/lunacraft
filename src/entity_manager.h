@@ -8,17 +8,27 @@
 class EntityManager
 {
     private:
-        ChunkManager *chunk_manager_;
         std::vector<Entity *> entities_;
 
     public:
         EntityManager() = default;
         ~EntityManager();
-        void LinkChunkManager(ChunkManager *chunk_manager);
+
+        EntityManager(const EntityManager&) = delete;
+        EntityManager &operator=(const EntityManager&) = delete;
+
+        EntityManager(EntityManager&&) = delete;
+        EntityManager &operator=(EntityManager&&) = delete;
+
         void AddEntity(Entity *entity);
         void FixedUpdate();
         void Update(float delta_time);
         void PhysicsStep();
         void Interpolate(double interp);
         void RenderEntities(const glm::mat4 &vp_matrix);
+        void DestroyMinilightAt(glm::ivec3 voxel);
+        void LoadInitialEntities();
+        void LoadChunkEntities(glm::ivec3 chunk_coords);
+        void UnloadChunkEntities(glm::ivec3 chunk_coords);
+        void SaveAllEntities();
 };

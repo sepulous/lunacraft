@@ -1,0 +1,152 @@
+
+#include "minilight.h"
+#include "block.h"
+#include "storage.h"
+
+Minilight::Minilight(glm::ivec3 voxel, MinilightDir dir)
+{
+    type_ = EntityType::MINILIGHT;
+    voxel_ = voxel;
+    dir_ = dir;
+    position_ = glm::vec3{voxel};
+
+    // These are extents, not total lengths
+    const float width = 1.0f / 6.0f;
+    const float thickness = 1.0f / 64.0f;
+
+    glm::vec3 voxel_center = glm::vec3{voxel};
+
+    glm::vec3 normal;
+    if (dir == MinilightDir::POSITIVE_X)
+        normal = {1, 0, 0};
+    else if (dir == MinilightDir::NEGATIVE_X)
+        normal = {-1, 0, 0};
+    else if (dir == MinilightDir::POSITIVE_Z)
+        normal = {0, 0, 1};
+    else if (dir == MinilightDir::NEGATIVE_Z)
+        normal = {0, 0, -1};
+    else if (dir == MinilightDir::POSITIVE_Y)
+        normal = {0, 1, 0};
+    else
+        normal = {0, -1, 0};
+
+    glm::vec3 v_local_positions[] = {
+        // Front
+        {-width, -width, thickness},
+        { width, -width, thickness},
+        { width,  width, thickness},
+        { width,  width, thickness},
+        {-width,  width, thickness},
+        {-width, -width, thickness},
+
+        // Left
+        {-width,  width, -thickness},
+        {-width, -width, -thickness},
+        {-width, -width,  thickness},
+        {-width, -width,  thickness},
+        {-width,  width,  thickness},
+        {-width,  width, -thickness},
+
+        // Right
+        {width, -width,  thickness},
+        {width, -width, -thickness},
+        {width,  width, -thickness},
+        {width,  width, -thickness},
+        {width,  width,  thickness},
+        {width, -width,  thickness},
+
+        // Top
+        { width, width,  thickness},
+        { width, width, -thickness},
+        {-width, width, -thickness},
+        {-width, width, -thickness},
+        {-width, width,  thickness},
+        { width, width,  thickness},
+
+        // Bottom
+        {-width, -width, -thickness},
+        { width, -width, -thickness},
+        { width, -width,  thickness},
+        { width, -width,  thickness},
+        {-width, -width,  thickness},
+        {-width, -width, -thickness},
+    };
+
+    float uv_size = 1.0f / 14.0f;
+    glm::vec2 tile_origin = GetAtlasTileOrigins()[BlockID::light][0];
+    glm::vec2 v_uv[] = {
+        {0,       0},
+        {uv_size, 0},
+        {uv_size, uv_size},
+        {uv_size, uv_size},
+        {0,       uv_size},
+        {0,       0},
+    };
+
+    glm::mat4 model{1.0f};
+    model = glm::translate(model, voxel_center - (0.5f - thickness) * normal);
+
+    if (dir == MinilightDir::POSITIVE_X)
+    {
+        model = glm::rotate(model, glm::radians(90.0f), {0, 1, 0});
+    }
+    else if (dir == MinilightDir::NEGATIVE_X)
+    {
+        model = glm::rotate(model, glm::radians(-90.0f), {0, 1, 0});
+    }
+    else if (dir == MinilightDir::NEGATIVE_Z)
+    {
+        model = glm::rotate(model, glm::radians(180.0f), {0, 1, 0});
+    }
+    else if (dir == MinilightDir::POSITIVE_Y)
+    {
+        model = glm::rotate(model, glm::radians(-90.0f), {1, 0, 0});
+    }
+    else if (dir == MinilightDir::NEGATIVE_Y)
+    {
+        model = glm::rotate(model, glm::radians(90.0f), {1, 0, 0});
+    }
+
+    std::vector<float> vertices;
+    int uv_idx = 0;
+    for (auto local_pos : v_local_positions)
+    {
+        glm::vec3 global_pos = glm::vec3{model * glm::vec4{local_pos, 1.0f}};
+        glm::vec2 uv = v_uv[uv_idx];
+
+        vertices.push_back(global_pos.x);
+        vertices.push_back(global_pos.y);
+        vertices.push_back(global_pos.z);
+        vertices.push_back(tile_origin.x + uv.x);
+        vertices.push_back(tile_origin.y + uv.y);
+
+        uv_idx = (uv_idx + 1) % 6;
+    }
+
+    mesh_.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
+    mesh_.SetTexture(Storage::IMAGES / "texture_atlas.png", GL_NEAREST);
+    mesh_.SetVertexData(vertices.data(), 30, GL_STATIC_DRAW);
+}
+
+void Minilight::Render(const glm::mat4 &vp_matrix)
+{
+    mesh_.Render([&vp_matrix](Shader *shader) {
+        shader->SetMat4("u_mvp_matrix", vp_matrix); // We've already applied the model matrix
+    });
+}
+
+glm::ivec3 Minilight::GetVoxel()
+{
+    return voxel_;
+}
+
+MinilightData Minilight::GetMinilightData()
+{
+    return {
+        .voxel = voxel_,
+        .dir = dir_
+    };
+}
+
+void Minilight::Update(float delta_time) {}
+void Minilight::FixedUpdate() {}

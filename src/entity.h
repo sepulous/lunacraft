@@ -2,9 +2,10 @@
 
 #include "aabb.h"
 
-enum class EntityType
+enum class EntityType : uint8_t
 {
     PLAYER,
+    MINILIGHT,
     DROPPED_ITEM,
     GREEN_MOB,
     BROWN_MOB,

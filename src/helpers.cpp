@@ -112,6 +112,7 @@ BlockID ItemIDToBlockID(ItemID item_id)
             {ItemID::topsoil, BlockID::topsoil},
             {ItemID::xenostone, BlockID::xenostone},
             {ItemID::zircon_ore, BlockID::zircon_ore},
+            {ItemID::minilight, BlockID::minilight},
         };
 
         return _map;
@@ -170,6 +171,7 @@ ItemID BlockIDToItemID(BlockID block_id)
             {BlockID::topsoil, ItemID::topsoil},
             {BlockID::xenostone, ItemID::xenostone},
             {BlockID::zircon_ore, ItemID::zircon_ore},
+            {BlockID::minilight, ItemID::minilight},
         };
 
         return _map;

@@ -1,8 +1,12 @@
 
-#include <iostream>
+#include <fstream>
+#include <filesystem>
 
 #include "entity_manager.h"
 #include "helpers.h"
+#include "minilight.h"
+#include "storage.h"
+#include "moon.h"
 
 EntityManager::~EntityManager()
 {
@@ -10,9 +14,42 @@ EntityManager::~EntityManager()
         delete entity;
 }
 
-void EntityManager::LinkChunkManager(ChunkManager *chunk_manager)
+void EntityManager::LoadInitialEntities()
 {
-    chunk_manager_ = chunk_manager;
+    int moon_id = Moon::GetCurrentMoon()->GetID();
+    std::filesystem::path entity_folder = Storage::MOONS / (std::string("moon") + std::to_string(moon_id)) / "entities";
+    if (std::filesystem::exists(entity_folder))
+    {
+        auto chunks = Moon::GetCurrentMoon()->GetChunkManager().GetAllChunks();
+        for (auto chunk : chunks)
+        {
+            if (chunk->IsBorderChunk())
+                continue;
+
+            auto chunk_id = ChunkCoordsToID(chunk->GetCoords());
+            std::filesystem::path entity_file_path = entity_folder / (std::to_string(chunk_id) + ".dat");
+            if (std::filesystem::exists(entity_file_path))
+            {
+                std::ifstream entity_file(entity_file_path, std::ios::binary);
+
+                EntityType type;
+                while (entity_file.read(reinterpret_cast<char *>(&type), sizeof(EntityType)))
+                {
+                    if (type == EntityType::MINILIGHT)
+                    {
+                        MinilightData data;
+                        entity_file.read(reinterpret_cast<char *>(&data), sizeof(MinilightData));
+                        AddEntity(new Minilight(data.voxel, data.dir));
+
+                        auto fag = VoxelToChunk(data.voxel);
+                        printf("Loading minilight at (%i, %i, %i) in chunk (%i, %i)\n", data.voxel.x, data.voxel.y, data.voxel.z, fag.x, fag.z);
+                    }
+                }
+
+                entity_file.close();
+            }
+        }
+    }
 }
 
 void EntityManager::AddEntity(Entity *entity)
@@ -42,7 +79,9 @@ void EntityManager::RenderEntities(const glm::mat4 &vp_matrix)
 
 void EntityManager::PhysicsStep()
 {
-    auto TestAABBWorld = [this](const AABB &box) {
+    auto &chunk_manager = Moon::GetCurrentMoon()->GetChunkManager();
+
+    auto TestAABBWorld = [this, &chunk_manager](const AABB &box) {
         float min_x = glm::round(box.center.x - box.extents.x);
         float max_x = glm::round(box.center.x + box.extents.x);
         float min_y = glm::round(box.center.y - box.extents.y);
@@ -55,13 +94,14 @@ void EntityManager::PhysicsStep()
             for (int z = min_z; z <= max_z; z++)
             {
                 glm::ivec3 box_chunk_coords = VoxelToChunk({x, 0, z});
-                auto chunk = chunk_manager_->GetChunk(box_chunk_coords);
+                auto chunk = chunk_manager.GetChunk(box_chunk_coords);
                 if (chunk != nullptr)
                 {
                     for (int y = min_y; y <= max_y; y++)
                     {
                         glm::ivec3 local_block_pos = GlobalToLocalVoxel({x, y, z});
-                        if (chunk->GetBlocks()[GetChunkIndex(local_block_pos)] != BlockID::air)
+                        BlockID block = chunk->GetBlocks()[GetChunkIndex(local_block_pos)];
+                        if (block != BlockID::air && block != BlockID::minilight)
                             return true;
                     }
                 }
@@ -73,6 +113,9 @@ void EntityManager::PhysicsStep()
 
     for (Entity *entity : entities_)
     {
+        if (entity->GetType() == EntityType::MINILIGHT)
+            continue;
+
         glm::vec3 next_position = entity->GetPosition();
         entity->SetPrevPosition(entity->GetPosition());
 
@@ -127,7 +170,7 @@ void EntityManager::PhysicsStep()
             // Decide whether on ice
             auto entity_voxel_g = GetNearestVoxel(entity->GetPosition());
             auto entity_voxel_l = GlobalToLocalVoxel(entity_voxel_g);
-            auto entity_chunk = chunk_manager_->GetChunk(VoxelToChunk(entity_voxel_g));
+            auto entity_chunk = chunk_manager.GetChunk(VoxelToChunk(entity_voxel_g));
             BlockID foot_block = entity_chunk->GetBlocks()[GetChunkIndex(entity_voxel_l - glm::ivec3{0, 1, 0})]; // Can go out of bounds...
             entity->SetIsOnIce(foot_block == BlockID::water);
 
@@ -148,5 +191,165 @@ void EntityManager::Interpolate(double interp)
     {
         entity->SetPosition(glm::mix(entity->GetPrevPosition(), entity->GetNextPosition(), interp));
         entity->GetAABB().center = entity->GetPosition();
+    }
+}
+
+void EntityManager::DestroyMinilightAt(glm::ivec3 voxel)
+{
+    for (auto it = entities_.begin(); it != entities_.end(); ++it)
+    {
+        Entity *entity = *it;
+        if (entity->GetType() == EntityType::MINILIGHT)
+        {
+            Minilight *minilight = dynamic_cast<Minilight *>(entity);
+            if (minilight->GetVoxel() == voxel)
+            {
+                entities_.erase(it);
+                break;
+            }
+        }
+    }
+}
+
+void EntityManager::LoadChunkEntities(glm::ivec3 chunk_coords)
+{
+    int moon_id = Moon::GetCurrentMoon()->GetID();
+    std::filesystem::path entity_folder = Storage::MOONS / (std::string("moon") + std::to_string(moon_id)) / "entities";
+    if (std::filesystem::exists(entity_folder))
+    {
+        auto chunk_id = ChunkCoordsToID(chunk_coords);
+        std::filesystem::path entity_file_path = entity_folder / (std::to_string(chunk_id) + ".dat");
+        if (std::filesystem::exists(entity_file_path))
+        {
+            std::ifstream entity_file(entity_file_path, std::ios::binary);
+
+            EntityType type;
+            while (entity_file.read(reinterpret_cast<char *>(&type), sizeof(EntityType)))
+            {
+                if (type == EntityType::MINILIGHT)
+                {
+                    MinilightData data;
+                    entity_file.read(reinterpret_cast<char *>(&data), sizeof(MinilightData));
+                    AddEntity(new Minilight(data.voxel, data.dir));
+
+                    auto fag = VoxelToChunk(data.voxel);
+                    printf("Loading minilight entity at (%i, %i, %i) in chunk (%i, %i)\n", data.voxel.x, data.voxel.y, data.voxel.z, fag.x, fag.z);
+                }
+            }
+
+            entity_file.close();
+        }
+    }
+}
+
+void EntityManager::UnloadChunkEntities(glm::ivec3 chunk_coords)
+{
+    int moon_id = Moon::GetCurrentMoon()->GetID();
+    auto chunk_id = ChunkCoordsToID(chunk_coords);
+
+    std::filesystem::path entity_folder = Storage::MOONS / (std::string("moon") + std::to_string(moon_id)) / "entities";
+    if (!std::filesystem::exists(entity_folder))
+        std::filesystem::create_directory(entity_folder);
+
+    bool chunk_has_entities = false;
+    for (auto entity : entities_)
+    {
+        auto entity_chunk_coords = VoxelToChunk(GetNearestVoxel(entity->GetPosition()));
+        if (entity->GetType() != EntityType::PLAYER && entity_chunk_coords == chunk_coords)
+        {
+            chunk_has_entities = true;
+            break;
+        }
+    }
+
+    if (chunk_has_entities)
+    {
+        std::filesystem::path entity_file_path = entity_folder / (std::to_string(chunk_id) + ".dat");
+        std::ofstream entity_file(entity_file_path, std::ios::binary);
+        
+        for (auto it = entities_.begin(); it != entities_.end(); )
+        {
+            auto entity = *it;
+            EntityType type = entity->GetType();
+            if (type == EntityType::PLAYER)
+            {
+                ++it;
+                continue;
+            }
+
+            auto entity_chunk_coords = VoxelToChunk(GetNearestVoxel(entity->GetPosition()));
+            if (entity_chunk_coords == chunk_coords)
+            {
+                entity_file.write(reinterpret_cast<const char *>(&type), sizeof(EntityType));
+
+                if (type == EntityType::MINILIGHT)
+                {
+                    MinilightData data = dynamic_cast<Minilight *>(entity)->GetMinilightData();
+                    entity_file.write(reinterpret_cast<const char *>(&data), sizeof(MinilightData));
+
+                    auto fag = VoxelToChunk(data.voxel);
+                    printf("Unloading minilight entity at (%i, %i, %i) in chunk (%i, %i)\n", data.voxel.x, data.voxel.y, data.voxel.z, fag.x, fag.z);
+                }
+
+                delete entity;
+                it = entities_.erase(it);
+            }
+            else
+            {
+                ++it;
+            }    
+        }
+
+        entity_file.close();
+    }
+}
+
+void EntityManager::SaveAllEntities()
+{
+    int moon_id = Moon::GetCurrentMoon()->GetID();
+    std::filesystem::path entity_folder = Storage::MOONS / (std::string("moon") + std::to_string(moon_id)) / "entities";
+    if (!std::filesystem::exists(entity_folder))
+        std::filesystem::create_directory(entity_folder);
+
+    std::unordered_map<uint64_t, std::vector<Entity *>> entity_chunk_map;
+    for (Entity *entity : entities_)
+    {
+        if (entity->GetType() == EntityType::PLAYER)
+            continue;
+
+        auto entity_pos = entity->GetPosition();
+        auto entity_chunk_coords = VoxelToChunk(GetNearestVoxel(entity_pos));
+        auto chunk_id = ChunkCoordsToID(entity_chunk_coords);
+        
+        if (entity_chunk_map.contains(chunk_id))
+            entity_chunk_map.at(chunk_id).push_back(entity);
+        else
+            entity_chunk_map.insert({chunk_id, {entity}});
+    }
+    
+    for (auto &[chunk_id, chunk_entities] : entity_chunk_map)
+    {
+        if (chunk_entities.size() > 0)
+        {
+            std::filesystem::path entity_file_path = entity_folder / (std::to_string(chunk_id) + ".dat");
+            std::ofstream entity_file(entity_file_path, std::ios::binary);
+
+            for (Entity *entity : chunk_entities)
+            {
+                EntityType type = entity->GetType();
+                entity_file.write(reinterpret_cast<const char *>(&type), sizeof(EntityType));
+
+                if (type == EntityType::MINILIGHT)
+                {
+                    MinilightData data = dynamic_cast<Minilight *>(entity)->GetMinilightData();
+                    entity_file.write(reinterpret_cast<const char *>(&data), sizeof(MinilightData));
+
+                    auto fag = VoxelToChunk(data.voxel);
+                    printf("Saving minilight entity at (%i, %i, %i) in chunk (%i, %i)\n", data.voxel.x, data.voxel.y, data.voxel.z, fag.x, fag.z);
+                }
+            }
+
+            entity_file.close();
+        }
     }
 }

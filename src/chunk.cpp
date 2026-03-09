@@ -313,7 +313,12 @@ void Chunk::BuildLightmapInternal()
                     queue.push_back(idx);
                 }
 
-                if (block == BlockID::light)
+                if (block == BlockID::minilight)
+                {
+                    lightmap_.SetBlockLevel(9, idx);
+                    queue.push_back(idx);
+                }
+                else if (block == BlockID::light)
                 {
                     // Y+1
                     if (y < H - 1 && !BlockIsOpaque(blocks_[idx + 1]))
