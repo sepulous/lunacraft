@@ -46,12 +46,12 @@ Player::Player()
     float drill_uv_cutoff = 8.0f / 32.0f;
     float drill_base_vertices[] = {
         // Back
-        -1.0f, -1.0f, -0.0f, 0.0f, drill_uv_cutoff,
-         1.0f, -1.0f, -1.0f, 0.0f, 0.0f,
-         1.0f,  1.0f, -1.0f, 1.0f, 0.0f,
-         1.0f,  1.0f, -1.0f, 1.0f, 0.0f,
-        -1.0f,  1.0f, -1.0f, 1.0f, drill_uv_cutoff,
-        -1.0f, -1.0f, -1.0f, 0.0f, drill_uv_cutoff,
+        -1.001f, -1.0f,   -1.0f - 0.001f, 0.0f, drill_uv_cutoff,
+         1.0f,   -1.0f,   -1.0f - 0.001f, 0.0f, 0.0f,
+         1.0f,    1.001f, -1.0f - 0.001f, 1.0f, 0.0f,
+         1.0f,    1.001f, -1.0f - 0.001f, 1.0f, 0.0f,
+        -1.001f,  1.001f, -1.0f - 0.001f, 1.0f, drill_uv_cutoff,
+        -1.001f, -1.0f,   -1.0f - 0.001f, 0.0f, drill_uv_cutoff,
 
         // Side
         -1.0f, -1.0f, -1.0f, 1.0f, drill_uv_cutoff,
