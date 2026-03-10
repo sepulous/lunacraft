@@ -1,4 +1,6 @@
 
+#include <iostream>
+
 #include <fstream>
 #include <filesystem>
 
@@ -7,6 +9,7 @@
 #include "minilight.h"
 #include "storage.h"
 #include "moon.h"
+#include "slug.h"
 
 EntityManager::~EntityManager()
 {
@@ -40,9 +43,12 @@ void EntityManager::LoadInitialEntities()
                         MinilightData data;
                         entity_file.read(reinterpret_cast<char *>(&data), sizeof(MinilightData));
                         AddEntity(new Minilight(data.voxel, data.dir));
-
-                        auto fag = VoxelToChunk(data.voxel);
-                        printf("Loading minilight at (%i, %i, %i) in chunk (%i, %i)\n", data.voxel.x, data.voxel.y, data.voxel.z, fag.x, fag.z);
+                    }
+                    else if (type == EntityType::SLUG)
+                    {
+                        SlugData data;
+                        entity_file.read(reinterpret_cast<char *>(&data), sizeof(SlugData));
+                        AddEntity(new Slug(data));
                     }
                 }
 
@@ -54,11 +60,16 @@ void EntityManager::LoadInitialEntities()
 
 void EntityManager::AddEntity(Entity *entity)
 {
-    entities_.push_back(entity);
+    entities_to_spawn_.push_back(entity);
 }
 
 void EntityManager::FixedUpdate()
 {
+    // Add pending entities
+    for (Entity *entity : entities_to_spawn_)
+        entities_.push_back(entity);
+    entities_to_spawn_.clear();
+
     for (Entity *entity : entities_)
         entity->FixedUpdate();
 }
@@ -111,77 +122,113 @@ void EntityManager::PhysicsStep()
         return false;
     };
 
+    auto TestSlugWorld = [&chunk_manager](const glm::vec3 &position) {
+        auto voxel = GetNearestVoxel(position);
+        auto chunk_coords = VoxelToChunk(voxel);
+        auto chunk = chunk_manager.GetChunk(chunk_coords);
+        if (chunk != nullptr)
+        {
+            auto block = chunk->GetBlocks()[GetChunkIndex(GlobalToLocalVoxel(voxel))];
+            return block != BlockID::air && block != BlockID::minilight;
+        }
+        else
+        {
+            return true;
+        }
+    };
+
     for (Entity *entity : entities_)
     {
         if (entity->GetType() == EntityType::MINILIGHT)
             continue;
 
-        glm::vec3 next_position = entity->GetPosition();
-        entity->SetPrevPosition(entity->GetPosition());
-
-        // Gravity
-        if (!entity->IsGrounded())
-            entity->SetVelocity(entity->GetVelocity() - glm::vec3(0, 4.0f * FIXED_DELTA_TIME, 0));
-
-        // X
-        next_position.x += entity->GetVelocity().x * FIXED_DELTA_TIME;
-        entity->GetAABB().center.x = next_position.x;
-        if (TestAABBWorld(entity->GetAABB()))
+        if (entity->GetType() == EntityType::SLUG)
         {
-            next_position.x = entity->GetPosition().x; // Don't actually move
-            entity->GetAABB().center.x = entity->GetPosition().x;
-            entity->SetVelocity({0, entity->GetVelocity().y, entity->GetVelocity().z});
-        }
-
-        // Z
-        next_position.z += entity->GetVelocity().z * FIXED_DELTA_TIME;
-        entity->GetAABB().center.z = next_position.z;
-        if (TestAABBWorld(entity->GetAABB()))
-        {
-            next_position.z = entity->GetPosition().z; // Don't actually move
-            entity->GetAABB().center.z = entity->GetPosition().z;
-            entity->SetVelocity({entity->GetVelocity().x, entity->GetVelocity().y, 0});
-        }
-
-        // Y
-        next_position.y += entity->GetVelocity().y * FIXED_DELTA_TIME;
-        entity->GetAABB().center.y = next_position.y;
-        if (TestAABBWorld(entity->GetAABB()))
-        {
-            if (entity->GetVelocity().y <= 0)
+            Slug *slug = dynamic_cast<Slug *>(entity);
+            if (slug->IsFlying())
             {
-                entity->SetGrounded(true);
+                slug->SetPrevPosition(slug->GetPosition());
 
-                // Snap feet to avoid sinking
-                float floor_feet = glm::floor(entity->GetPosition().y - entity->GetAABB().extents.y);
-                next_position.y = floor_feet + entity->GetAABB().extents.y + 0.5f;
-                entity->GetAABB().center.y = next_position.y;
+                glm::vec3 next_position = slug->GetPosition() + glm::vec3{FIXED_DELTA_TIME * glm::dvec3(slug->GetVelocity())};
+                slug->SetNextPosition(next_position);
+
+                if (TestSlugWorld(next_position))
+                {
+                    slug->SetIsFlying(false);
+                    slug->SetPrevPosition(next_position);
+                    slug->SetPosition(next_position);
+                }
             }
-            else
-            {
-                next_position.y = entity->GetPosition().y;
-                entity->GetAABB().center.y = entity->GetPosition().y;
-            }
-            
-            entity->SetVelocity({entity->GetVelocity().x, 0, entity->GetVelocity().z});
         }
         else
         {
-            // Decide whether on ice
-            auto entity_voxel_g = GetNearestVoxel(entity->GetPosition());
-            auto entity_voxel_l = GlobalToLocalVoxel(entity_voxel_g);
-            auto entity_chunk = chunk_manager.GetChunk(VoxelToChunk(entity_voxel_g));
-            BlockID foot_block = entity_chunk->GetBlocks()[GetChunkIndex(entity_voxel_l - glm::ivec3{0, 1, 0})]; // Can go out of bounds...
-            entity->SetIsOnIce(foot_block == BlockID::water);
+            glm::vec3 next_position = entity->GetPosition();
+            entity->SetPrevPosition(entity->GetPosition());
 
-            // Decide whether still grounded
-            float actual_feet = entity->GetPosition().y - entity->GetAABB().extents.y;
-            float floor_feet = glm::floor(actual_feet);
-            if (glm::abs(actual_feet - (floor_feet + 0.5f)) > 0.01f || foot_block == BlockID::air)
-                entity->SetGrounded(false);
+            // Gravity
+            if (!entity->IsGrounded())
+                entity->SetVelocity(entity->GetVelocity() - glm::vec3(0, GRAVITY * FIXED_DELTA_TIME, 0));
+
+            // X
+            next_position.x += entity->GetVelocity().x * FIXED_DELTA_TIME;
+            entity->GetAABB().center.x = next_position.x;
+            if (TestAABBWorld(entity->GetAABB()))
+            {
+                next_position.x = entity->GetPosition().x; // Don't actually move
+                entity->GetAABB().center.x = entity->GetPosition().x;
+                entity->SetVelocity({0, entity->GetVelocity().y, entity->GetVelocity().z});
+            }
+
+            // Z
+            next_position.z += entity->GetVelocity().z * FIXED_DELTA_TIME;
+            entity->GetAABB().center.z = next_position.z;
+            if (TestAABBWorld(entity->GetAABB()))
+            {
+                next_position.z = entity->GetPosition().z; // Don't actually move
+                entity->GetAABB().center.z = entity->GetPosition().z;
+                entity->SetVelocity({entity->GetVelocity().x, entity->GetVelocity().y, 0});
+            }
+
+            // Y
+            next_position.y += entity->GetVelocity().y * FIXED_DELTA_TIME;
+            entity->GetAABB().center.y = next_position.y;
+            if (TestAABBWorld(entity->GetAABB()))
+            {
+                if (entity->GetVelocity().y <= 0)
+                {
+                    entity->SetGrounded(true);
+
+                    // Snap feet to avoid sinking
+                    float floor_feet = glm::floor(entity->GetPosition().y - entity->GetAABB().extents.y);
+                    next_position.y = floor_feet + entity->GetAABB().extents.y + 0.5f;
+                    entity->GetAABB().center.y = next_position.y;
+                }
+                else
+                {
+                    next_position.y = entity->GetPosition().y;
+                    entity->GetAABB().center.y = entity->GetPosition().y;
+                }
+                
+                entity->SetVelocity({entity->GetVelocity().x, 0, entity->GetVelocity().z});
+            }
+            else
+            {
+                // Decide whether on ice
+                auto entity_voxel_g = GetNearestVoxel(entity->GetPosition());
+                auto entity_voxel_l = GlobalToLocalVoxel(entity_voxel_g);
+                auto entity_chunk = chunk_manager.GetChunk(VoxelToChunk(entity_voxel_g));
+                BlockID foot_block = entity_chunk->GetBlocks()[GetChunkIndex(entity_voxel_l - glm::ivec3{0, 1, 0})]; // Can go out of bounds...
+                entity->SetIsOnIce(foot_block == BlockID::water);
+
+                // Decide whether still grounded
+                float actual_feet = entity->GetPosition().y - entity->GetAABB().extents.y;
+                float floor_feet = glm::floor(actual_feet);
+                if (glm::abs(actual_feet - (floor_feet + 0.5f)) > 0.01f || foot_block == BlockID::air)
+                    entity->SetGrounded(false);
+            }
+
+            entity->SetNextPosition(next_position);
         }
-
-        entity->SetNextPosition(next_position);
     }
 }
 
@@ -231,9 +278,12 @@ void EntityManager::LoadChunkEntities(glm::ivec3 chunk_coords)
                     MinilightData data;
                     entity_file.read(reinterpret_cast<char *>(&data), sizeof(MinilightData));
                     AddEntity(new Minilight(data.voxel, data.dir));
-
-                    auto fag = VoxelToChunk(data.voxel);
-                    printf("Loading minilight entity at (%i, %i, %i) in chunk (%i, %i)\n", data.voxel.x, data.voxel.y, data.voxel.z, fag.x, fag.z);
+                }
+                else if (type == EntityType::SLUG)
+                {
+                    SlugData data;
+                    entity_file.read(reinterpret_cast<char *>(&data), sizeof(SlugData));
+                    AddEntity(new Slug(data));
                 }
             }
 
@@ -286,9 +336,11 @@ void EntityManager::UnloadChunkEntities(glm::ivec3 chunk_coords)
                 {
                     MinilightData data = dynamic_cast<Minilight *>(entity)->GetMinilightData();
                     entity_file.write(reinterpret_cast<const char *>(&data), sizeof(MinilightData));
-
-                    auto fag = VoxelToChunk(data.voxel);
-                    printf("Unloading minilight entity at (%i, %i, %i) in chunk (%i, %i)\n", data.voxel.x, data.voxel.y, data.voxel.z, fag.x, fag.z);
+                }
+                else if (type == EntityType::SLUG)
+                {
+                    SlugData data = dynamic_cast<Slug *>(entity)->GetSlugData();
+                    entity_file.write(reinterpret_cast<const char *>(&data), sizeof(SlugData));
                 }
 
                 delete entity;
@@ -326,13 +378,16 @@ void EntityManager::SaveAllEntities()
         else
             entity_chunk_map.insert({chunk_id, {entity}});
     }
-    
-    for (auto &[chunk_id, chunk_entities] : entity_chunk_map)
+
+    auto chunks = Moon::GetCurrentMoon()->GetChunkManager().GetAllChunks();
+    for (auto chunk : chunks)
     {
-        if (chunk_entities.size() > 0)
+        auto chunk_id = chunk->GetID();
+        std::filesystem::path entity_file_path = entity_folder / (std::to_string(chunk_id) + ".dat");
+        if (entity_chunk_map.contains(chunk_id))
         {
-            std::filesystem::path entity_file_path = entity_folder / (std::to_string(chunk_id) + ".dat");
             std::ofstream entity_file(entity_file_path, std::ios::binary);
+            auto &chunk_entities = entity_chunk_map.at(chunk_id);
 
             for (Entity *entity : chunk_entities)
             {
@@ -343,13 +398,19 @@ void EntityManager::SaveAllEntities()
                 {
                     MinilightData data = dynamic_cast<Minilight *>(entity)->GetMinilightData();
                     entity_file.write(reinterpret_cast<const char *>(&data), sizeof(MinilightData));
-
-                    auto fag = VoxelToChunk(data.voxel);
-                    printf("Saving minilight entity at (%i, %i, %i) in chunk (%i, %i)\n", data.voxel.x, data.voxel.y, data.voxel.z, fag.x, fag.z);
+                }
+                else if (type == EntityType::SLUG)
+                {
+                    SlugData data = dynamic_cast<Slug *>(entity)->GetSlugData();
+                    entity_file.write(reinterpret_cast<const char *>(&data), sizeof(SlugData));
                 }
             }
 
             entity_file.close();
+        }
+        else if (std::filesystem::exists(entity_file_path)) // Chunk has no entities
+        {
+            std::filesystem::remove(entity_file_path);
         }
     }
 }

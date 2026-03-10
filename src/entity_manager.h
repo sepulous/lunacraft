@@ -9,6 +9,7 @@ class EntityManager
 {
     private:
         std::vector<Entity *> entities_;
+        std::vector<Entity *> entities_to_spawn_;
 
     public:
         EntityManager() = default;

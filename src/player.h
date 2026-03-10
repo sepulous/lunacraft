@@ -52,12 +52,15 @@ class Player : public Entity
         float time_walking_ = 0;
         float time_flying_ = 0;
         float time_drilling_ = 0;
+        float time_charging_gun_ = 0;
         float arm_extent_ = 0;
         float arm_bob_ = 0;
         float arm_shake_ = 0;
         float drill_bit_extent_ = 0;
         float drill_bit_angular_speed_ = 0;
         float drill_bit_rotation_ = 0;
+        float pistol_base_disp_ = 0;
+        float pistol_slide_disp_ = 0;
 
     public:
         Player();

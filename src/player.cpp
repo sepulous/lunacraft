@@ -6,6 +6,8 @@
 #include "block.h"
 #include "helpers.h"
 #include "rng.h"
+#include "slug.h"
+#include "moon.h"
 
 Player::Player()
 {
@@ -190,6 +192,8 @@ void Player::Update(float delta_time)
 {
     input_direction_ = glm::vec3(0);
 
+    auto selected_item = inventory_.GetSelectedItem();
+
     if (in_control_)
     {
         auto forward = GetForward();
@@ -209,7 +213,7 @@ void Player::Update(float delta_time)
             input_direction_ = glm::normalize(input_direction_);
 
         // Use medkit
-        if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT) && inventory_.GetSelectedItem() == ItemID::medkit && health_ < 100)
+        if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT) && selected_item == ItemID::medkit && health_ < 100)
         {
             health_ += 25 + RNG{}.Range(0, 9);
             health_ = glm::clamp(health_, 0, 100);
@@ -242,8 +246,8 @@ void Player::Update(float delta_time)
         }
 
         // Punching
-        bool punch_mining = Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_LEFT) && !ItemIsDrill(inventory_.GetSelectedItem()) && !ItemIsPistol(inventory_.GetSelectedItem());
-        bool placing_block = Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_RIGHT) && ItemIsBlock(inventory_.GetSelectedItem());
+        bool punch_mining = Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_LEFT) && !ItemIsDrill(selected_item) && !ItemIsPistol(selected_item);
+        bool placing_block = Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_RIGHT) && ItemIsBlock(selected_item);
         if (punch_mining || placing_block)
         {
             time_punching_ += delta_time;
@@ -264,11 +268,11 @@ void Player::Update(float delta_time)
         }
 
         // Drilling
-        if (ItemIsDrill(inventory_.GetSelectedItem()))
+        if (ItemIsDrill(selected_item))
         {
             if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT))
             {
-                if (inventory_.GetSelectedItem() == ItemID::drill_t3)
+                if (selected_item == ItemID::drill_t3)
                     drill_sound_ = SoundSystem::PlayLooped(SoundSystem::Sound::DRILL3);
                 else
                     drill_sound_ = SoundSystem::PlayLooped(SoundSystem::Sound::DRILL);
@@ -316,6 +320,44 @@ void Player::Update(float delta_time)
                     drill_bit_rotation_ += drill_bit_angular_speed_ * time_drilling_;
                     drill_bit_extent_ = glm::clamp(drill_bit_extent_ - 0.2f * time_drilling_, 0.0f, 0.2f);
                 }
+            }
+        }
+
+        // Pistol
+        if (ItemIsPistol(selected_item))
+        {
+            if (Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_LEFT))
+            {
+                float scale = 1.0f;
+                if (selected_item == ItemID::slug_pistol_t2)
+                    scale = 2.0f;
+                else if (selected_item == ItemID::slug_pistol_t3)
+                    scale = 4.0f;
+
+                time_charging_gun_ += scale * delta_time;
+
+                pistol_base_disp_ = 0.01f * glm::sin(50.0f * (time_charging_gun_ / scale));
+                pistol_slide_disp_ = 0.4f * (1 - glm::exp(-0.5f * time_charging_gun_));
+            }
+            else if (time_charging_gun_ != 0)
+            {
+                glm::vec3 offset = 2.0f * camera_.forward + 0.5f * camera_.right - 0.1f * camera_.up;
+                float speed = (glm::clamp(time_charging_gun_, 0.2f, 6.0f) / 6.0f) * 30.0f;
+                if (selected_item == ItemID::slug_pistol_t2)
+                    speed *= 2.0f;
+                else if (selected_item == ItemID::slug_pistol_t3)
+                    speed *= 3.0f;
+
+                SlugData slug_data = {
+                    .initial_position = camera_.position + offset,
+                    .initial_velocity = speed * camera_.forward
+                };
+                Moon::GetCurrentMoon()->GetEntityManager().AddEntity(new Slug(slug_data));
+                SoundSystem::Play(SoundSystem::Sound::LASER);
+
+                time_charging_gun_ = 0;
+                pistol_base_disp_ = 0;
+                pistol_slide_disp_ = 0;
             }
         }
     }
@@ -576,7 +618,7 @@ void Player::Render(const glm::mat4 &vp_matrix)
         {
             // Pistol base
             auto pistol_base_model_matrix = glm::mat4(1.0);
-            pistol_base_model_matrix = glm::translate(pistol_base_model_matrix, {0.46f, -0.15f + arm_bob_, -1.2f});
+            pistol_base_model_matrix = glm::translate(pistol_base_model_matrix, {0.46f, -0.15f + arm_bob_, -1.2f + pistol_base_disp_});
             pistol_base_model_matrix = glm::scale(pistol_base_model_matrix, {0.08f, 0.08f, -0.08f});
             pistol_base_mesh_.Render([&](Shader *shader) {
                 shader->SetMat4("u_mvp_matrix", vp_matrix * inv_view * pistol_base_model_matrix);
@@ -584,7 +626,7 @@ void Player::Render(const glm::mat4 &vp_matrix)
 
             // Pistol slide
             auto pistol_slide_model_matrix = glm::mat4(1.0);
-            pistol_slide_model_matrix = glm::translate(pistol_slide_model_matrix, {0.44f, -0.06f + arm_bob_, -1.35f});
+            pistol_slide_model_matrix = glm::translate(pistol_slide_model_matrix, {0.44f, -0.06f + arm_bob_, -1.35f + pistol_base_disp_ + pistol_slide_disp_});
             pistol_slide_model_matrix = glm::scale(pistol_slide_model_matrix, {0.03f, 0.02f, -0.02f});
             pistol_slide_mesh_.Render([&](Shader *shader) {
                 shader->SetMat4("u_mvp_matrix", vp_matrix * inv_view * pistol_slide_model_matrix);

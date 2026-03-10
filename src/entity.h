@@ -5,6 +5,7 @@
 enum class EntityType : uint8_t
 {
     PLAYER,
+    SLUG,
     MINILIGHT,
     DROPPED_ITEM,
     GREEN_MOB,
