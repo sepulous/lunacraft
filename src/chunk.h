@@ -15,6 +15,15 @@
 
 class ChunkManager;
 
+struct MeshQuad
+{
+    BlockID block;
+    glm::ivec3 base_coords; // Local voxel position
+    glm::vec3 du;
+    glm::vec3 dv;
+    bool back_face;
+};
+
 class Lightmap
 {
     private:
@@ -113,6 +122,7 @@ public:
 
 private:
     void SetState(ChunkState state);
+    std::vector<MeshQuad> GreedyMesh(std::array<Chunk *, 4> neighbors);
 
 private:
     ChunkManager *chunk_manager_;
