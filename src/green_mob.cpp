@@ -107,8 +107,28 @@ void GreenMob::FixedUpdate()
 {
     if (action_ == GreenMobAction::JUMP)
     {
-        velocity_ = jump_vector_;
-        action_ = GreenMobAction::NONE;
+        if (glm::length(jump_vector_) > 0)
+        {
+            velocity_ = jump_vector_;
+            jump_vector_ = glm::vec3{0};
+        }
+
+        if (is_grounded_)
+        {
+            if (glm::abs(velocity_.y) < 0.01f)
+            {
+                if (IsOnIce())
+                    velocity_ *= 0.99f;
+                else
+                    velocity_ *= 0.95f;
+            }
+
+            if (glm::length(velocity_) < 0.1f)
+            {
+                velocity_ = glm::vec3{0};
+                action_ = GreenMobAction::NONE;
+            }
+        }
     }
     else if (action_ == GreenMobAction::ROTATE)
     {
