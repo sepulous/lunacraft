@@ -726,9 +726,11 @@ void Chunk::UpdateVertexLighting()
 
     auto neighbors = chunk_manager_->GetAdjacentNeighbors(coords_);
 
-    // These calculations were reverse engineered from the latest version of the original game (v2.01)
+    // These calculations were reverse engineered from the latest version of the original game (v2.01),
+    // although they've been slightly adjusted to ensure all chunks agree on ambient_light, and are
+    // never pitch black.
     int light_phase = Moon::GetCurrentMoon()->GetLightPhase();
-    float sin_world_time = glm::sin((light_phase * SECONDS_PER_LIGHT_PHASE) * LIGHT_CYCLE_OMEGA);
+    float sin_world_time = glm::sin(((light_phase + 0.1f) * SECONDS_PER_LIGHT_PHASE) * LIGHT_CYCLE_OMEGA);
     glm::vec3 sunlight_direction = Moon::GetCurrentMoon()->GetSunlightDirection();
     float ambient_light = 0.5f * sin_world_time;
     if (ambient_light < 0)
@@ -816,9 +818,11 @@ void Chunk::BuildVertices()
 {
     SetState(ChunkState::BUILDING_VERTICES);
 
-    // These calculations were reverse engineered from the latest version of the original game (v2.01)
+    // These calculations were reverse engineered from the latest version of the original game (v2.01),
+    // although they've been slightly adjusted to ensure all chunks agree on ambient_light, and are
+    // never pitch black.
     int light_phase = Moon::GetCurrentMoon()->GetLightPhase();
-    float sin_world_time = glm::sin((light_phase * SECONDS_PER_LIGHT_PHASE) * LIGHT_CYCLE_OMEGA);
+    float sin_world_time = glm::sin(((light_phase + 0.1f) * SECONDS_PER_LIGHT_PHASE) * LIGHT_CYCLE_OMEGA);
     glm::vec3 sunlight_direction = Moon::GetCurrentMoon()->GetSunlightDirection();
     float ambient_light = 0.5f * sin_world_time;
     if (ambient_light < 0)
