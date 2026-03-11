@@ -120,7 +120,7 @@ void DroppedItem::FixedUpdate()
     moving_toward_player_ = distance < 2.5f && player_inventory.HasSpaceForItem(item_);
 
     if (moving_toward_player_)
-        velocity_ = 3.0f * glm::normalize(player_pos - position_);
+        velocity_ = 4.0f * glm::normalize(player_pos - position_);
     else
         velocity_ = glm::vec3{0, velocity_.y, 0};
 
