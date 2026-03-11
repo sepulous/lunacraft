@@ -48,6 +48,7 @@ class ShaderManager
         static Shader UI_TEXT_SHADER;
         static Shader BLOCK_SHADER;
         static Shader SIMPLE_UNLIT_SHADER;
+        static Shader MOB_SHADER;
         static Shader SKYBOX_SHADER;
 
     public:

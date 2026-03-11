@@ -67,7 +67,7 @@ Slug::Slug(SlugData slug_data)
     };
 
     mesh_.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
-    mesh_.SetTexture(Storage::IMAGES / "slug.png");
+    mesh_.SetTexture(Storage::IMAGES / "entities" / "slug.png");
     mesh_.SetVertexData(vertices, sizeof(vertices) / (5 * sizeof(float)), GL_STATIC_DRAW);
 }
 

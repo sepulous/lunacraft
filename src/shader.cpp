@@ -20,6 +20,7 @@ Shader ShaderManager::UI_IMAGE_SHADER;
 Shader ShaderManager::UI_TEXT_SHADER;
 Shader ShaderManager::BLOCK_SHADER;
 Shader ShaderManager::SIMPLE_UNLIT_SHADER;
+Shader ShaderManager::MOB_SHADER;
 Shader ShaderManager::SKYBOX_SHADER;
 
 void ShaderManager::CompileAllShaders()
@@ -57,6 +58,15 @@ void ShaderManager::CompileAllShaders()
         {2, GL_FLOAT},
     });
     SIMPLE_UNLIT_SHADER.Compile();
+
+    ///////////////////
+
+    MOB_SHADER.SetFragmentShader(Storage::SHADERS / "mob.frag");
+    MOB_SHADER.SetVertexShader(Storage::SHADERS / "mob.vert", {
+        {3, GL_FLOAT},
+        {2, GL_FLOAT},
+    });
+    MOB_SHADER.Compile();
 
     ///////////////////
 

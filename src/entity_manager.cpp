@@ -10,6 +10,7 @@
 #include "storage.h"
 #include "moon.h"
 #include "slug.h"
+#include "green_mob.h"
 
 EntityManager::~EntityManager()
 {
@@ -49,6 +50,12 @@ void EntityManager::LoadInitialEntities()
                         SlugData data;
                         entity_file.read(reinterpret_cast<char *>(&data), sizeof(SlugData));
                         AddEntity(new Slug(data));
+                    }
+                    else if (type == EntityType::GREEN_MOB)
+                    {
+                        GreenMobData data;
+                        entity_file.read(reinterpret_cast<char *>(&data), sizeof(GreenMobData));
+                        AddEntity(new GreenMob(data));
                     }
                 }
 
@@ -285,6 +292,12 @@ void EntityManager::LoadChunkEntities(glm::ivec3 chunk_coords)
                     entity_file.read(reinterpret_cast<char *>(&data), sizeof(SlugData));
                     AddEntity(new Slug(data));
                 }
+                else if (type == EntityType::GREEN_MOB)
+                {
+                    GreenMobData data;
+                    entity_file.read(reinterpret_cast<char *>(&data), sizeof(GreenMobData));
+                    AddEntity(new GreenMob(data));
+                }
             }
 
             entity_file.close();
@@ -341,6 +354,11 @@ void EntityManager::UnloadChunkEntities(glm::ivec3 chunk_coords)
                 {
                     SlugData data = dynamic_cast<Slug *>(entity)->GetSlugData();
                     entity_file.write(reinterpret_cast<const char *>(&data), sizeof(SlugData));
+                }
+                else if (type == EntityType::GREEN_MOB)
+                {
+                    GreenMobData data = dynamic_cast<GreenMob *>(entity)->GetGreenMobData();
+                    entity_file.write(reinterpret_cast<const char *>(&data), sizeof(GreenMobData));
                 }
 
                 delete entity;
@@ -403,6 +421,11 @@ void EntityManager::SaveAllEntities()
                 {
                     SlugData data = dynamic_cast<Slug *>(entity)->GetSlugData();
                     entity_file.write(reinterpret_cast<const char *>(&data), sizeof(SlugData));
+                }
+                else if (type == EntityType::GREEN_MOB)
+                {
+                    GreenMobData data = dynamic_cast<GreenMob *>(entity)->GetGreenMobData();
+                    entity_file.write(reinterpret_cast<const char *>(&data), sizeof(GreenMobData));
                 }
             }
 

@@ -40,7 +40,7 @@ Player::Player()
     };
     arm_mesh_.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
     arm_mesh_.SetVertexData(arm_vertices, sizeof(arm_vertices) / (5 * sizeof(float)));
-    arm_mesh_.SetTexture(Storage::IMAGES / "player_arm.png");
+    arm_mesh_.SetTexture(Storage::IMAGES / "entities" / "player_arm.png");
 
     // Drill base mesh
     float drill_uv_cutoff = 8.0f / 32.0f;
@@ -71,7 +71,7 @@ Player::Player()
     };
     drill_base_mesh_.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
     drill_base_mesh_.SetVertexData(drill_base_vertices, sizeof(drill_base_vertices) / (5 * sizeof(float)));
-    drill_base_mesh_.SetTexture(Storage::IMAGES / "player_drill.png");
+    drill_base_mesh_.SetTexture(Storage::IMAGES / "entities" / "player_drill.png");
 
     // Drill bit mesh
     float drill_bit_vertices[] = {
@@ -109,7 +109,7 @@ Player::Player()
     };
     drill_bit_mesh_.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
     drill_bit_mesh_.SetVertexData(drill_bit_vertices, sizeof(drill_bit_vertices) / (5 * sizeof(float)));
-    drill_bit_mesh_.SetTexture(Storage::IMAGES / "player_drill.png");
+    drill_bit_mesh_.SetTexture(Storage::IMAGES / "entities" / "player_drill.png");
 
     // Pistol base mesh
     float pistol_base_vertices[] = {
@@ -139,7 +139,7 @@ Player::Player()
     };
     pistol_base_mesh_.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
     pistol_base_mesh_.SetVertexData(pistol_base_vertices, sizeof(pistol_base_vertices) / (5 * sizeof(float)));
-    pistol_base_mesh_.SetTexture(Storage::IMAGES / "player_pistol.png");
+    pistol_base_mesh_.SetTexture(Storage::IMAGES / "entities" / "player_pistol.png");
 
     // Pistol slide mesh
     float pistol_slide_vertices[] = {
@@ -169,7 +169,7 @@ Player::Player()
     };
     pistol_slide_mesh_.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
     pistol_slide_mesh_.SetVertexData(pistol_slide_vertices, sizeof(pistol_slide_vertices) / (5 * sizeof(float)));
-    pistol_slide_mesh_.SetTexture(Storage::IMAGES / "player_pistol.png");
+    pistol_slide_mesh_.SetTexture(Storage::IMAGES / "entities" / "player_pistol.png");
 
     // Sprite mesh
     float sprite_vertices[] = {

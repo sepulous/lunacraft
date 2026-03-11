@@ -335,9 +335,6 @@ void Moon::Render(const glm::mat4 &projection)
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
 
-    // Render entities
-    entity_manager_.RenderEntities(view_projection);
-
     // Render chunks
     Shader &block_shader = ShaderManager::BLOCK_SHADER;
     block_shader.Use();
@@ -351,6 +348,9 @@ void Moon::Render(const glm::mat4 &projection)
     Plane frustum[6];
     GetFrustumPlanes(view_projection, frustum);
     chunk_manager_.RenderChunks(frustum);
+
+    // Render entities
+    entity_manager_.RenderEntities(view_projection);
 
     // Render selection overlay
     selection_block_.Render(view_projection);
