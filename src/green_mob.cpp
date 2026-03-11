@@ -84,7 +84,8 @@ void GreenMob::Update(float delta_time)
             {
                 action_ = GreenMobAction::JUMP;
 
-                glm::vec3 forward = glm::vec3{glm::rotate(glm::mat4{1.0f}, glm::radians(rotation_), {0, 1, 0}) * glm::vec4{0.0f, 0.0f, 1.0f, 1.0f}}; // sign of z component might need to be flipped
+                auto yaw_rotation = glm::mat3{glm::rotate(glm::mat4{1.0f}, glm::radians(rotation_), {0, 1, 0})};
+                glm::vec3 forward = yaw_rotation * glm::vec3{0.0f, 0.0f, 1.0f};
                 jump_vector_ = RNG{}.Range(1.0f, 6.0f) * forward + RNG{}.Range(1.0f, 6.0f) * glm::vec3{0, 1, 0};
             }
             else
