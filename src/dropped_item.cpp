@@ -118,15 +118,15 @@ void DroppedItem::Update(float delta_time)
 
 void DroppedItem::FixedUpdate()
 {
-    auto player_pos = Moon::GetCurrentMoon()->GetPlayer()->GetPosition();
+    auto camera_pos = Moon::GetCurrentMoon()->GetPlayer()->GetCamera().position;
     auto &player_inventory = Moon::GetCurrentMoon()->GetPlayer()->GetInventory();
 
-    float distance = glm::distance(player_pos, position_);
+    float distance = glm::distance(camera_pos, position_);
 
-    moving_toward_player_ = distance < 2.5f && player_inventory.HasSpaceForItem(item_);
+    moving_toward_player_ = distance < 3.0f && player_inventory.HasSpaceForItem(item_);
 
     if (moving_toward_player_)
-        velocity_ = 4.0f * glm::normalize(player_pos - position_);
+        velocity_ = 4.0f * glm::normalize((camera_pos - glm::vec3{0.0f, 0.3f, 0.0f}) - position_);
     else if (is_grounded_)
         velocity_ = glm::vec3{0, velocity_.y, 0};
 
