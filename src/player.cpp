@@ -39,7 +39,7 @@ Player::Player()
         -0.25f, 0.25f, 1.5f, 1.0f, 1.0f,
          0.25f, 0.25f, 1.5f, 0.5f, 1.0f,
     };
-    arm_mesh_.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
+    arm_mesh_.SetShader(ShaderManager::MOB_SHADER);
     arm_mesh_.SetVertexData(arm_vertices, sizeof(arm_vertices) / (5 * sizeof(float)));
     arm_mesh_.SetTexture(Storage::IMAGES / "entities" / "player_arm.png");
 
@@ -70,7 +70,7 @@ Player::Player()
         -1.0f, 1.0f, -1.0f, 1.0f, drill_uv_cutoff,
          1.0f, 1.0f, -1.0f, 0.0f, drill_uv_cutoff,
     };
-    drill_base_mesh_.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
+    drill_base_mesh_.SetShader(ShaderManager::MOB_SHADER);
     drill_base_mesh_.SetVertexData(drill_base_vertices, sizeof(drill_base_vertices) / (5 * sizeof(float)));
     drill_base_mesh_.SetTexture(Storage::IMAGES / "entities" / "player_drill.png");
 
@@ -108,7 +108,7 @@ Player::Player()
         -1.0f, -1.0f,  6.0f, 0.0f, 1.0f,
          1.0f, -1.0f,  6.0f, 1.0f, 1.0f,
     };
-    drill_bit_mesh_.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
+    drill_bit_mesh_.SetShader(ShaderManager::MOB_SHADER);
     drill_bit_mesh_.SetVertexData(drill_bit_vertices, sizeof(drill_bit_vertices) / (5 * sizeof(float)));
     drill_bit_mesh_.SetTexture(Storage::IMAGES / "entities" / "player_drill.png");
 
@@ -138,7 +138,7 @@ Player::Player()
         -1.0f,  1.0f, -4.0f,  0.0f,          (4.0f / 16.0f),
         -1.0f, -1.0f, -4.0f,  0.0f,           0.0f,
     };
-    pistol_base_mesh_.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
+    pistol_base_mesh_.SetShader(ShaderManager::MOB_SHADER);
     pistol_base_mesh_.SetVertexData(pistol_base_vertices, sizeof(pistol_base_vertices) / (5 * sizeof(float)));
     pistol_base_mesh_.SetTexture(Storage::IMAGES / "entities" / "player_pistol.png");
 
@@ -168,7 +168,7 @@ Player::Player()
         -1.0f, 1.0f,  1.0f, 1.0f, 0.0f,
         -1.0f, 1.0f, -1.0f, 0.5f, 0.0f,
     };
-    pistol_slide_mesh_.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
+    pistol_slide_mesh_.SetShader(ShaderManager::MOB_SHADER);
     pistol_slide_mesh_.SetVertexData(pistol_slide_vertices, sizeof(pistol_slide_vertices) / (5 * sizeof(float)));
     pistol_slide_mesh_.SetTexture(Storage::IMAGES / "entities" / "player_pistol.png");
 
@@ -181,11 +181,11 @@ Player::Player()
         -1.0f, 2.0f, 0.0f, 0.0f, 1.0f,
         -1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
     };
-    sprite_mesh_.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
+    sprite_mesh_.SetShader(ShaderManager::MOB_SHADER);
     sprite_mesh_.SetVertexData(sprite_vertices, sizeof(sprite_vertices) / (5 * sizeof(float)));
 
     // Block mesh
-    block_mesh_.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
+    block_mesh_.SetShader(ShaderManager::MOB_SHADER);
     block_mesh_.SetTexture(Storage::IMAGES / "texture_atlas.png");
 }
 
@@ -194,6 +194,13 @@ void Player::Update(float delta_time)
     input_direction_ = glm::vec3(0);
 
     auto selected_item = inventory_.GetSelectedItem();
+
+    if (pain_time_ != 0)
+    {
+        pain_time_ -= delta_time;
+        if (pain_time_ <= 0)
+            pain_time_ = 0;
+    }
 
     if (in_control_)
     {
@@ -606,6 +613,8 @@ void Player::SetHealth(int health) noexcept
 {
     if (health < health_)
     {
+        pain_time_ = 0.5f;
+
         int damage = health_ - health;
         int divided_damage = damage / 2;
 
@@ -637,12 +646,20 @@ void Player::Render(const glm::mat4 &vp_matrix)
 {
     auto inv_view = glm::inverse(camera_.GetViewMatrix()); // To do this in camera space
 
+    Shader &shader = ShaderManager::MOB_SHADER;
+    shader.Use();
+    shader.SetMat4("u_vp_matrix", vp_matrix * inv_view);
+    shader.SetVec3("u_ws_camera_position", camera_.position);
+    shader.SetVec4("u_color", {1.0f, 0.0f, 0.0f, pain_time_});
+    shader.SetVec4("u_fog_color", glm::vec4{0.0f});
+    shader.SetFloat("u_fog_distance", 0);
+
     // Arm
     auto arm_model_matrix = glm::mat4(1.0);
     arm_model_matrix = glm::translate(arm_model_matrix, {0.48f + arm_shake_, -0.35f + arm_bob_, -0.35f - arm_extent_});
     arm_model_matrix = glm::scale(arm_model_matrix, {-0.45f, 0.45f, -0.45f});
     arm_mesh_.Render([&](Shader *shader) {
-        shader->SetMat4("u_mvp_matrix", vp_matrix * inv_view * arm_model_matrix);
+        shader->SetMat4("u_model_matrix", arm_model_matrix);
     });
 
     ItemID selected_item = inventory_.GetSelectedItem();
@@ -655,7 +672,7 @@ void Player::Render(const glm::mat4 &vp_matrix)
             pistol_base_model_matrix = glm::translate(pistol_base_model_matrix, {0.46f, -0.15f + arm_bob_, -1.2f + pistol_base_disp_});
             pistol_base_model_matrix = glm::scale(pistol_base_model_matrix, {0.08f, 0.08f, -0.08f});
             pistol_base_mesh_.Render([&](Shader *shader) {
-                shader->SetMat4("u_mvp_matrix", vp_matrix * inv_view * pistol_base_model_matrix);
+                shader->SetMat4("u_model_matrix", pistol_base_model_matrix);
             });
 
             // Pistol slide
@@ -663,7 +680,7 @@ void Player::Render(const glm::mat4 &vp_matrix)
             pistol_slide_model_matrix = glm::translate(pistol_slide_model_matrix, {0.44f, -0.06f + arm_bob_, -1.35f + pistol_base_disp_ + pistol_slide_disp_});
             pistol_slide_model_matrix = glm::scale(pistol_slide_model_matrix, {0.03f, 0.02f, -0.02f});
             pistol_slide_mesh_.Render([&](Shader *shader) {
-                shader->SetMat4("u_mvp_matrix", vp_matrix * inv_view * pistol_slide_model_matrix);
+                shader->SetMat4("u_model_matrix", pistol_slide_model_matrix);
             });
         }
         else if (selected_item == ItemID::drill_t1 || selected_item == ItemID::drill_t2 || selected_item == ItemID::drill_t3)
@@ -673,7 +690,7 @@ void Player::Render(const glm::mat4 &vp_matrix)
             drill_base_model_matrix = glm::translate(drill_base_model_matrix, {0.5f + arm_shake_, -0.35f + arm_bob_, -1.0f - arm_extent_});
             drill_base_model_matrix = glm::scale(drill_base_model_matrix, {0.15f, 0.15f, -0.15f});
             drill_base_mesh_.Render([&](Shader *shader) {
-                shader->SetMat4("u_mvp_matrix", vp_matrix * inv_view * drill_base_model_matrix);
+                shader->SetMat4("u_model_matrix", drill_base_model_matrix);
             });
 
             // Drill bit
@@ -682,7 +699,7 @@ void Player::Render(const glm::mat4 &vp_matrix)
             drill_bit_model_matrix = glm::rotate(drill_bit_model_matrix, drill_bit_rotation_, {0, 0, 1});
             drill_bit_model_matrix = glm::scale(drill_bit_model_matrix, {0.05f, 0.05f, -0.05f});
             drill_bit_mesh_.Render([&](Shader *shader) {
-                shader->SetMat4("u_mvp_matrix", vp_matrix * inv_view * drill_bit_model_matrix);
+                shader->SetMat4("u_model_matrix", drill_bit_model_matrix);
             });
         }
         else if (ItemIsSprite(selected_item) || selected_item == ItemID::minilight)
@@ -697,7 +714,7 @@ void Player::Render(const glm::mat4 &vp_matrix)
                 last_held_sprite_ = selected_item;
             }
             sprite_mesh_.Render([&](Shader *shader) {
-                shader->SetMat4("u_mvp_matrix", vp_matrix * inv_view * sprite_model_matrix);
+                shader->SetMat4("u_model_matrix", sprite_model_matrix);
             });
         }
         else
@@ -741,7 +758,7 @@ void Player::Render(const glm::mat4 &vp_matrix)
                 last_held_block_ = selected_item;
             }
             block_mesh_.Render([&](Shader *shader) {
-                shader->SetMat4("u_mvp_matrix", vp_matrix * inv_view * block_model_matrix);
+                shader->SetMat4("u_model_matrix", block_model_matrix);
             });
         }
     }
