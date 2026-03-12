@@ -19,6 +19,7 @@ Player::Player()
     aabb_.center = position_;
     aabb_.extents = glm::vec3(0.4f, 0.9f, 0.4f);
     camera_.position = position_ + glm::vec3(0, 0.9f, 0);
+    health_ = 100;
 
     // Arm mesh
     float arm_vertices[] = {
@@ -539,16 +540,6 @@ Camera &Player::GetCamera()
     return camera_;
 }
 
-void Player::SetHealth(int health)
-{
-    health_ = health;
-}
-
-int Player::GetHealth()
-{
-    return health_;
-}
-
 void Player::SetSuitStatus(int suit_status)
 {
     suit_status_ = suit_status;
@@ -719,14 +710,15 @@ float Player::GetMaxMoveSpeed()
     float max_speed;
 
     auto battery_item = inventory_.spacesuit[1].item;
+    const float base_speed = 3.5f;
     if (battery_item == ItemID::battery)
-        max_speed = 4.74f;
-    else if (battery_item == ItemID::power_crystal)
-        max_speed = 6.4f;
+        max_speed = 1.333f * base_speed;                      // These are the actual ratios from version 2.01 of the original game
+    else if (battery_item == ItemID::power_crystal)           //
+        max_speed = 1.375f * 1.333f * base_speed;
     else if (battery_item == ItemID::energy_orb)
-        max_speed = 8.5f;
+        max_speed = 1.455f * 1.375f * 1.333f * base_speed;
     else
-        max_speed = 2.82f;
+        max_speed = base_speed;
 
     if (IsOnIce())
         max_speed *= 1.2f;

@@ -25,7 +25,6 @@ class Player : public Entity
         Inventory inventory_;
         bool in_control_ = true;
         glm::vec3 input_direction_;
-        int health_ = 100;
         int suit_status_ = 100;
         int jetpack_energy_ = 20;
         bool was_grounded_ = false;
@@ -78,9 +77,6 @@ class Player : public Entity
 
         void UpdateCamera();
         Camera &GetCamera();
-
-        void SetHealth(int health);
-        int GetHealth();
 
         void SetSuitStatus(int suit_status);
         int GetSuitStatus();
