@@ -11,6 +11,7 @@
 #include "moon.h"
 #include "slug.h"
 #include "green_mob.h"
+#include "dropped_item.h"
 
 EntityManager::~EntityManager()
 {
@@ -44,6 +45,12 @@ void EntityManager::LoadInitialEntities()
                         MinilightData data;
                         entity_file.read(reinterpret_cast<char *>(&data), sizeof(MinilightData));
                         AddEntity(new Minilight(data.voxel, data.normal));
+                    }
+                    else if (type == EntityType::DROPPED_ITEM)
+                    {
+                        DroppedItemData data;
+                        entity_file.read(reinterpret_cast<char *>(&data), sizeof(DroppedItemData));
+                        AddEntity(new DroppedItem(data));
                     }
                     else if (type == EntityType::SLUG)
                     {
@@ -315,6 +322,12 @@ void EntityManager::LoadChunkEntities(glm::ivec3 chunk_coords)
                     entity_file.read(reinterpret_cast<char *>(&data), sizeof(MinilightData));
                     AddEntity(new Minilight(data.voxel, data.normal));
                 }
+                else if (type == EntityType::DROPPED_ITEM)
+                {
+                    DroppedItemData data;
+                    entity_file.read(reinterpret_cast<char *>(&data), sizeof(DroppedItemData));
+                    AddEntity(new DroppedItem(data));
+                }
                 else if (type == EntityType::SLUG)
                 {
                     SlugData data;
@@ -378,6 +391,11 @@ void EntityManager::UnloadChunkEntities(glm::ivec3 chunk_coords)
                 {
                     MinilightData data = dynamic_cast<Minilight *>(entity)->GetMinilightData();
                     entity_file.write(reinterpret_cast<const char *>(&data), sizeof(MinilightData));
+                }
+                else if (type == EntityType::DROPPED_ITEM)
+                {
+                    DroppedItemData data = dynamic_cast<DroppedItem *>(entity)->GetDroppedItemData();
+                    entity_file.write(reinterpret_cast<const char *>(&data), sizeof(DroppedItemData));
                 }
                 else if (type == EntityType::SLUG)
                 {
@@ -445,6 +463,11 @@ void EntityManager::SaveAllEntities()
                 {
                     MinilightData data = dynamic_cast<Minilight *>(entity)->GetMinilightData();
                     entity_file.write(reinterpret_cast<const char *>(&data), sizeof(MinilightData));
+                }
+                else if (type == EntityType::DROPPED_ITEM)
+                {
+                    DroppedItemData data = dynamic_cast<DroppedItem *>(entity)->GetDroppedItemData();
+                    entity_file.write(reinterpret_cast<const char *>(&data), sizeof(DroppedItemData));
                 }
                 else if (type == EntityType::SLUG)
                 {

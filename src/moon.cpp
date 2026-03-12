@@ -259,7 +259,11 @@ void Moon::Update(double delta_time)
             if (block_to_drop == BlockID::minilight)
                 entity_manager_.DestroyMinilightAt(selection_position);
 
-            entity_manager_.AddEntity(new DroppedItem{BlockIDToItemID(block_to_drop), 1, selection_position});
+            entity_manager_.AddEntity(new DroppedItem({
+                .position = selection_position,
+                .item = BlockIDToItemID(block_to_drop),
+                .amount = 1
+            }));
 
             SoundSystem::PlayAt(SoundSystem::Sound::BLOCK_BREAK, selection_position);
             selection_block_.SetMineProgress(0);

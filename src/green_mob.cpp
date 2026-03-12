@@ -132,7 +132,11 @@ void GreenMob::FixedUpdate()
 
         if (!dropped_biogel_)
         {
-            DroppedItem *biogel = new DroppedItem(ItemID::biogel, 1, position_);
+            DroppedItem *biogel = new DroppedItem({
+                .position = position_,
+                .item = ItemID::biogel,
+                .amount = 1
+            });
             biogel->SetVelocity({
                 RNG{}.Range(-2.0f, 2.0f),
                 RNG{}.Range(2.0f, 4.0f),
