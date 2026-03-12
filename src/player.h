@@ -52,6 +52,7 @@ class Player : public Entity
         float time_flying_ = 0;
         float time_drilling_ = 0;
         float time_charging_gun_ = 0;
+        float camera_bob_ = 0;
         float arm_extent_ = 0;
         float arm_bob_ = 0;
         float arm_shake_ = 0;

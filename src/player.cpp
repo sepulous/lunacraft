@@ -273,10 +273,13 @@ void Player::Update(float delta_time)
         {
             if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT))
             {
-                if (selected_item == ItemID::drill_t3)
-                    drill_sound_ = SoundSystem::PlayLooped(SoundSystem::Sound::DRILL3);
-                else
-                    drill_sound_ = SoundSystem::PlayLooped(SoundSystem::Sound::DRILL);
+                if (drill_sound_ == nullptr)
+                {
+                    if (selected_item == ItemID::drill_t3)
+                        drill_sound_ = SoundSystem::PlayLooped(SoundSystem::Sound::DRILL3);
+                    else
+                        drill_sound_ = SoundSystem::PlayLooped(SoundSystem::Sound::DRILL);
+                }
             }
             else if (Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_LEFT))
             {
@@ -343,17 +346,23 @@ void Player::Update(float delta_time)
             else if (time_charging_gun_ != 0)
             {
                 glm::vec3 offset = 2.0f * camera_.forward + 0.5f * camera_.right - 0.1f * camera_.up;
-                float speed = (glm::clamp(time_charging_gun_, 0.2f, 6.0f) / 6.0f) * 30.0f;
+
+                float speed = 50.0f * glm::clamp(time_charging_gun_ * time_charging_gun_, 0.0f, 16.0f);
                 if (selected_item == ItemID::slug_pistol_t2)
                     speed *= 2.0f;
                 else if (selected_item == ItemID::slug_pistol_t3)
                     speed *= 3.0f;
 
-                SlugData slug_data = {
+                int damage_param = selected_item == ItemID::slug_pistol_t3 ? 4  // This is how slug damage was calculated in the latest
+                                 : selected_item == ItemID::slug_pistol_t2 ? 2  // version (v2.01) of the original game
+                                 :                                           0;
+
+                Moon::GetCurrentMoon()->GetEntityManager().AddEntity(new Slug({
                     .initial_position = camera_.position + offset,
-                    .initial_velocity = speed * camera_.forward
-                };
-                Moon::GetCurrentMoon()->GetEntityManager().AddEntity(new Slug(slug_data));
+                    .initial_velocity = speed * camera_.forward,
+                    .damage = damage_param * 8 + 20
+                }));
+
                 SoundSystem::Play(SoundSystem::Sound::LASER);
 
                 time_charging_gun_ = 0;
@@ -401,23 +410,26 @@ void Player::Update(float delta_time)
         time_since_last_jetpack_update_ += delta_time;
     }
 
-    // Walking (bob animation)
+    // Walking (bob animations)
     if (glm::length(input_direction_) > 0 && is_grounded_)
     {
         time_walking_ += delta_time;
         arm_bob_ = 0.01f * glm::pow(glm::sin(5.0f * time_walking_), 2);
+        camera_bob_ = 0.04f * glm::sin(10.0f * time_walking_ + 3.1415f);
     }
     else if (time_walking_ != 0)
     {
-        if (glm::abs(arm_bob_) < 0.001f)
+        if (glm::abs(arm_bob_) < 0.001f && glm::abs(camera_bob_) < 0.01f)
         {
-            arm_bob_ = 0;
             time_walking_ = 0;
+            arm_bob_ = 0;
+            camera_bob_ = 0;
         }
         else
         {
             time_walking_ += delta_time;
             arm_bob_ = 0.01f * glm::pow(glm::sin(5.0f * time_walking_), 2);
+            camera_bob_ = 0.04f * glm::sin(10.0f * time_walking_ + 3.1415f);
         }
     }
 
@@ -428,7 +440,7 @@ void Player::Update(float delta_time)
         time_flying_ = 0;
     camera_.pitch += 0.005f * glm::sin(80.0f * time_flying_);
 
-    camera_.position = position_ + glm::vec3(0, 0.9f, 0);
+    camera_.position = position_ + glm::vec3(0, 0.9f + camera_bob_, 0);
 }
 
 void Player::FixedUpdate()
@@ -721,7 +733,7 @@ float Player::GetMaxMoveSpeed()
         max_speed = base_speed;
 
     if (IsOnIce())
-        max_speed *= 1.2f;
+        max_speed *= 1.5f;
 
     return max_speed;
 }
