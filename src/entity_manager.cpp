@@ -43,7 +43,7 @@ void EntityManager::LoadInitialEntities()
                     {
                         MinilightData data;
                         entity_file.read(reinterpret_cast<char *>(&data), sizeof(MinilightData));
-                        AddEntity(new Minilight(data.voxel, data.dir));
+                        AddEntity(new Minilight(data.voxel, data.normal));
                     }
                     else if (type == EntityType::SLUG)
                     {
@@ -284,7 +284,7 @@ void EntityManager::LoadChunkEntities(glm::ivec3 chunk_coords)
                 {
                     MinilightData data;
                     entity_file.read(reinterpret_cast<char *>(&data), sizeof(MinilightData));
-                    AddEntity(new Minilight(data.voxel, data.dir));
+                    AddEntity(new Minilight(data.voxel, data.normal));
                 }
                 else if (type == EntityType::SLUG)
                 {

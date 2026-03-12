@@ -86,7 +86,8 @@ void GreenMob::Update(float delta_time)
 
                 auto yaw_rotation = glm::mat3{glm::rotate(glm::mat4{1.0f}, glm::radians(rotation_), {0, 1, 0})};
                 glm::vec3 forward = yaw_rotation * glm::vec3{0.0f, 0.0f, 1.0f};
-                jump_vector_ = RNG{}.Range(1.0f, 6.0f) * forward + RNG{}.Range(1.0f, 6.0f) * glm::vec3{0, 1, 0};
+                jump_vector_ = RNG{}.Range(1.0f, 6.0f) * forward
+                             + RNG{}.Range(1.0f, 6.0f) * glm::vec3{0, 1, 0};
             }
             else
             {
@@ -116,14 +117,11 @@ void GreenMob::FixedUpdate()
 
         if (is_grounded_)
         {
+            // Ad-hoc friction
             if (glm::abs(velocity_.y) < 0.01f)
-            {
-                if (IsOnIce())
-                    velocity_ *= 0.99f;
-                else
-                    velocity_ *= 0.95f;
-            }
+                velocity_ *= IsOnIce() ? 0.99f : 0.95f;
 
+            // Allow it to slide for a bit before stopping
             if (glm::length(velocity_) < 0.1f)
             {
                 velocity_ = glm::vec3{0};

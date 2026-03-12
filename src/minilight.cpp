@@ -3,32 +3,18 @@
 #include "block.h"
 #include "storage.h"
 
-Minilight::Minilight(glm::ivec3 voxel, MinilightDir dir)
+Minilight::Minilight(glm::ivec3 voxel, glm::vec3 normal)
 {
     type_ = EntityType::MINILIGHT;
     voxel_ = voxel;
-    dir_ = dir;
     position_ = glm::vec3{voxel};
+    normal_ = normal;
 
     // These are extents, not total lengths
     const float width = 1.0f / 6.0f;
     const float thickness = 1.0f / 64.0f;
 
     glm::vec3 voxel_center = glm::vec3{voxel};
-
-    glm::vec3 normal;
-    if (dir == MinilightDir::POSITIVE_X)
-        normal = {1, 0, 0};
-    else if (dir == MinilightDir::NEGATIVE_X)
-        normal = {-1, 0, 0};
-    else if (dir == MinilightDir::POSITIVE_Z)
-        normal = {0, 0, 1};
-    else if (dir == MinilightDir::NEGATIVE_Z)
-        normal = {0, 0, -1};
-    else if (dir == MinilightDir::POSITIVE_Y)
-        normal = {0, 1, 0};
-    else
-        normal = {0, -1, 0};
 
     glm::vec3 v_local_positions[] = {
         // Front
@@ -85,27 +71,16 @@ Minilight::Minilight(glm::ivec3 voxel, MinilightDir dir)
 
     glm::mat4 model{1.0f};
     model = glm::translate(model, voxel_center - (0.5f - thickness) * normal);
-
-    if (dir == MinilightDir::POSITIVE_X)
-    {
+    if (normal_.x > 0)
         model = glm::rotate(model, glm::radians(90.0f), {0, 1, 0});
-    }
-    else if (dir == MinilightDir::NEGATIVE_X)
-    {
+    else if (normal_.x < 0)
         model = glm::rotate(model, glm::radians(-90.0f), {0, 1, 0});
-    }
-    else if (dir == MinilightDir::NEGATIVE_Z)
-    {
+    else if (normal_.z < 0)
         model = glm::rotate(model, glm::radians(180.0f), {0, 1, 0});
-    }
-    else if (dir == MinilightDir::POSITIVE_Y)
-    {
+    else if (normal_.y > 0)
         model = glm::rotate(model, glm::radians(-90.0f), {1, 0, 0});
-    }
-    else if (dir == MinilightDir::NEGATIVE_Y)
-    {
+    else if (normal_.y < 0)
         model = glm::rotate(model, glm::radians(90.0f), {1, 0, 0});
-    }
 
     std::vector<float> vertices;
     int uv_idx = 0;
@@ -144,7 +119,7 @@ MinilightData Minilight::GetMinilightData()
 {
     return {
         .voxel = voxel_,
-        .dir = dir_
+        .normal = normal_
     };
 }
 

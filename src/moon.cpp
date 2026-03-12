@@ -17,8 +17,7 @@
 #include "dropped_item.h"
 #include "sound_system.h"
 #include "minilight.h"
-
-#include "input.h" // TEMP
+#include "input.h"
 
 Moon *Moon::current_moon_;
 
@@ -231,26 +230,27 @@ void Moon::Update(double delta_time)
 
     // Update selection block
     UpdateSelectionBlock(delta_time);
+    auto selection_position = selection_block_.GetPosition();
+    auto selection_adjacent_position = selection_block_.GetAdjacentPosition();
 
     // Handle player modifications
     if (selection_block_.IsActive())
     {
         if (selection_block_.GetMineProgress() >= 1.0f)
         {
-            BlockID block_to_drop = chunk_manager_.GetBlockAt(selection_block_.GetPosition());
+            BlockID block_to_drop = chunk_manager_.GetBlockAt(selection_position);
             if (block_to_drop == BlockID::topsoil)
                 block_to_drop = BlockID::dirt;
 
-            chunk_manager_.HandlePlayerModification(selection_block_.GetPosition());
-            selection_block_.SetMineProgress(0);
+            chunk_manager_.HandlePlayerModification(selection_position);
 
             if (block_to_drop == BlockID::minilight)
-                entity_manager_.DestroyMinilightAt(selection_block_.GetPosition());
+                entity_manager_.DestroyMinilightAt(selection_position);
 
-            Entity *dropped_item = new DroppedItem(BlockIDToItemID(block_to_drop), 1, selection_block_.GetPosition());
-            entity_manager_.AddEntity(dropped_item);
+            entity_manager_.AddEntity(new DroppedItem{BlockIDToItemID(block_to_drop), 1, selection_position});
 
-            SoundSystem::PlayAt(SoundSystem::Sound::BLOCK_BREAK, selection_block_.GetPosition());
+            SoundSystem::PlayAt(SoundSystem::Sound::BLOCK_BREAK, selection_position);
+            selection_block_.SetMineProgress(0);
         }
         else if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT))
         {
@@ -268,34 +268,16 @@ void Moon::Update(double delta_time)
                             selected = {ItemID::none, 0};
                     }
 
-                    chunk_manager_.HandlePlayerModification(selection_block_.GetAdjacentPosition(), block);
+                    chunk_manager_.HandlePlayerModification(selection_adjacent_position, block);
 
                     if (block == BlockID::minilight)
                     {
-                        auto normal = selection_block_.GetAdjacentPosition() - selection_block_.GetPosition();
-                        MinilightDir dir;
-                        if (normal.x > 0)
-                            dir = MinilightDir::POSITIVE_X;
-                        else if (normal.x < 0)
-                            dir = MinilightDir::NEGATIVE_X;
-                        else if (normal.y > 0)
-                            dir = MinilightDir::POSITIVE_Y;
-                        else if (normal.y < 0)
-                            dir = MinilightDir::NEGATIVE_Y;
-                        else if (normal.z > 0)
-                            dir = MinilightDir::POSITIVE_Z;
-                        else
-                            dir = MinilightDir::NEGATIVE_Z;
-
-                        auto fag = selection_block_.GetAdjacentPosition();
-                        auto fag2 = VoxelToChunk(selection_block_.GetAdjacentPosition());
-                        printf("Placed minilight at (%i, %i, %i) in chunk (%i, %i)\n", fag.x, fag.y, fag.z, fag2.x, fag2.z);
-
-                        Minilight *minilight = new Minilight(selection_block_.GetAdjacentPosition(), dir);
+                        auto normal = selection_adjacent_position - selection_position;
+                        Minilight *minilight = new Minilight(selection_adjacent_position, normal);
                         entity_manager_.AddEntity(minilight);
                     }
 
-                    SoundSystem::PlayAt(SoundSystem::Sound::BLOCK_PLACE, selection_block_.GetAdjacentPosition());
+                    SoundSystem::PlayAt(SoundSystem::Sound::BLOCK_PLACE, selection_adjacent_position);
                 }
             }
         }
