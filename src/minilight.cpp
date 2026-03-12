@@ -9,6 +9,7 @@ Minilight::Minilight(glm::ivec3 voxel, glm::vec3 normal)
     voxel_ = voxel;
     position_ = glm::vec3{voxel};
     normal_ = normal;
+    can_be_damaged_ = false;
 
     // These are extents, not total lengths
     const float width = 1.0f / 6.0f;

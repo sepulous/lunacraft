@@ -93,10 +93,33 @@ bool Entity::IsGrounded() noexcept
 
 void Entity::SetHealth(int health) noexcept
 {
-    health_ = health;
+    if (health >= health_)
+    {
+        health_ = health;
+    }
+    else if (CanBeDamaged())
+    {
+        pain_time_ = 0.5;
+        health_ = health;
+    }
 }
 
 int Entity::GetHealth() noexcept
 {
     return health_;
+}
+
+void Entity::SetCanBeDamaged(bool value) noexcept
+{
+    can_be_damaged_ = value;
+}
+
+bool Entity::CanBeDamaged() noexcept
+{
+    return can_be_damaged_;
+}
+
+bool Entity::IsDeathAnimationDone() noexcept
+{
+    return death_animation_done_;
 }

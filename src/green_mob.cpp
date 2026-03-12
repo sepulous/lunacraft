@@ -4,6 +4,7 @@
 #include "options.h"
 #include "storage.h"
 #include "rng.h"
+#include "dropped_item.h"
 
 GreenMob::GreenMob(GreenMobData data)
 {
@@ -11,7 +12,7 @@ GreenMob::GreenMob(GreenMobData data)
     position_ = data.position;
     prev_position_ = data.position;
     next_position_ = data.position;
-    rotation_ = data.rotation;
+    yaw_ = data.yaw;
     health_ = data.health;
     aabb_.center = data.position;
     aabb_.extents = {0.5f, 0.5f, 0.5f};
@@ -75,6 +76,16 @@ GreenMob::GreenMob(GreenMobData data)
 
 void GreenMob::Update(float delta_time)
 {
+    if (IsDead())
+        time_since_death_ += delta_time;
+
+    if (pain_time_ != 0)
+    {
+        pain_time_ -= delta_time;
+        if (pain_time_ < 0)
+            pain_time_ = 0;
+    }
+
     if (is_grounded_)
     {
         if (next_action_time_ <= 0)
@@ -84,7 +95,7 @@ void GreenMob::Update(float delta_time)
             {
                 action_ = GreenMobAction::JUMP;
 
-                auto yaw_rotation = glm::mat3{glm::rotate(glm::mat4{1.0f}, glm::radians(rotation_), {0, 1, 0})};
+                auto yaw_rotation = glm::mat3{glm::rotate(glm::mat4{1.0f}, glm::radians(yaw_), {0, 1, 0})};
                 glm::vec3 forward = yaw_rotation * glm::vec3{0.0f, 0.0f, 1.0f};
                 jump_vector_ = RNG{}.Range(1.0f, 6.0f) * forward
                              + RNG{}.Range(1.0f, 6.0f) * glm::vec3{0, 1, 0};
@@ -93,9 +104,9 @@ void GreenMob::Update(float delta_time)
             {
                 action_ = GreenMobAction::ROTATE;
 
-                rotation_angle_ = RNG{}.Range(10.0f, 90.0f);
+                target_yaw_ = RNG{}.Range(10.0f, 90.0f);
                 if (RNG{}.Range(0, 1) == 0)
-                    rotation_angle_ *= -1;
+                    target_yaw_ *= -1;
             }
         }
         else if (action_ == GreenMobAction::NONE)
@@ -107,7 +118,32 @@ void GreenMob::Update(float delta_time)
 
 void GreenMob::FixedUpdate()
 {
-    if (action_ == GreenMobAction::JUMP)
+    if (IsDead())
+    {
+        velocity_.x = 0;
+        velocity_.z = 0;
+
+        if (!death_animation_done_)
+        {
+            roll_ = glm::clamp(90.0f * time_since_death_, 0.0f, 90.0f); // 90 degrees/sec
+            if (time_since_death_ > 2.0f)
+                death_animation_done_ = true;
+        }
+
+        if (!dropped_biogel_)
+        {
+            DroppedItem *biogel = new DroppedItem(ItemID::biogel, 1, position_);
+            biogel->SetVelocity({
+                RNG{}.Range(-2.0f, 2.0f),
+                RNG{}.Range(2.0f, 4.0f),
+                RNG{}.Range(-2.0f, 2.0f)
+            });
+            Moon::GetCurrentMoon()->GetEntityManager().AddEntity(biogel);
+
+            dropped_biogel_ = true;
+        }
+    }
+    else if (action_ == GreenMobAction::JUMP)
     {
         if (glm::length(jump_vector_) > 0)
         {
@@ -131,11 +167,11 @@ void GreenMob::FixedUpdate()
     }
     else if (action_ == GreenMobAction::ROTATE)
     {
-        if (rotation_angle_ > 0)
+        if (target_yaw_ > 0)
         {
             float delta = 80.0f * FIXED_DELTA_TIME;
-            rotation_ += delta;
-            rotation_angle_ -= delta;
+            yaw_ += delta;
+            target_yaw_ -= delta;
         }
         else
         {
@@ -152,7 +188,8 @@ void GreenMob::Render(const glm::mat4 &vp_matrix)
 
     glm::mat4 model{1.0f};
     model = glm::translate(model, position_);
-    model = glm::rotate(model, glm::radians(rotation_), {0, 1, 0});
+    model = glm::rotate(model, glm::radians(yaw_), {0, 1, 0});
+    model = glm::rotate(model, glm::radians(roll_), {0, 0, 1});
     model = glm::scale(model, glm::vec3{0.5f});
 
     mesh_.Render([&](Shader *shader) {
@@ -161,6 +198,7 @@ void GreenMob::Render(const glm::mat4 &vp_matrix)
         shader->SetVec3("u_ws_camera_position", camera_pos);
         shader->SetVec4("u_fog_color", fog_color);
         shader->SetFloat("u_fog_distance", fog_distance);
+        shader->SetVec4("u_color", {1.0f, 0.0f, 0.0f, pain_time_});
     });
 }
 
@@ -168,7 +206,7 @@ GreenMobData GreenMob::GetGreenMobData()
 {
     return {
         .position = position_,
-        .rotation = rotation_,
+        .yaw = yaw_,
         .health = health_
     };
 }

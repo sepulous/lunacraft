@@ -16,7 +16,7 @@ DroppedItem::DroppedItem(ItemID item, int amount, glm::vec3 position)
     aabb_.extents = {0.125f, 0.125f, 0.125f};
     item_ = item;
     amount_ = amount;
-    // TODO: Decide random velocity
+    death_animation_done_ = true;
 
     mesh_.SetShader(ShaderManager::SIMPLE_UNLIT_SHADER);
 
@@ -121,7 +121,7 @@ void DroppedItem::FixedUpdate()
 
     if (moving_toward_player_)
         velocity_ = 4.0f * glm::normalize(player_pos - position_);
-    else
+    else if (is_grounded_)
         velocity_ = glm::vec3{0, velocity_.y, 0};
 
     if (distance < 0.5f)
@@ -141,12 +141,34 @@ void DroppedItem::Render(const glm::mat4 &vp_matrix)
     // along X or Z axes.
 
     float bob_offset = 0.08f * glm::sin(2.0f * bob_time_);
-    float rotation = (2.0f * 3.1416f / 10.0f) * rotate_time_;
 
     glm::mat4 model{1.0f};
     model = glm::translate(model, {position_.x, position_.y + 0.1f + bob_offset, position_.z});
-    model = glm::rotate(model, rotation, {0, 1, 0});
-    model = glm::scale(model, glm::vec3{0.15f});
+    if (ItemIsSprite(item_))
+    {
+        auto player_pos = Moon::GetCurrentMoon()->GetPlayer()->GetPosition();
+        auto displacement = player_pos - position_;
+        displacement.y = 0;
+        auto forward = glm::normalize(displacement);
+        auto up = glm::vec3{0, 1, 0};
+        auto right = glm::normalize(glm::cross(up, forward));
+
+        glm::mat4 rotation = glm::mat4(
+            glm::vec4(right,   0.0f),
+            glm::vec4(up,      0.0f),
+            glm::vec4(forward, 0.0f),
+            glm::vec4(0.0f, 0.0f , 0.0f, 1.0f)
+        );
+
+        model = model * rotation;
+    }
+    else
+    {
+        float yaw = (2.0f * 3.1416f / 10.0f) * rotate_time_;
+        model = glm::rotate(model, yaw, {0, 1, 0});
+    }
+
+    model = glm::scale(model, glm::vec3{ItemIsSprite(item_) ? 0.2f : 0.15f});
 
     mesh_.Render([&](Shader *shader) {
         shader->SetMat4("u_mvp_matrix", vp_matrix * model);

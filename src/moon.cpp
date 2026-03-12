@@ -19,6 +19,8 @@
 #include "minilight.h"
 #include "input.h"
 
+#include "green_mob.h"
+
 Moon *Moon::current_moon_;
 
 Moon::Moon(int moon_id, MoonSettings moon_settings)
@@ -221,6 +223,16 @@ void Moon::Update(double delta_time)
     //
     // Per-frame updates
     //
+
+    if (Input::IsKeyPressed(GLFW_KEY_U))
+    {
+        GreenMobData data {
+            .position = selection_block_.GetAdjacentPosition(),
+            .yaw = 0,
+            .health = 20
+        };
+        entity_manager_.AddEntity(new GreenMob(data));
+    }
 
     // Non-physics updates
     entity_manager_.Update(delta_time);

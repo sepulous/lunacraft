@@ -24,6 +24,9 @@ class Entity
         glm::vec3 position_;
         glm::vec3 velocity_;
         int health_ = 100;
+        float pain_time_ = 0;
+        bool can_be_damaged_ = true;
+        bool death_animation_done_ = false;
         bool is_dead_ = false;
         bool is_on_ice_ = false;
         bool is_jumping_ = false;
@@ -65,4 +68,9 @@ class Entity
 
         void SetHealth(int health) noexcept;
         int GetHealth() noexcept;
+
+        void SetCanBeDamaged(bool value) noexcept;
+        bool CanBeDamaged() noexcept;
+
+        bool IsDeathAnimationDone() noexcept;
 };

@@ -13,8 +13,11 @@ Slug::Slug(SlugData slug_data)
     velocity_ = slug_data.initial_velocity;
     initial_velocity_ = slug_data.initial_velocity;
     time_flying_ = slug_data.time_flying;
+    damage_ = slug_data.damage;
     is_flying_ = slug_data.is_flying;
     time_stuck_ = slug_data.time_stuck;
+    can_be_damaged_ = false;
+    death_animation_done_ = true;
 
     float vertices[] = {
         // Left
@@ -121,6 +124,7 @@ SlugData Slug::GetSlugData()
         .initial_velocity = velocity_,
         .time_flying = time_flying_,
         .time_stuck = time_stuck_,
+        .damage = damage_,
         .is_flying = is_flying_
     };
 }

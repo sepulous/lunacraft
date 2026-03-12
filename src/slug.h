@@ -8,6 +8,7 @@ struct SlugData
     glm::vec3 initial_velocity;
     float time_flying = 0;
     float time_stuck = 0;
+    int damage = 20;
     bool is_flying = true;
 };
 
@@ -30,5 +31,6 @@ class Slug : public Entity
         glm::vec3 initial_velocity_;
         float time_flying_;
         float time_stuck_;
+        int damage_;
         bool is_flying_;
 };

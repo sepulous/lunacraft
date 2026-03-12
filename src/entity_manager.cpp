@@ -72,7 +72,6 @@ void EntityManager::AddEntity(Entity *entity)
 
 void EntityManager::FixedUpdate()
 {
-    // Add pending entities
     for (Entity *entity : entities_to_spawn_)
         entities_.push_back(entity);
     entities_to_spawn_.clear();
@@ -83,7 +82,7 @@ void EntityManager::FixedUpdate()
 
 void EntityManager::Update(float delta_time)
 {
-    std::erase_if(entities_, [](Entity *e) { return e->IsDead(); });
+    std::erase_if(entities_, [](Entity *e) { return e->IsDead() && e->IsDeathAnimationDone(); });
 
     for (Entity *entity : entities_)
         entity->Update(delta_time);
@@ -154,16 +153,46 @@ void EntityManager::PhysicsStep()
             Slug *slug = dynamic_cast<Slug *>(entity);
             if (slug->IsFlying())
             {
-                slug->SetPrevPosition(slug->GetPosition());
-
-                glm::vec3 next_position = slug->GetPosition() + glm::vec3{FIXED_DELTA_TIME * glm::dvec3(slug->GetVelocity())};
-                slug->SetNextPosition(next_position);
-
-                if (TestSlugWorld(next_position))
+                Entity *hit_entity = nullptr;
+                for (Entity *other : entities_)
                 {
-                    slug->SetIsFlying(false);
-                    slug->SetPrevPosition(next_position);
-                    slug->SetPosition(next_position);
+                    if (other->CanBeDamaged())
+                    {
+                        auto slug_pos = slug->GetPosition();
+                        auto &other_aabb = other->GetAABB();
+                        auto other_aabb_min = other_aabb.center - other_aabb.extents;
+                        auto other_aabb_max = other_aabb.center + other_aabb.extents;
+                        if (glm::clamp(slug_pos, other_aabb_min, other_aabb_max) == slug_pos)
+                        {
+                            hit_entity = other;
+                            break;
+                        }
+                    }
+                }
+
+                if (hit_entity != nullptr)
+                {
+                    int new_health = hit_entity->GetHealth() - slug->GetSlugData().damage;
+                    if (new_health <= 0)
+                        hit_entity->SetIsDead(true);
+                    else
+                        hit_entity->SetHealth(new_health);
+
+                    slug->SetIsDead(true);
+                }
+                else
+                {
+                    slug->SetPrevPosition(slug->GetPosition());
+
+                    glm::vec3 next_position = slug->GetPosition() + glm::vec3{FIXED_DELTA_TIME * slug->GetVelocity()};
+                    slug->SetNextPosition(next_position);
+
+                    if (TestSlugWorld(next_position))
+                    {
+                        slug->SetIsFlying(false);
+                        slug->SetPrevPosition(next_position);
+                        slug->SetPosition(next_position);
+                    }
                 }
             }
         }

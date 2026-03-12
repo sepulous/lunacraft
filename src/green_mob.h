@@ -5,7 +5,7 @@
 struct GreenMobData
 {
     glm::vec3 position;
-    float rotation; // yaw
+    float yaw;
     int health;
 };
 
@@ -24,11 +24,13 @@ class GreenMob : public Entity
 
     private:
         Mesh mesh_;
-        float rotation_;
         int health_;
-        float damage_time_ = 0;
         float next_action_time_ = 0;
         GreenMobAction action_ = GreenMobAction::NONE;
         glm::vec3 jump_vector_;
-        float rotation_angle_;
+        float time_since_death_ = 0;
+        bool dropped_biogel_ = false;
+        float target_yaw_;
+        float yaw_;
+        float roll_;
 };
