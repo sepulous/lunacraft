@@ -23,6 +23,7 @@ class Entity
         glm::vec3 next_position_;
         glm::vec3 position_;
         glm::vec3 velocity_;
+        int health_ = 100;
         bool is_dead_ = false;
         bool is_on_ice_ = false;
         bool is_jumping_ = false;
@@ -61,4 +62,7 @@ class Entity
 
         void SetGrounded(bool value) noexcept;
         bool IsGrounded() noexcept;
+
+        void SetHealth(int health) noexcept;
+        int GetHealth() noexcept;
 };

@@ -90,3 +90,13 @@ bool Entity::IsGrounded() noexcept
 {
     return is_grounded_;
 }
+
+void Entity::SetHealth(int health) noexcept
+{
+    health_ = health;
+}
+
+int Entity::GetHealth() noexcept
+{
+    return health_;
+}
