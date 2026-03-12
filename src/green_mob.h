@@ -24,7 +24,6 @@ class GreenMob : public Entity
 
     private:
         Mesh mesh_;
-        int health_;
         float next_action_time_ = 0;
         GreenMobAction action_ = GreenMobAction::NONE;
         glm::vec3 jump_vector_;
