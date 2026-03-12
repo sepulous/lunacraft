@@ -21,34 +21,34 @@ Slug::Slug(SlugData slug_data)
 
     float vertices[] = {
         // Left
-        -1.0f,  1.0f,  3.0f, 0.5f, 1.0f,
-        -1.0f,  1.0f, -3.0f, 0.5f, 0.0f,
+        -1.0f,  1.0f,  3.0f, 1.0f, 1.0f,
+        -1.0f,  1.0f, -3.0f, 1.0f, 0.0f,
         -1.0f, -1.0f, -3.0f, 0.0f, 0.0f,
         -1.0f, -1.0f, -3.0f, 0.0f, 0.0f,
         -1.0f, -1.0f,  3.0f, 0.0f, 1.0f,
-        -1.0f,  1.0f,  3.0f, 0.5f, 1.0f,
+        -1.0f,  1.0f,  3.0f, 1.0f, 1.0f,
 
         // Right
         1.0f, -1.0f, -3.0f, 0.0f, 0.0f,
-        1.0f,  1.0f, -3.0f, 0.5f, 0.0f,
-        1.0f,  1.0f,  3.0f, 0.5f, 1.0f,
-        1.0f,  1.0f,  3.0f, 0.5f, 1.0f,
+        1.0f,  1.0f, -3.0f, 1.0f, 0.0f,
+        1.0f,  1.0f,  3.0f, 1.0f, 1.0f,
+        1.0f,  1.0f,  3.0f, 1.0f, 1.0f,
         1.0f, -1.0f,  3.0f, 0.0f, 1.0f,
         1.0f, -1.0f, -3.0f, 0.0f, 0.0f,
 
         // Top
-         1.0f, 1.0f,  3.0f, 0.5f, 1.0f,
-         1.0f, 1.0f, -3.0f, 0.5f, 0.0f,
+         1.0f, 1.0f,  3.0f, 1.0f, 1.0f,
+         1.0f, 1.0f, -3.0f, 1.0f, 0.0f,
         -1.0f, 1.0f, -3.0f, 0.0f, 0.0f,
         -1.0f, 1.0f, -3.0f, 0.0f, 0.0f,
         -1.0f, 1.0f,  3.0f, 0.0f, 1.0f,
-         1.0f, 1.0f,  3.0f, 0.5f, 1.0f,
+         1.0f, 1.0f,  3.0f, 1.0f, 1.0f,
 
         // Bottom
         -1.0f, -1.0f, -3.0f, 0.0f, 0.0f,
-         1.0f, -1.0f, -3.0f, 0.5f, 0.0f,
-         1.0f, -1.0f,  3.0f, 0.5f, 1.0f,
-         1.0f, -1.0f,  3.0f, 0.5f, 1.0f,
+         1.0f, -1.0f, -3.0f, 1.0f, 0.0f,
+         1.0f, -1.0f,  3.0f, 1.0f, 1.0f,
+         1.0f, -1.0f,  3.0f, 1.0f, 1.0f,
         -1.0f, -1.0f,  3.0f, 0.0f, 1.0f,
         -1.0f, -1.0f, -3.0f, 0.0f, 0.0f,
 
@@ -110,7 +110,7 @@ void Slug::Render(const glm::mat4 &vp_matrix)
     );
 
     glm::mat4 model = glm::translate(glm::mat4{1.0f}, position_) * rotation;
-    model = glm::scale(model, glm::vec3{0.1f});
+    model = glm::scale(model, glm::vec3{0.05f});
 
     mesh_.Render([&model, &vp_matrix](Shader *shader) {
         shader->SetMat4("u_mvp_matrix", vp_matrix * model);
