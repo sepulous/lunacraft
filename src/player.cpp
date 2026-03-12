@@ -602,6 +602,37 @@ glm::vec3 Player::GetRight()
     return glm::cross(GetForward(), glm::vec3{0, 1, 0});
 }
 
+void Player::SetHealth(int health) noexcept
+{
+    if (health < health_)
+    {
+        int damage = health_ - health;
+        int divided_damage = damage / 2;
+
+        if (suit_status_ < divided_damage)
+        {
+            int leftover = divided_damage - suit_status_;
+            suit_status_ = 0;
+            health_ -= divided_damage + leftover;
+        }
+        else
+        {
+            suit_status_ -= divided_damage;
+            health_ -= damage - divided_damage;
+        }
+
+        if (health_ <= 0)
+        {
+            health_ = 0;
+            SetIsDead(true);
+        }
+    }
+    else
+    {
+        health_ = health;
+    }
+}
+
 void Player::Render(const glm::mat4 &vp_matrix)
 {
     auto inv_view = glm::inverse(camera_.GetViewMatrix()); // To do this in camera space

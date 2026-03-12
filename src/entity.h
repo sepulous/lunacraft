@@ -66,7 +66,7 @@ class Entity
         void SetGrounded(bool value) noexcept;
         bool IsGrounded() noexcept;
 
-        void SetHealth(int health) noexcept;
+        virtual void SetHealth(int health) noexcept;
         int GetHealth() noexcept;
 
         void SetCanBeDamaged(bool value) noexcept;
