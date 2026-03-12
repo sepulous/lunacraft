@@ -169,7 +169,7 @@ void EntityManager::PhysicsStep()
                         auto &other_aabb = other->GetAABB();
                         auto other_aabb_min = other_aabb.center - other_aabb.extents;
                         auto other_aabb_max = other_aabb.center + other_aabb.extents;
-                        if (glm::clamp(slug_pos, other_aabb_min, other_aabb_max) == slug_pos)
+                        if (glm::distance(glm::clamp(slug_pos, other_aabb_min, other_aabb_max), slug_pos) < 0.01f)
                         {
                             hit_entity = other;
                             break;
@@ -181,9 +181,14 @@ void EntityManager::PhysicsStep()
                 {
                     int new_health = hit_entity->GetHealth() - slug->GetSlugData().damage;
                     if (new_health <= 0)
+                    {
+                        hit_entity->SetHealth(0);
                         hit_entity->SetIsDead(true);
+                    }
                     else
+                    {
                         hit_entity->SetHealth(new_health);
+                    }
 
                     slug->SetIsDead(true);
                 }
