@@ -188,7 +188,8 @@ void EntityManager::PhysicsStep()
                 {
                     if (other->CanBeDamaged())
                     {
-                        auto slug_pos = slug->GetPosition();
+                        auto slug_offset = 0.2f * glm::normalize(slug->GetVelocity());
+                        auto slug_pos = slug->GetPosition() + slug_offset;
                         auto &other_aabb = other->GetAABB();
                         auto other_aabb_min = other_aabb.center - other_aabb.extents;
                         auto other_aabb_max = other_aabb.center + other_aabb.extents;
@@ -225,7 +226,8 @@ void EntityManager::PhysicsStep()
                     glm::vec3 next_position = slug->GetPosition() + glm::vec3{FIXED_DELTA_TIME * slug->GetVelocity()};
                     slug->SetNextPosition(next_position);
 
-                    if (TestSlugWorld(next_position))
+                    glm::vec3 offset = 0.2f * glm::normalize(slug->GetVelocity());
+                    if (TestSlugWorld(next_position + offset))
                     {
                         slug->SetIsFlying(false);
                         slug->SetPrevPosition(next_position);
