@@ -122,6 +122,7 @@ SlugData Slug::GetSlugData()
     return {
         .initial_position = position_,
         .initial_velocity = velocity_,
+        .source_id = source_id_,
         .time_flying = time_flying_,
         .time_stuck = time_stuck_,
         .damage = damage_,

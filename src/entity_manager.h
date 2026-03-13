@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <unordered_map>
 
 #include "chunk_manager.h"
 #include "entity.h"
@@ -8,8 +9,9 @@
 class EntityManager
 {
     private:
-        std::vector<Entity *> entities_;
+        std::unordered_map<size_t, Entity *> entities_;
         std::vector<Entity *> entities_to_spawn_;
+        size_t next_entity_id_ = 0;
 
     public:
         EntityManager() = default;
@@ -22,6 +24,7 @@ class EntityManager
         EntityManager &operator=(EntityManager&&) = delete;
 
         void AddEntity(Entity *entity);
+        Entity *GetEntityByID(size_t id);
         void FixedUpdate();
         void Update(float delta_time);
         void PhysicsStep();

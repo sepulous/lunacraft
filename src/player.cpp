@@ -364,11 +364,13 @@ void Player::Update(float delta_time)
                                  : selected_item == ItemID::slug_pistol_t2 ? 2  // version (v2.01) of the original game
                                  :                                           0;
 
-                Moon::GetCurrentMoon()->GetEntityManager().AddEntity(new Slug({
+                Slug *slug = new Slug({
                     .initial_position = camera_.position + offset,
                     .initial_velocity = speed * camera_.forward,
+                    .source_id = GetID(),
                     .damage = damage_param * 8 + 20
-                }));
+                });
+                Moon::GetCurrentMoon()->GetEntityManager().AddEntity(slug);
 
                 SoundSystem::Play(SoundSystem::Sound::LASER);
 

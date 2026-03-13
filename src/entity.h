@@ -16,21 +16,7 @@ enum class EntityType : uint8_t
 
 class Entity
 {
-    protected:
-        EntityType type_;
-        AABB aabb_;
-        glm::vec3 prev_position_;
-        glm::vec3 next_position_;
-        glm::vec3 position_;
-        glm::vec3 velocity_;
-        int health_ = 100;
-        float pain_time_ = 0;
-        bool can_be_damaged_ = true;
-        bool death_animation_done_ = false;
-        bool is_dead_ = false;
-        bool is_on_ice_ = false;
-        bool is_jumping_ = false;
-        bool is_grounded_ = false;
+    friend class EntityManager;
 
     public:
         virtual ~Entity() = default;
@@ -73,4 +59,24 @@ class Entity
         bool CanBeDamaged() noexcept;
 
         bool IsDeathAnimationDone() noexcept;
+
+    protected:
+        size_t id_;
+        EntityType type_;
+        AABB aabb_;
+        glm::vec3 prev_position_;
+        glm::vec3 next_position_;
+        glm::vec3 position_;
+        glm::vec3 velocity_;
+        int health_ = 100;
+        float pain_time_ = 0;
+        bool can_be_damaged_ = true;
+        bool death_animation_done_ = false;
+        bool is_dead_ = false;
+        bool is_on_ice_ = false;
+        bool is_jumping_ = false;
+        bool is_grounded_ = false;
+
+        void SetID(size_t id);
+        size_t GetID();
 };

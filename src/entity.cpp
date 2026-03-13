@@ -123,3 +123,13 @@ bool Entity::IsDeathAnimationDone() noexcept
 {
     return death_animation_done_;
 }
+
+void Entity::SetID(size_t id)
+{
+    id_ = id;
+}
+
+size_t Entity::GetID()
+{
+    return id_;
+}

@@ -11,11 +11,12 @@
 #include "moon.h"
 #include "slug.h"
 #include "green_mob.h"
+#include "brown_mob.h"
 #include "dropped_item.h"
 
 EntityManager::~EntityManager()
 {
-    for (Entity *entity : entities_)
+    for (auto [entity_id, entity] : entities_)
         delete entity;
 }
 
@@ -77,27 +78,49 @@ void EntityManager::AddEntity(Entity *entity)
     entities_to_spawn_.push_back(entity);
 }
 
+Entity *EntityManager::GetEntityByID(size_t id)
+{
+    if (!entities_.contains(id))
+        return nullptr;
+
+    return entities_.at(id);
+}
+
 void EntityManager::FixedUpdate()
 {
+    // Remove old entities
+    for (auto it = entities_.begin(); it != entities_.end(); )
+    {
+        Entity *entity = it->second;
+        if (entity->IsDead() && entity->IsDeathAnimationDone())
+            it = entities_.erase(it);
+        else
+            ++it;
+    }
+
+    // Add new entities
     for (Entity *entity : entities_to_spawn_)
-        entities_.push_back(entity);
+    {
+        entity->SetID(next_entity_id_);
+        entities_.insert({next_entity_id_, entity});
+        next_entity_id_++;
+    }
     entities_to_spawn_.clear();
 
-    for (Entity *entity : entities_)
+    // Update
+    for (auto [entity_id, entity] : entities_)
         entity->FixedUpdate();
 }
 
 void EntityManager::Update(float delta_time)
 {
-    std::erase_if(entities_, [](Entity *e) { return e->IsDead() && e->IsDeathAnimationDone(); });
-
-    for (Entity *entity : entities_)
+    for (auto [entity_id, entity] : entities_)
         entity->Update(delta_time);
 }
 
 void EntityManager::RenderEntities(const glm::mat4 &vp_matrix)
 {
-    for (Entity *entity : entities_)
+    for (auto [entity_id, entity] : entities_)
         entity->Render(vp_matrix);
 }
 
@@ -150,7 +173,7 @@ void EntityManager::PhysicsStep()
         }
     };
 
-    for (Entity *entity : entities_)
+    for (auto [entity_id, entity] : entities_)
     {
         if (entity->GetType() == EntityType::MINILIGHT)
             continue;
@@ -161,7 +184,7 @@ void EntityManager::PhysicsStep()
             if (slug->IsFlying())
             {
                 Entity *hit_entity = nullptr;
-                for (Entity *other : entities_)
+                for (auto [_, other] : entities_)
                 {
                     if (other->CanBeDamaged())
                     {
@@ -191,6 +214,9 @@ void EntityManager::PhysicsStep()
                     }
 
                     slug->SetIsDead(true);
+
+                    if (hit_entity->GetType() == EntityType::BROWN_MOB)
+                        dynamic_cast<BrownMob *>(hit_entity)->NotifyOfAttacker(slug->GetSlugData().source_id);
                 }
                 else
                 {
@@ -282,7 +308,7 @@ void EntityManager::PhysicsStep()
 
 void EntityManager::Interpolate(double interp)
 {
-    for (Entity *entity : entities_)
+    for (auto [entity_id, entity] : entities_)
     {
         entity->SetPosition(glm::mix(entity->GetPrevPosition(), entity->GetNextPosition(), interp));
         entity->GetAABB().center = entity->GetPosition();
@@ -293,7 +319,7 @@ void EntityManager::DestroyMinilightAt(glm::ivec3 voxel)
 {
     for (auto it = entities_.begin(); it != entities_.end(); ++it)
     {
-        Entity *entity = *it;
+        Entity *entity = it->second;
         if (entity->GetType() == EntityType::MINILIGHT)
         {
             Minilight *minilight = dynamic_cast<Minilight *>(entity);
@@ -362,7 +388,7 @@ void EntityManager::UnloadChunkEntities(glm::ivec3 chunk_coords)
         std::filesystem::create_directory(entity_folder);
 
     bool chunk_has_entities = false;
-    for (auto entity : entities_)
+    for (auto [entity_id, entity] : entities_)
     {
         auto entity_chunk_coords = VoxelToChunk(GetNearestVoxel(entity->GetPosition()));
         if (entity->GetType() != EntityType::PLAYER && entity_chunk_coords == chunk_coords)
@@ -379,7 +405,7 @@ void EntityManager::UnloadChunkEntities(glm::ivec3 chunk_coords)
         
         for (auto it = entities_.begin(); it != entities_.end(); )
         {
-            auto entity = *it;
+            auto entity = it->second;
             EntityType type = entity->GetType();
             if (type == EntityType::PLAYER)
             {
@@ -434,7 +460,7 @@ void EntityManager::SaveAllEntities()
         std::filesystem::create_directory(entity_folder);
 
     std::unordered_map<uint64_t, std::vector<Entity *>> entity_chunk_map;
-    for (Entity *entity : entities_)
+    for (auto [entity_id, entity] : entities_)
     {
         if (entity->GetType() == EntityType::PLAYER)
             continue;

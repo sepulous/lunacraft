@@ -6,6 +6,7 @@ struct SlugData
 {
     glm::vec3 initial_position;
     glm::vec3 initial_velocity;
+    size_t source_id;
     float time_flying = 0;
     float time_stuck = 0;
     int damage = 20;
@@ -21,7 +22,6 @@ class Slug : public Entity
         void Render(const glm::mat4 &vp_matrix) override;
 
         SlugData GetSlugData();
-
         void SetIsFlying(bool value);
         bool IsFlying();
 
@@ -29,6 +29,7 @@ class Slug : public Entity
         Mesh mesh_;
         glm::vec3 initial_position_;
         glm::vec3 initial_velocity_;
+        size_t source_id_ = 0;
         float time_flying_;
         float time_stuck_;
         int damage_;

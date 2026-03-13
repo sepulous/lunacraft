@@ -70,6 +70,7 @@ add_executable(Lunacraft
     src/minilight.cpp
     src/slug.cpp
     src/green_mob.cpp
+    src/brown_mob.cpp
 
     third_party/stb_image/stb_image/stb_image.cpp
     third_party/stb_truetype/stb_truetype/stb_truetype.cpp
