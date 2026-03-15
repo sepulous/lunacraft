@@ -83,15 +83,6 @@ void BrownMob::Update(float delta_time)
     if (IsDead())
         time_since_death_ += delta_time;
 
-    // if (aggressive_)
-    // {
-    //     time_chasing_ += delta_time;
-    // }
-    // else
-    // {
-    //     time_chasing_ = 0;
-    // }
-
     if (pain_time_ != 0)
     {
         pain_time_ -= delta_time;
@@ -117,7 +108,7 @@ void BrownMob::Update(float delta_time)
                     auto yaw_rotation = glm::mat3{glm::rotate(glm::mat4{1.0f}, glm::radians(yaw_), {0, 1, 0})};
                     glm::vec3 forward = yaw_rotation * glm::vec3{0.0f, 0.0f, 1.0f};
                     jump_vector_ = RNG{}.Range(2.0f, 8.0f) * forward
-                                + RNG{}.Range(2.0f, 8.0f) * glm::vec3{0, 1, 0};
+                                + RNG{}.Range(6.0f, 16.0f) * glm::vec3{0, 1, 0};
                 }
             }
             else
