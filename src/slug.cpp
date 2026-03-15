@@ -91,7 +91,7 @@ void Slug::FixedUpdate()
     {
         velocity_ = {
             initial_velocity_.x,
-            initial_velocity_.y - GRAVITY * time_flying_,
+            initial_velocity_.y - PLAYER_GRAVITY * time_flying_,
             initial_velocity_.z
         };
     }

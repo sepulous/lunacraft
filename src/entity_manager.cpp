@@ -243,7 +243,10 @@ void EntityManager::PhysicsStep()
 
             // Gravity
             if (!entity->IsGrounded())
-                entity->SetVelocity(entity->GetVelocity() - glm::vec3(0, GRAVITY * FIXED_DELTA_TIME, 0));
+            {
+                float gravity = entity->GetType() == EntityType::PLAYER ? PLAYER_GRAVITY : MOB_GRAVITY;
+                entity->SetVelocity(entity->GetVelocity() - glm::vec3(0, gravity * FIXED_DELTA_TIME, 0));
+            }
 
             // X
             next_position.x += entity->GetVelocity().x * FIXED_DELTA_TIME;
