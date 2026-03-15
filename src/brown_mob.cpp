@@ -83,6 +83,15 @@ void BrownMob::Update(float delta_time)
     if (IsDead())
         time_since_death_ += delta_time;
 
+    // if (aggressive_)
+    // {
+    //     time_chasing_ += delta_time;
+    // }
+    // else
+    // {
+    //     time_chasing_ = 0;
+    // }
+
     if (pain_time_ != 0)
     {
         pain_time_ -= delta_time;
@@ -94,15 +103,22 @@ void BrownMob::Update(float delta_time)
     {
         if (next_action_time_ <= 0)
         {
-            next_action_time_ = RNG{}.Range(1.0f, 5.0f);
+            next_action_time_ = RNG{}.Range(1.0f, 3.0f);
             if (RNG{}.Range(0, 1) == 0)
             {
                 action_ = BrownMobAction::JUMP;
 
-                auto yaw_rotation = glm::mat3{glm::rotate(glm::mat4{1.0f}, glm::radians(yaw_), {0, 1, 0})};
-                glm::vec3 forward = yaw_rotation * glm::vec3{0.0f, 0.0f, 1.0f};
-                jump_vector_ = RNG{}.Range(0.0f, 6.0f) * forward
-                             + RNG{}.Range(1.0f, 6.0f) * glm::vec3{0, 1, 0};
+                if (RNG{}.Range(0, 2) == 0) // Hop
+                {
+                    jump_vector_ = RNG{}.Range(1.0f, 4.0f) * glm::vec3{0, 1, 0};
+                }
+                else // Jump forward
+                {
+                    auto yaw_rotation = glm::mat3{glm::rotate(glm::mat4{1.0f}, glm::radians(yaw_), {0, 1, 0})};
+                    glm::vec3 forward = yaw_rotation * glm::vec3{0.0f, 0.0f, 1.0f};
+                    jump_vector_ = RNG{}.Range(2.0f, 8.0f) * forward
+                                + RNG{}.Range(2.0f, 8.0f) * glm::vec3{0, 1, 0};
+                }
             }
             else
             {
@@ -133,15 +149,46 @@ void BrownMob::FixedUpdate()
         if (target != nullptr)
         {
             auto displacement = target->GetPosition() - position_;
-            displacement.y = 0;
-            displacement = glm::normalize(displacement);
+            auto horizontal_displacement = glm::vec3{displacement.x, 0, displacement.z};
+            float horizontal_distance = glm::length(horizontal_displacement);
 
-            velocity_.x = 2.0f * displacement.x;
-            velocity_.z = 2.0f * displacement.z;
+            // if (glm::length(displacement) < 0.8f)
+            // {
+            //     target->SetHealth(target->GetHealth() - 25);
+            //     Moon::GetCurrentMoon()->BrownMobExplode(position_);
+            //     SetIsDead(true);
+            //     return;
+            // }
 
-            yaw_ = glm::degrees(glm::acos(displacement.z));
-            if (displacement.x < 0)
+            yaw_ = glm::degrees(glm::acos(glm::normalize(horizontal_displacement).z));
+            if (horizontal_displacement.x < 0)
                 yaw_ *= -1;
+               
+            if (horizontal_distance > 0.1f && !has_inertia_)
+            {
+                time_chasing_ += FIXED_DELTA_TIME;
+                float t = time_chasing_ / 3.0f;
+                float chaseSpeed = glm::clamp(glm::mix(0.0f, 12.0f, t), 0.0f, 12.0f);
+                chase_speed_before_inertia_ = chaseSpeed;
+                float tangent = 0.2f * glm::sin(0.5f * time_chasing_) * glm::clamp(horizontal_distance, 0.0f, 6.0f);
+                glm::vec3 rightVector = glm::normalize(glm::cross(horizontal_displacement, {0, 1, 0}));
+                velocity_ = glm::normalize(horizontal_displacement - tangent * rightVector) * chaseSpeed;
+            }
+            else if (time_chasing_ > 0 && glm::length(velocity_) > 0.5f) // Inertia
+            {
+                time_chasing_ -= FIXED_DELTA_TIME;
+                float t = time_chasing_ / 3.0f;
+                float chaseSpeed = glm::clamp(glm::mix(0.0f, chase_speed_before_inertia_, t), 0.0f, chase_speed_before_inertia_);
+                velocity_ = glm::normalize(velocity_) * chaseSpeed;
+
+                has_inertia_ = chaseSpeed > 0.5f;
+                if (!has_inertia_)
+                    time_chasing_ = 0;
+            }
+            else
+            {
+                has_inertia_ = false;
+            }
         }
         else
         {

@@ -30,7 +30,10 @@ class BrownMob : public Entity
         glm::vec3 jump_vector_;
         size_t attacker_id_;
         float time_since_death_ = 0;
+        float time_chasing_ = 0;
+        float chase_speed_before_inertia_ = 0;
         float target_yaw_;
         float yaw_;
         bool aggressive_ = false;
+        bool has_inertia_ = false;
 };
