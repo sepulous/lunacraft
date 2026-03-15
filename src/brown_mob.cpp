@@ -172,14 +172,17 @@ void BrownMob::FixedUpdate()
                 chase_speed_before_inertia_ = chaseSpeed;
                 float tangent = 0.2f * glm::sin(0.5f * time_chasing_) * glm::clamp(horizontal_distance, 0.0f, 6.0f);
                 glm::vec3 rightVector = glm::normalize(glm::cross(horizontal_displacement, {0, 1, 0}));
-                velocity_ = glm::normalize(horizontal_displacement - tangent * rightVector) * chaseSpeed;
+                glm::vec3 chase_velocity = glm::normalize(horizontal_displacement - tangent * rightVector) * chaseSpeed;
+                velocity_.x = chase_velocity.x;
+                velocity_.z = chase_velocity.z;
             }
             else if (time_chasing_ > 0 && glm::length(velocity_) > 0.5f) // Inertia
             {
                 time_chasing_ -= FIXED_DELTA_TIME;
                 float t = time_chasing_ / 3.0f;
                 float chaseSpeed = glm::clamp(glm::mix(0.0f, chase_speed_before_inertia_, t), 0.0f, chase_speed_before_inertia_);
-                velocity_ = glm::normalize(velocity_) * chaseSpeed;
+                velocity_.x = glm::normalize(velocity_).x * chaseSpeed;
+                velocity_.z = glm::normalize(velocity_).z * chaseSpeed;
 
                 has_inertia_ = chaseSpeed > 0.5f;
                 if (!has_inertia_)
