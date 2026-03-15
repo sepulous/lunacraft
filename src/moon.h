@@ -59,6 +59,8 @@ class Moon
         void Update(double delta_time);
         void Render(const glm::mat4 &projection);
 
+        void BrownMobExplode(glm::vec3 position);
+
         static Moon *GetCurrentMoon();
 
     private:
@@ -73,6 +75,7 @@ class Moon
         double accumulator_ = 0;
         bool skybox_reversed_ = false;
         float skybox_phase_ = LIGHT_CYCLE_OMEGA * SECONDS_PER_LIGHT_PHASE;
+        std::vector<glm::ivec3> brown_mob_explosions;
         glm::vec4 base_fog_color_; // This doesn't change for a given moon. Use GetFogColor() to get the correct color.
         Player *player_; // Avoids destructor call so EntityManager can destroy player
         SelectionBlock selection_block_;

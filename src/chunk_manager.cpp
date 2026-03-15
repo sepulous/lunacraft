@@ -14,6 +14,9 @@
 #include "storage.h"
 #include "options.h"
 #include "moon.h"
+#include "rng.h"
+#include "alchemy.h"
+#include "dropped_item.h"
 
 //
 // Chunk tasks
@@ -247,6 +250,105 @@ void ChunkManager::HandlePlayerModification(glm::ivec3 voxel, BlockID block_plac
                 }
             });
         }
+    }
+}
+
+void ChunkManager::HandleBrownMobExplosion(glm::ivec3 explosion_center)
+{
+    // Determine which voxels to destroy
+    std::vector<glm::ivec3> to_destroy;
+    to_destroy.reserve(256);
+    for (int dx = -3; dx <= 3; dx++)
+    {
+        for (int dz = -3; dz <= 3; dz++)
+        {
+            for (int dy = -3; dy <= 3; dy++)
+            {
+                glm::ivec3 voxel = explosion_center + glm::ivec3{dx, dy, dz};
+                float distance_from_center = glm::length(glm::vec3{voxel} - glm::vec3{explosion_center});
+                if (distance_from_center <= 3.0f || RNG{}.Range(1, 10) <= 8)
+                    to_destroy.push_back(voxel);
+            }
+        }
+    }
+
+    // Break and convert (alchemy) blocks, and record which chunks need to be updated
+    std::vector<glm::ivec3> chunks_affected;
+    for (auto &voxel : to_destroy)
+    {
+        glm::ivec3 affected_coords[] = {
+            VoxelToChunk(voxel),
+            VoxelToChunk(voxel + glm::ivec3{ 1, 0,  0}),
+            VoxelToChunk(voxel + glm::ivec3{-1, 0,  0}),
+            VoxelToChunk(voxel + glm::ivec3{ 0, 0,  1}),
+            VoxelToChunk(voxel + glm::ivec3{ 0, 0, -1}),
+        };
+
+        // Record affected chunks
+        for (auto &coords : affected_coords)
+        {
+            auto chunk_id = ChunkCoordsToID(coords);
+            if (!chunks_.contains(chunk_id))
+                continue;
+
+            bool already_included = false;
+            for (auto &recorded : chunks_affected)
+            {
+                if (recorded == coords)
+                {
+                    already_included = true;
+                    break;
+                }
+            }
+
+            if (!already_included)
+                chunks_affected.push_back(coords);
+        }
+
+        // Break/convert voxel
+        auto chunk = chunks_.at(ChunkCoordsToID(VoxelToChunk(voxel)));
+        BlockID &block = chunk->GetBlocks()[GetChunkIndex(GlobalToLocalVoxel(voxel))];
+        if (block != BlockID::air)
+        {
+            BlockID block_to_drop;
+            if (block == BlockID::topsoil)
+                block_to_drop = BlockID::dirt;
+            else if (RNG{}.Range(1, 5) == 1) // 20% chance of alchemy
+                block_to_drop = GetAlchemyProduct(block);
+            else
+                block_to_drop = block;
+
+            block = BlockID::air;
+
+            DroppedItem *item = new DroppedItem({
+                .position = glm::vec3{voxel},
+                .item = BlockIDToItemID(block_to_drop),
+                .amount = 1
+            });
+            item->SetVelocity({
+                RNG{}.Range(-1.0f, 1.0f),
+                RNG{}.Range(0.5f, 1.0f),
+                RNG{}.Range(-1.0f, 1.0f)
+            });
+            Moon::GetCurrentMoon()->GetEntityManager().AddEntity(item);
+        }
+    }
+
+    // Update chunks
+    for (auto &chunk_coords : chunks_affected)
+    {
+        auto chunk = chunks_.at(ChunkCoordsToID(chunk_coords));
+        chunk->PinNeighbors();
+        job_queue_.push({
+            .chunk = chunk,
+            .requires_neighbors = true,
+            .tasks = {
+                ChunkTask::BUILD_LIGHTMAP_INTERNAL,
+                ChunkTask::BUILD_LIGHTMAP_EXTERNAL,
+                ChunkTask::BUILD_VERTICES,
+                ChunkTask::MARK_AS_CLEAN
+            }
+        });
     }
 }
 

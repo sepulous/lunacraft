@@ -152,13 +152,13 @@ void BrownMob::FixedUpdate()
             auto horizontal_displacement = glm::vec3{displacement.x, 0, displacement.z};
             float horizontal_distance = glm::length(horizontal_displacement);
 
-            // if (glm::length(displacement) < 0.8f)
-            // {
-            //     target->SetHealth(target->GetHealth() - 25);
-            //     Moon::GetCurrentMoon()->BrownMobExplode(position_);
-            //     SetIsDead(true);
-            //     return;
-            // }
+            if (glm::length(displacement) < 0.8f)
+            {
+                target->SetHealth(target->GetHealth() - 25);
+                Moon::GetCurrentMoon()->BrownMobExplode(position_);
+                SetIsDead(true);
+                return;
+            }
 
             yaw_ = glm::degrees(glm::acos(glm::normalize(horizontal_displacement).z));
             if (horizontal_displacement.x < 0)

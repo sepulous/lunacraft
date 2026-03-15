@@ -19,8 +19,6 @@
 #include "minilight.h"
 #include "input.h"
 
-#include "green_mob.h"
-
 Moon *Moon::current_moon_;
 
 Moon::Moon(int moon_id, MoonSettings moon_settings)
@@ -224,16 +222,6 @@ void Moon::Update(double delta_time)
     // Per-frame updates
     //
 
-    if (Input::IsKeyPressed(GLFW_KEY_U))
-    {
-        GreenMobData data {
-            .position = selection_block_.GetAdjacentPosition(),
-            .yaw = 0,
-            .health = 20
-        };
-        entity_manager_.AddEntity(new GreenMob(data));
-    }
-
     // Non-physics updates
     entity_manager_.Update(delta_time);
 
@@ -305,6 +293,14 @@ void Moon::Update(double delta_time)
         }
     }
 
+    // Handle brown mob explosions
+    if (!brown_mob_explosions.empty())
+    {
+        auto voxel = brown_mob_explosions.back();
+        brown_mob_explosions.pop_back();
+        chunk_manager_.HandleBrownMobExplosion(voxel);
+    }
+
     // Update lighting
     int light_phase = GetLightPhase(); 
     if (light_phase != current_light_phase_)
@@ -367,6 +363,11 @@ void Moon::Render(const glm::mat4 &projection)
     view_projection = projection * view;
     skybox_.Update(view_projection, GetSkyboxAngle());
     skybox_.Render();
+}
+
+void Moon::BrownMobExplode(glm::vec3 position)
+{
+    brown_mob_explosions.push_back(GetNearestVoxel(position) - glm::ivec3{0, 2, 0});
 }
 
 void Moon::UpdateSelectionBlock(float delta_time)
