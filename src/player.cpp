@@ -414,11 +414,16 @@ void Player::Update(float delta_time)
     }
 
     // Walking (bob animations)
+    const float bob_delay = 0.2f;
     if (glm::length(input_direction_) > 0 && is_grounded_)
     {
         time_walking_ += delta_time;
-        arm_bob_ = 0.01f * glm::pow(glm::sin(5.0f * time_walking_), 2);
-        camera_bob_ = 0.04f * glm::sin(10.0f * time_walking_ + 3.1415f);
+
+        if (time_walking_ > bob_delay) // Shouldn't bob for small movements (looks weird)
+        {
+            arm_bob_ = 0.01f * glm::pow(glm::sin(5.0f * (time_walking_ - bob_delay)), 2);
+            camera_bob_ = 0.04f * glm::sin(10.0f * (time_walking_ - bob_delay) + 3.1415f);
+        }
     }
     else if (time_walking_ != 0)
     {
@@ -431,8 +436,8 @@ void Player::Update(float delta_time)
         else
         {
             time_walking_ += delta_time;
-            arm_bob_ = 0.01f * glm::pow(glm::sin(5.0f * time_walking_), 2);
-            camera_bob_ = 0.04f * glm::sin(10.0f * time_walking_ + 3.1415f);
+            arm_bob_ = 0.01f * glm::pow(glm::sin(5.0f * (time_walking_ - bob_delay)), 2);
+            camera_bob_ = 0.04f * glm::sin(10.0f * (time_walking_ - bob_delay) + 3.1415f);
         }
     }
 
