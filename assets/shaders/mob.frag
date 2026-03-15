@@ -18,5 +18,5 @@ void main()
     float fog_factor = clamp(exp(-0.1 * view_distance), 0, 1);
     vec4 tex_with_fog = tex_color + u_fog_color.a * (u_fog_color - tex_color) * (1.0 - fog_factor);
 
-    out_color = vec4(mix(tex_with_fog.rgb, u_color.rgb, u_color.a), 1.0);
+    out_color = vec4(mix(tex_with_fog.rgb, u_color.rgb, u_color.a), tex_with_fog.a);
 }
