@@ -130,7 +130,7 @@ void DroppedItem::FixedUpdate()
     else if (is_grounded_)
         velocity_ = glm::vec3{0, velocity_.y, 0};
 
-    if (distance < 0.5f)
+    if (distance < 0.8f)
     {
         SetIsDead(true);
         player_inventory.Add({item_, amount_});
