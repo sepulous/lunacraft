@@ -10,7 +10,7 @@
 
 #include "options.h"
 
-#define ACTIVE_SOUND_LIMIT 1024
+#define ACTIVE_SOUND_LIMIT 128
 
 struct ActiveSound;
 
@@ -46,15 +46,14 @@ class SoundSystem
         static void Init();
         static void Exit();
         static void Update(Options options);
-        static void Play(Sound sound);
-        static void PlayAt(Sound sound, glm::vec3 position);
-        static ActiveSound *PlayLooped(Sound sound);
-        static ActiveSound *PlayLoopedAt(Sound sound, glm::vec3 position);
+        static ActiveSound *Play(Sound sound, bool loop = false);
+        static ActiveSound *PlayAt(Sound sound, glm::vec3 position, bool loop = false);
+        static void Stop(ActiveSound *active_sound);
         static void SetPlayerPosition(glm::vec3 position);
         static void SetPlayerOrientation(glm::vec3 forward, glm::vec3 up);
 
     private:
-        static std::vector<ActiveSound> active_sounds_;
+        static std::vector<ActiveSound *> active_sounds_;
         static std::unordered_map<Sound, Soundlib::Sound> sound_map_;
         static float sfx_volume_;
         static float music_volume_;
@@ -62,7 +61,16 @@ class SoundSystem
 
 struct ActiveSound
 {
-    Soundlib::SoundSource *source;
-    SoundSystem::Sound sound_id;
-    bool is_global;
+    friend class SoundSystem;
+
+    public:
+        ActiveSound(Soundlib::SoundSource* source, SoundSystem::Sound sound, bool is_global)
+        : source(source),
+          sound_id(sound),
+          is_global(is_global) {}
+    
+    private:
+        Soundlib::SoundSource *source;
+        SoundSystem::Sound sound_id;
+        bool is_global;
 };

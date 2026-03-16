@@ -7,7 +7,7 @@
 
 using Sound = SoundSystem::Sound;
 
-std::vector<ActiveSound> SoundSystem::active_sounds_;
+std::vector<ActiveSound *> SoundSystem::active_sounds_;
 std::unordered_map<Sound, Soundlib::Sound> SoundSystem::sound_map_;
 float SoundSystem::sfx_volume_;
 float SoundSystem::music_volume_;
@@ -43,7 +43,7 @@ void SoundSystem::Init()
 void SoundSystem::Exit()
 {
     for (auto &active_sound : active_sounds_)
-        active_sound.source->Stop();
+        active_sound->source->Stop();
     active_sounds_.clear();
 
     Soundlib::Exit();
@@ -56,96 +56,74 @@ void SoundSystem::Update(Options options)
 
     for (auto it = active_sounds_.begin(); it != active_sounds_.end(); )
     {
-        auto &active_sound = *it;
+        auto active_sound = *it;
 
-        if (active_sound.source->GetState() == Soundlib::SourceState::STOPPED) // Remove finished sounds
+        if (active_sound->source->GetState() == Soundlib::SourceState::STOPPED) // Remove finished sounds
         {
-            delete it->source;
+            delete active_sound->source;
             it = active_sounds_.erase(it);
         }
         else
         {
             // Update volumes
-            if (active_sound.sound_id <= Sound::SONG_5)
-                active_sound.source->SetGain(music_volume_);
+            if (active_sound->sound_id <= Sound::SONG_5)
+                active_sound->source->SetGain(music_volume_);
             else
-                active_sound.source->SetGain(sfx_volume_);
+                active_sound->source->SetGain(sfx_volume_);
 
             // Update positions of global sounds
-            if (active_sound.is_global)
-                active_sound.source->SetPosition(Soundlib::GetListenerPosition());
+            if (active_sound->is_global)
+                active_sound->source->SetPosition(Soundlib::GetListenerPosition());
 
             ++it;
         }
     }
 }
 
-// Plays global Soundlib::Sound (without distance attenuation)
-void SoundSystem::Play(Sound sound)
-{
-    if (active_sounds_.size() == ACTIVE_SOUND_LIMIT)
-        return;
-
-    auto source = new Soundlib::SoundSource(sound_map_[sound]);
-    source->SetPosition(Soundlib::GetListenerPosition());
-    source->SetRolloffFactor(0);
-    if (sound <= Sound::SONG_5)
-        source->SetGain(music_volume_);
-    else
-        source->SetGain(sfx_volume_);
-    source->Play();
-    active_sounds_.emplace_back(source, sound, true);
-}
-
-// Plays positioned Soundlib::Sound (with distance attenuation)
-void SoundSystem::PlayAt(Sound sound, glm::vec3 position)
-{
-    if (active_sounds_.size() == ACTIVE_SOUND_LIMIT)
-        return;
-
-    auto source = new Soundlib::SoundSource(sound_map_[sound]);
-    source->SetPosition({position.x, position.y, position.z});
-    if (sound <= Sound::SONG_5)
-        source->SetGain(music_volume_);
-    else
-        source->SetGain(sfx_volume_);
-    source->Play();
-    active_sounds_.emplace_back(source, sound, false);
-}
-
-ActiveSound *SoundSystem::PlayLooped(Sound sound)
+// Play global sound
+ActiveSound *SoundSystem::Play(Sound sound, bool loop)
 {
     if (active_sounds_.size() == ACTIVE_SOUND_LIMIT)
         return nullptr;
 
     auto source = new Soundlib::SoundSource(sound_map_[sound]);
-    source->SetLooping(true);
     source->SetPosition(Soundlib::GetListenerPosition());
     source->SetRolloffFactor(0);
+    source->SetLooping(loop);
     if (sound <= Sound::SONG_5)
         source->SetGain(music_volume_);
     else
         source->SetGain(sfx_volume_);
     source->Play();
-    auto &active_sound = active_sounds_.emplace_back(source, sound, true);
-    return &active_sound;
+
+    auto active_sound = new ActiveSound{source, sound, true};
+    active_sounds_.push_back(active_sound);
+    return active_sound;
 }
 
-ActiveSound *SoundSystem::PlayLoopedAt(Sound sound, glm::vec3 position)
+// Play positioned sound
+ActiveSound *SoundSystem::PlayAt(Sound sound, glm::vec3 position, bool loop)
 {
     if (active_sounds_.size() == ACTIVE_SOUND_LIMIT)
         return nullptr;
 
     auto source = new Soundlib::SoundSource(sound_map_[sound]);
-    source->SetLooping(true);
     source->SetPosition({position.x, position.y, position.z});
+    source->SetLooping(loop);
     if (sound <= Sound::SONG_5)
         source->SetGain(music_volume_);
     else
         source->SetGain(sfx_volume_);
     source->Play();
-    auto &active_sound = active_sounds_.emplace_back(source, sound, false);
-    return &active_sound;
+    
+    auto active_sound = new ActiveSound{source, sound, true};
+    active_sounds_.push_back(active_sound);
+    return active_sound;
+}
+
+void SoundSystem::Stop(ActiveSound *active_sound)
+{
+    active_sound->source->Stop();
 }
 
 void SoundSystem::SetPlayerPosition(glm::vec3 position)

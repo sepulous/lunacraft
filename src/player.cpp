@@ -237,8 +237,8 @@ void Player::Update(float delta_time)
             {
                 is_flying_ = true;
 
-                if (jetpack_sound_ == nullptr)
-                    jetpack_sound_ = SoundSystem::PlayLooped(SoundSystem::Sound::JETPACK);
+                if (!jetpack_sound_)
+                    jetpack_sound_ = SoundSystem::Play(SoundSystem::Sound::JETPACK, true);
             }
         }
         else if (Input::IsKeyReleased(GLFW_KEY_SPACE) || jetpack_energy_ < 1)
@@ -246,9 +246,9 @@ void Player::Update(float delta_time)
             time_since_started_flying_ = 0;
             is_flying_ = false;
 
-            if (jetpack_sound_ != nullptr)
+            if (jetpack_sound_)
             {
-                jetpack_sound_->source->Stop();
+                SoundSystem::Stop(jetpack_sound_);
                 jetpack_sound_ = nullptr;
             }
         }
@@ -280,12 +280,12 @@ void Player::Update(float delta_time)
         {
             if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT))
             {
-                if (drill_sound_ == nullptr)
+                if (!drill_sound_)
                 {
                     if (selected_item == ItemID::drill_t3)
-                        drill_sound_ = SoundSystem::PlayLooped(SoundSystem::Sound::DRILL3);
+                        drill_sound_ = SoundSystem::Play(SoundSystem::Sound::DRILL3, true);
                     else
-                        drill_sound_ = SoundSystem::PlayLooped(SoundSystem::Sound::DRILL);
+                        drill_sound_ = SoundSystem::Play(SoundSystem::Sound::DRILL, true);
                 }
             }
             else if (Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_LEFT))
@@ -302,9 +302,9 @@ void Player::Update(float delta_time)
             }
             else if (Input::IsMouseButtonReleased(GLFW_MOUSE_BUTTON_LEFT) || time_drilling_ != 0)
             {
-                if (drill_sound_ != nullptr)
+                if (drill_sound_)
                 {
-                    drill_sound_->source->Stop();
+                    SoundSystem::Stop(drill_sound_);
                     drill_sound_ = nullptr;
                 }
 
@@ -332,6 +332,11 @@ void Player::Update(float delta_time)
                     drill_bit_extent_ = glm::clamp(drill_bit_extent_ - 0.2f * time_drilling_, 0.0f, 0.2f);
                 }
             }
+        }
+        else if (drill_sound_)
+        {
+            SoundSystem::Stop(drill_sound_);
+            drill_sound_ = nullptr;
         }
 
         // Pistol
