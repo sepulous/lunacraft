@@ -27,52 +27,60 @@ Chunk::Chunk(glm::ivec3 coords, bool is_border_chunk, ChunkManager *chunk_manage
     chunk_manager_ = chunk_manager;
 
     // Opaques
-    glGenVertexArrays(1, &opaque_vao_);
-    glBindVertexArray(opaque_vao_);
+    glGenVertexArrays(2, opaque_vaos_);
+    glGenBuffers(2, opaque_vbos_);
+    glGenBuffers(2, opaque_ebos_);
+    for (int i = 0; i < 2; i++)
+    {
+        glBindVertexArray(opaque_vaos_[i]);
+        glBindBuffer(GL_ARRAY_BUFFER, opaque_vbos_[i]);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, opaque_ebos_[i]);
 
-    glGenBuffers(1, &opaque_vbo_);
-    glBindBuffer(GL_ARRAY_BUFFER, opaque_vbo_);
-
-    glGenBuffers(1, &opaque_ebo_);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, opaque_ebo_);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 12 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 12 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 12 * sizeof(float), (void*)(7 * sizeof(float)));
-    glEnableVertexAttribArray(2);
-    glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, 12 * sizeof(float), (void*)(10 * sizeof(float)));
-    glEnableVertexAttribArray(3);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 12 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 12 * sizeof(float), (void*)(3 * sizeof(float)));
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 12 * sizeof(float), (void*)(7 * sizeof(float)));
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, 12 * sizeof(float), (void*)(10 * sizeof(float)));
+        glEnableVertexAttribArray(3);
+    }
     
     // Transparents
-    glGenVertexArrays(1, &transparent_vao_);
-    glBindVertexArray(transparent_vao_);
+    glGenVertexArrays(2, transparent_vaos_);
+    glGenBuffers(2, transparent_vbos_);
+    glGenBuffers(2, transparent_ebos_);
+    for (int i = 0; i < 2; i++)
+    {
+        glBindVertexArray(transparent_vaos_[i]);
+        glBindBuffer(GL_ARRAY_BUFFER, transparent_vbos_[i]);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, transparent_ebos_[i]);
 
-    glGenBuffers(1, &transparent_vbo_);
-    glBindBuffer(GL_ARRAY_BUFFER, transparent_vbo_);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 12 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 12 * sizeof(float), (void*)(3 * sizeof(float)));
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 12 * sizeof(float), (void*)(7 * sizeof(float)));
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, 12 * sizeof(float), (void*)(10 * sizeof(float)));
+        glEnableVertexAttribArray(3);
+    }
 
-    glGenBuffers(1, &transparent_ebo_);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, transparent_ebo_);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 12 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 12 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 12 * sizeof(float), (void*)(7 * sizeof(float)));
-    glEnableVertexAttribArray(2);
-    glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, 12 * sizeof(float), (void*)(10 * sizeof(float)));
-    glEnableVertexAttribArray(3);
+    for (int i = 0; i < 2; i++)
+    {
+        opaque_counts_[i] = 0;
+        transparent_counts_[i] = 0;
+    }
 }
 
 Chunk::~Chunk()
 {
-    glDeleteVertexArrays(1, &opaque_vao_);
-    glDeleteVertexArrays(1, &transparent_vao_);
-    glDeleteBuffers(1, &opaque_vbo_);
-    glDeleteBuffers(1, &transparent_vbo_);
-    glDeleteBuffers(1, &opaque_ebo_);
-    glDeleteBuffers(1, &transparent_ebo_);
+    glDeleteVertexArrays(2, opaque_vaos_);
+    glDeleteBuffers(2, opaque_vbos_);
+    glDeleteBuffers(2, opaque_ebos_);
+    glDeleteVertexArrays(2, transparent_vaos_);
+    glDeleteBuffers(2, transparent_vbos_);
+    glDeleteBuffers(2, transparent_ebos_);
 }
 
 ChunkState Chunk::GetState()
@@ -186,10 +194,12 @@ bool Chunk::IsDirty()
 //
 void Chunk::UploadVertices()
 {
+    auto write_idx = gl_index_ ^ 1;
+
     // Opaques
-    glBindBuffer(GL_ARRAY_BUFFER, opaque_vbo_);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, opaque_ebo_);
-    if (opaque_vertices_.size() <= reserved_opaque_vertex_count_)
+    glBindBuffer(GL_ARRAY_BUFFER, opaque_vbos_[write_idx]);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, opaque_ebos_[write_idx]);
+    if (opaque_vertices_.size() <= opaque_counts_[write_idx])
     {
         glBufferSubData(GL_ARRAY_BUFFER, 0, opaque_vertices_.size() * sizeof(BlockVertex), opaque_vertices_.data());
         glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, opaque_indices_.size() * sizeof(uint16_t), opaque_indices_.data());
@@ -198,13 +208,13 @@ void Chunk::UploadVertices()
     {
         glBufferData(GL_ARRAY_BUFFER, opaque_vertices_.size() * sizeof(BlockVertex), opaque_vertices_.data(), GL_STATIC_DRAW);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, opaque_indices_.size() * sizeof(uint16_t), opaque_indices_.data(), GL_STATIC_DRAW);
-        reserved_opaque_vertex_count_ = opaque_vertices_.size();
+        opaque_counts_[write_idx] = opaque_vertices_.size();
     }
 
     // Transparents
-    glBindBuffer(GL_ARRAY_BUFFER, transparent_vbo_);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, transparent_ebo_);
-    if (transparent_vertices_.size() <= reserved_transparent_vertex_count_)
+    glBindBuffer(GL_ARRAY_BUFFER, transparent_vbos_[write_idx]);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, transparent_ebos_[write_idx]);
+    if (transparent_vertices_.size() <= transparent_counts_[write_idx])
     {
         glBufferSubData(GL_ARRAY_BUFFER, 0, transparent_vertices_.size() * sizeof(BlockVertex), transparent_vertices_.data());
         glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, transparent_indices_.size() * sizeof(uint16_t), transparent_indices_.data());
@@ -213,11 +223,13 @@ void Chunk::UploadVertices()
     {
         glBufferData(GL_ARRAY_BUFFER, transparent_vertices_.size() * sizeof(BlockVertex), transparent_vertices_.data(), GL_STATIC_DRAW);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, transparent_indices_.size() * sizeof(uint16_t), transparent_indices_.data(), GL_STATIC_DRAW);
-        reserved_transparent_vertex_count_ = transparent_vertices_.size();
+        transparent_counts_[write_idx] = transparent_vertices_.size();
     }
 
+    // Swap buffers
+    gl_index_ ^= 1;
+    
     has_uploaded_vertices_ = true;
-
     SetState(ChunkState::RENDERABLE);
 }
 
@@ -228,7 +240,7 @@ void Chunk::UploadVertices()
 //
 void Chunk::RenderOpaques()
 {
-    glBindVertexArray(opaque_vao_);
+    glBindVertexArray(opaque_vaos_[gl_index_]);
     glDrawElements(GL_TRIANGLES, opaque_indices_.size(), GL_UNSIGNED_SHORT, 0);
 }
 
@@ -239,7 +251,7 @@ void Chunk::RenderOpaques()
 //
 void Chunk::RenderTransparents()
 {
-    glBindVertexArray(transparent_vao_);
+    glBindVertexArray(transparent_vaos_[gl_index_]);
     glDrawElements(GL_TRIANGLES, transparent_indices_.size(), GL_UNSIGNED_SHORT, 0);
 }
 
