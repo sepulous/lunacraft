@@ -66,7 +66,7 @@ void SoundSystem::Update(Options options)
         else
         {
             // Update volumes
-            if (active_sound->sound_id <= Sound::SONG_5)
+            if (IsMusic(active_sound->sound_id))
                 active_sound->source->SetGain(music_volume_);
             else
                 active_sound->source->SetGain(sfx_volume_);
@@ -90,10 +90,7 @@ ActiveSound *SoundSystem::Play(Sound sound, bool loop)
     source->SetPosition(Soundlib::GetListenerPosition());
     source->SetRolloffFactor(0);
     source->SetLooping(loop);
-    if (sound <= Sound::SONG_5)
-        source->SetGain(music_volume_);
-    else
-        source->SetGain(sfx_volume_);
+    source->SetGain(IsMusic(sound) ? music_volume_ : sfx_volume_);
     source->Play();
 
     auto active_sound = new ActiveSound{source, sound, true};
@@ -110,10 +107,8 @@ ActiveSound *SoundSystem::PlayAt(Sound sound, glm::vec3 position, bool loop)
     auto source = new Soundlib::SoundSource(sound_map_[sound]);
     source->SetPosition({position.x, position.y, position.z});
     source->SetLooping(loop);
-    if (sound <= Sound::SONG_5)
-        source->SetGain(music_volume_);
-    else
-        source->SetGain(sfx_volume_);
+    source->SetGain(IsMusic(sound) ? music_volume_ : sfx_volume_);
+    source->SetGain(1.0f);
     source->Play();
     
     auto active_sound = new ActiveSound{source, sound, true};
@@ -137,4 +132,9 @@ void SoundSystem::SetPlayerOrientation(glm::vec3 forward, glm::vec3 up)
         {forward.x, forward.y, forward.z},
         {up.x, up.y, up.z}
     );
+}
+
+bool SoundSystem::IsMusic(Sound sound)
+{
+    return sound == Sound::SONG_1 || sound == Sound::SONG_2 || sound == Sound::SONG_3 || sound == Sound::SONG_4 || sound == Sound::SONG_5;
 }

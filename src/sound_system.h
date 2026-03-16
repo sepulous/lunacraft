@@ -53,6 +53,9 @@ class SoundSystem
         static void SetPlayerOrientation(glm::vec3 forward, glm::vec3 up);
 
     private:
+        static bool IsMusic(Sound sound);
+
+    private:
         static std::vector<ActiveSound *> active_sounds_;
         static std::unordered_map<Sound, Soundlib::Sound> sound_map_;
         static float sfx_volume_;
