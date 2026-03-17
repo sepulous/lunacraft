@@ -74,6 +74,7 @@ add_executable(Lunacraft
     src/fxaa.cpp
 
     third_party/stb_image/stb_image/stb_image.cpp
+    third_party/stb_image_write/stb_image_write/stb_image_write.cpp
     third_party/stb_truetype/stb_truetype/stb_truetype.cpp
 )
 
@@ -81,6 +82,7 @@ add_executable(Lunacraft
 target_include_directories(Lunacraft PRIVATE
     third_party/stb_truetype
     third_party/stb_image
+    third_party/stb_image_write
     third_party/soundlib
     third_party/glm
 )

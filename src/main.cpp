@@ -366,6 +366,12 @@ int main()
                 moon->Update(delta_time);
             }
 
+            // Screenshot alert
+            if (Moon::GetCurrentMoon()->TookScreenshot())
+                ui_game.SetAlert("Saved screenshot!");
+            
+            ui_game.Update(delta_time);
+
             //
             // Rendering
             //

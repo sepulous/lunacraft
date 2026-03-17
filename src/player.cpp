@@ -650,6 +650,9 @@ void Player::SetHealth(int health) noexcept
 
 void Player::Render(const glm::mat4 &vp_matrix)
 {
+    if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT) && inventory_.GetSelectedItem() == ItemID::camera)
+        return;
+        
     auto inv_view = glm::inverse(camera_.GetViewMatrix()); // To do this in camera space
 
     Shader &shader = ShaderManager::MOB_SHADER;

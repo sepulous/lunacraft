@@ -56,6 +56,7 @@ class Moon
         glm::vec3 GetSunlightDirection();
         float GetSkyboxAngle();
         int GetLightPhase();
+        bool TookScreenshot();
         void Update(double delta_time);
         void Render(const glm::mat4 &projection);
 
@@ -75,7 +76,8 @@ class Moon
         double accumulator_ = 0;
         bool skybox_reversed_ = false;
         float skybox_phase_ = LIGHT_CYCLE_OMEGA * SECONDS_PER_LIGHT_PHASE;
-        std::vector<glm::ivec3> brown_mob_explosions;
+        bool took_screenshot_ = false;
+        std::vector<glm::ivec3> brown_mob_explosions_;
         glm::vec4 base_fog_color_; // This doesn't change for a given moon. Use GetFogColor() to get the correct color.
         Player *player_; // Avoids destructor call so EntityManager can destroy player
         SelectionBlock selection_block_;

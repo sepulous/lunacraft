@@ -1251,6 +1251,10 @@ UIGame::UIGame()
     crosshair_.LoadImage(Storage::IMAGES / "ui" / "crosshair.png", GL_NEAREST);
     crosshair_.SetSize({50, 50});
     crosshair_.SetPosition({935, 515});
+
+    alert_.SetPosition({40, 400});
+    alert_.SetFontSize(0.3f);
+    alert_.SetColor({1.0f, 1.0f, 1.0f, 1.0f});
 }
 
 UIPauseMenu &UIGame::GetPauseMenu()
@@ -1268,18 +1272,32 @@ UIInventory &UIGame::GetInventoryUI()
     return inventory_;
 }
 
-void UIGame::Update(const DebugInfo& debug_info)
+void UIGame::SetAlert(std::string str)
 {
-    if (debug_menu_.IsActive())
-        debug_menu_.Update(debug_info);
+    alert_.SetText(str);
+    alert_active_ = true;
+}
 
-    if (pause_menu_.IsActive())
-        pause_menu_.Update();
+void UIGame::Update(float delta_time)
+{
+    if (alert_active_)
+    {
+        alert_time_ += delta_time;
+        if (alert_time_ > 10.0f)
+            alert_active_ = false;
+    }
+    else
+    {
+        alert_time_ = 0;
+    }
 }
 
 void UIGame::Render()
 {
     glDepthFunc(GL_LEQUAL);
+
+    if (alert_active_)
+        alert_.Render();
 
     if (OptionsManager::GetOptions().show_gui)
     {

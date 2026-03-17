@@ -458,7 +458,8 @@ class UIGame
         UIPauseMenu &GetPauseMenu();
         UIDebugMenu &GetDebugMenu();
         UIInventory &GetInventoryUI();
-        void Update(const DebugInfo &debug_info);
+        void SetAlert(std::string str);
+        void Update(float delta_time);
         void Render();
 
     private:
@@ -466,4 +467,7 @@ class UIGame
         UIDebugMenu debug_menu_;
         UIInventory inventory_;
         UIImage crosshair_;
+        UIText alert_;
+        bool alert_active_ = false;
+        float alert_time_ = 0;
 };

@@ -3,8 +3,10 @@
 #include <fstream>
 #include <thread>
 #include <cstdlib>
+#include <chrono>
 
 #include <stb_image/stb_image.h>
+#include <stb_image_write/stb_image_write.h>
 
 #include "moon.h"
 #include "storage.h"
@@ -182,6 +184,11 @@ glm::vec3 Moon::GetSunlightDirection()
     }
 }
 
+bool Moon::TookScreenshot()
+{
+    return took_screenshot_;
+}
+
 void Moon::Update(double delta_time)
 {
     float time_scale = 1.0f;
@@ -295,10 +302,10 @@ void Moon::Update(double delta_time)
     }
 
     // Handle brown mob explosions
-    if (!brown_mob_explosions.empty())
+    if (!brown_mob_explosions_.empty())
     {
-        auto voxel = brown_mob_explosions.back();
-        brown_mob_explosions.pop_back();
+        auto voxel = brown_mob_explosions_.back();
+        brown_mob_explosions_.pop_back();
         chunk_manager_.HandleBrownMobExplosion(voxel);
     }
 
@@ -372,11 +379,55 @@ void Moon::Render(const glm::mat4 &projection)
 
     if (fxaa)
         FXAA::End();
+
+    //
+    // Handle screenshot (not the best place, just convenient)
+    //
+
+    if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT) && player_->GetInventory().GetSelectedItem() == ItemID::camera)
+    {
+        // Read screen pixels
+        auto dimensions = Viewport::GetDimensions();
+        unsigned char pixels[dimensions.x * dimensions.y * 3];
+        glReadPixels(0, 0, dimensions.x, dimensions.y, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+
+        // Flip image
+        for (int y = 0; y < dimensions.y / 2; ++y)
+        {
+            for (int x = 0; x < dimensions.x * 3; ++x)
+            {
+                std::swap(
+                    pixels[y * dimensions.x * 3 + x],
+                    pixels[(dimensions.y - 1 - y) * dimensions.x * 3 + x]
+                );
+            }
+        }
+
+        // Generate file name
+        auto now = std::chrono::system_clock::now();
+        auto days = std::chrono::floor<std::chrono::days>(now);
+        std::chrono::year_month_day ymd{days};
+        auto time = std::chrono::hh_mm_ss{now - days};
+
+        std::stringstream filename;
+        filename << (int)ymd.year() << "-" << (unsigned)ymd.month() << "-" << (unsigned)ymd.day();
+        filename << "_" << time.hours().count() << "." << time.minutes().count() << "." << time.seconds().count() << ".png";
+
+        // Save screenshot
+        auto path = Storage::SCREENSHOTS / filename.str();
+        stbi_write_png_compression_level = 4; // default is 8
+        stbi_write_png(path.c_str(), dimensions.x, dimensions.y, 3, pixels, dimensions.x * 3);
+        took_screenshot_ = true;
+    }
+    else
+    {
+        took_screenshot_ = false;
+    }
 }
 
 void Moon::BrownMobExplode(glm::vec3 position)
 {
-    brown_mob_explosions.push_back(GetNearestVoxel(position) - glm::ivec3{0, 2, 0});
+    brown_mob_explosions_.push_back(GetNearestVoxel(position) - glm::ivec3{0, 2, 0});
 }
 
 void Moon::UpdateSelectionBlock(float delta_time)
