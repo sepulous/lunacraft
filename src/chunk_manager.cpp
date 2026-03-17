@@ -28,6 +28,8 @@ void (Chunk::*ChunkTask::BUILD_LIGHTMAP_EXTERNAL)() = &Chunk::BuildLightmapExter
 void (Chunk::*ChunkTask::UPDATE_VERTEX_LIGHTING)() = &Chunk::UpdateVertexLighting;
 void (Chunk::*ChunkTask::BUILD_VERTICES)() = &Chunk::BuildVertices;
 void (Chunk::*ChunkTask::MARK_AS_CLEAN)() = &Chunk::MarkAsClean;
+void (Chunk::*ChunkTask::UNPIN_ALL_NEIGHBORS)() = &Chunk::UnpinAllNeighbors;
+void (Chunk::*ChunkTask::UNPIN_ADJACENT_NEIGHBORS)() = &Chunk::UnpinAdjacentNeighbors;
 
 //
 // ChunkManager
@@ -185,7 +187,7 @@ void ChunkManager::HandlePlayerModification(glm::ivec3 voxel, BlockID block_plac
     chunk->GetBlocks()[GetChunkIndex(local)] = block_placed;
 
     // Rebuild this chunk
-    chunk->PinNeighbors();
+    chunk->PinAllNeighbors();
     job_queue_.push({
         .chunk = chunk,
         .requires_neighbors = true,
@@ -193,62 +195,45 @@ void ChunkManager::HandlePlayerModification(glm::ivec3 voxel, BlockID block_plac
             ChunkTask::BUILD_LIGHTMAP_INTERNAL,
             ChunkTask::BUILD_LIGHTMAP_EXTERNAL,
             ChunkTask::BUILD_VERTICES,
-            ChunkTask::MARK_AS_CLEAN
+            ChunkTask::UNPIN_ALL_NEIGHBORS,
+            ChunkTask::MARK_AS_CLEAN,
         }
     });
-    
+
+    // Since the maximum light level is 9, only blocks that are up to 9 blocks away can be affected by
+    // chunk modifications, so neighbor chunks outside this range don't need to be updated. At the same
+    // time, it's not always the case that all neighbors in this range need to be updated, so this can
+    // be more optimized.
+    glm::ivec3 light_extents[] = {
+        voxel + glm::ivec3{-9, 0,  9},
+        voxel + glm::ivec3{ 9, 0,  9},
+        voxel + glm::ivec3{ 9, 0, -9},
+        voxel + glm::ivec3{-9, 0, -9},
+    };
+
     // Rebuild neighbor chunks
-    if (BlockEmitsLight(block_placed) || (block_placed == BlockID::air && BlockEmitsLight(original_block))) // Block lighting change
+    auto neighbor_chunks = GetAllNeighbors(chunk_coords);
+    for (auto neighbor : neighbor_chunks)
     {
-        // Neighbor chunks are only affected if they lie inside the range of block light (9 blocks)
-
-        glm::ivec3 light_extents[] = {
-            voxel + glm::ivec3{-9, 0,  9},
-            voxel + glm::ivec3{ 9, 0,  9},
-            voxel + glm::ivec3{ 9, 0, -9},
-            voxel + glm::ivec3{-9, 0, -9},
-        };
-
-        auto neighbor_chunks = GetAllNeighbors(chunk_coords);
-        for (auto neighbor : neighbor_chunks)
+        for (auto &light_extent : light_extents)
         {
-            for (auto &light_extent : light_extents)
+            auto extent_chunk_coord = VoxelToChunk(light_extent);
+            if (neighbor->GetCoords() == extent_chunk_coord)
             {
-                auto extent_chunk_coord = VoxelToChunk(light_extent);
-                if (neighbor->GetCoords() == extent_chunk_coord)
-                {
-                    neighbor->PinNeighbors();
-                    job_queue_.push({
-                        .chunk = neighbor,
-                        .requires_neighbors = true,
-                        .tasks = {
-                            ChunkTask::BUILD_LIGHTMAP_INTERNAL,
-                            ChunkTask::BUILD_LIGHTMAP_EXTERNAL,
-                            ChunkTask::BUILD_VERTICES,
-                            ChunkTask::MARK_AS_CLEAN
-                        }
-                    });
-                    break;
-                }
+                neighbor->PinAllNeighbors();
+                job_queue_.push({
+                    .chunk = neighbor,
+                    .requires_neighbors = true,
+                    .tasks = {
+                        ChunkTask::BUILD_LIGHTMAP_INTERNAL,
+                        ChunkTask::BUILD_LIGHTMAP_EXTERNAL,
+                        ChunkTask::BUILD_VERTICES,
+                        ChunkTask::UNPIN_ALL_NEIGHBORS,
+                        ChunkTask::MARK_AS_CLEAN,
+                    }
+                });
+                break;
             }
-        }
-    }
-    else
-    {
-        auto neighbor_chunks = GetAdjacentNeighbors(chunk_coords);
-        for (auto neighbor : neighbor_chunks)
-        {
-            neighbor->PinNeighbors();
-            job_queue_.push({
-                .chunk = neighbor,
-                .requires_neighbors = true,
-                .tasks = {
-                    ChunkTask::BUILD_LIGHTMAP_INTERNAL,
-                    ChunkTask::BUILD_LIGHTMAP_EXTERNAL,
-                    ChunkTask::BUILD_VERTICES,
-                    ChunkTask::MARK_AS_CLEAN
-                }
-            });
         }
     }
 }
@@ -338,7 +323,7 @@ void ChunkManager::HandleBrownMobExplosion(glm::ivec3 explosion_center)
     for (auto &chunk_coords : chunks_affected)
     {
         auto chunk = chunks_.at(ChunkCoordsToID(chunk_coords));
-        chunk->PinNeighbors();
+        chunk->PinAllNeighbors();
         job_queue_.push({
             .chunk = chunk,
             .requires_neighbors = true,
@@ -346,7 +331,8 @@ void ChunkManager::HandleBrownMobExplosion(glm::ivec3 explosion_center)
                 ChunkTask::BUILD_LIGHTMAP_INTERNAL,
                 ChunkTask::BUILD_LIGHTMAP_EXTERNAL,
                 ChunkTask::BUILD_VERTICES,
-                ChunkTask::MARK_AS_CLEAN
+                ChunkTask::UNPIN_ALL_NEIGHBORS,
+                ChunkTask::MARK_AS_CLEAN,
             }
         });
     }
@@ -391,13 +377,14 @@ void ChunkManager::UpdateGlobalLighting()
         Chunk *chunk = it->second;
         if (!chunk->IsBorderChunk())
         {
-            chunk->PinNeighbors();
+            chunk->PinAdjacentNeighbors();
             job_queue_.push({
                 .chunk = chunk,
                 .requires_neighbors = true,
                 .tasks = {
                     ChunkTask::UPDATE_VERTEX_LIGHTING,
-                    ChunkTask::MARK_AS_CLEAN
+                    ChunkTask::UNPIN_ADJACENT_NEIGHBORS,
+                    ChunkTask::MARK_AS_CLEAN,
                 }
             });
         }
@@ -444,7 +431,7 @@ void ChunkManager::CreateInitialPatch()
         }
         else
         {
-            chunk->PinNeighbors();
+            chunk->PinAllNeighbors();
             job_queue_.push({
                 .chunk = chunk,
                 .requires_neighbors = true,
@@ -453,7 +440,8 @@ void ChunkManager::CreateInitialPatch()
                     ChunkTask::BUILD_LIGHTMAP_INTERNAL,
                     ChunkTask::BUILD_LIGHTMAP_EXTERNAL,
                     ChunkTask::BUILD_VERTICES,
-                    ChunkTask::MARK_AS_CLEAN
+                    ChunkTask::UNPIN_ALL_NEIGHBORS,
+                    ChunkTask::MARK_AS_CLEAN,
                 }
             });
         }
@@ -591,14 +579,15 @@ void ChunkManager::AdjustChunkPatch()
     // Build border chunks that just became patch chunks
     for (auto chunk : to_convert)
     {
-        chunk->PinNeighbors();
+        chunk->PinAllNeighbors();
         job_queue_.push({
             .chunk = chunk,
             .requires_neighbors = true,
             .tasks = {
                 ChunkTask::BUILD_LIGHTMAP_EXTERNAL,
                 ChunkTask::BUILD_VERTICES,
-                ChunkTask::MARK_AS_CLEAN
+                ChunkTask::UNPIN_ALL_NEIGHBORS,
+                ChunkTask::MARK_AS_CLEAN,
             }
         });
 
@@ -622,7 +611,7 @@ void ChunkManager::AdjustChunkPatch()
         }
         else
         {
-            chunk->PinNeighbors();
+            chunk->PinAllNeighbors();
             job_queue_.push({
                 .chunk = chunk,
                 .requires_neighbors = true,
@@ -631,7 +620,8 @@ void ChunkManager::AdjustChunkPatch()
                     ChunkTask::BUILD_LIGHTMAP_INTERNAL,
                     ChunkTask::BUILD_LIGHTMAP_EXTERNAL,
                     ChunkTask::BUILD_VERTICES,
-                    ChunkTask::MARK_AS_CLEAN
+                    ChunkTask::UNPIN_ALL_NEIGHBORS,
+                    ChunkTask::MARK_AS_CLEAN,
                 }
             });
         }

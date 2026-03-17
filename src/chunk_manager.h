@@ -31,6 +31,8 @@ struct ChunkTask
     static void (Chunk::*UPDATE_VERTEX_LIGHTING)();
     static void (Chunk::*BUILD_VERTICES)();
     static void (Chunk::*MARK_AS_CLEAN)();
+    static void (Chunk::*UNPIN_ALL_NEIGHBORS)();
+    static void (Chunk::*UNPIN_ADJACENT_NEIGHBORS)();
 };
 
 struct ChunkJob

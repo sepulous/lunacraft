@@ -107,9 +107,11 @@ public:
 // Lifetime control (main thread)
 public:
     void Pin();
-    void PinNeighbors();
+    void PinAdjacentNeighbors();
+    void PinAllNeighbors();
     void Unpin();
-    void UnpinNeighbors();
+    void UnpinAdjacentNeighbors();
+    void UnpinAllNeighbors();
     int GetPinCount();
     void MarkForDelete();
     bool IsMarkedForDelete();
