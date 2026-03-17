@@ -201,10 +201,7 @@ bool Chunk::IsDirty()
 //
 // Upload chunk's vertex data to the GPU.
 //
-// Chunk::GLInit must be called before this.
-//
 // This must be called before rendering the chunk, and after it has been fully built.
-// See Chunk::Build for more information.
 //
 void Chunk::UploadVertices()
 {
@@ -841,8 +838,8 @@ void Chunk::UpdateVertexLighting()
     float sunlight_factor = ambient_light + 0.5f;
 
     // We need to determine the global voxel position of the base of the quad (the inverse of what we do in BuildVertices), but some
-    // vertex positions include offsets (du and dv), so we can't always do this directly. But we submit vertices in groups of six,
-    // and for the first one in each group we always have vertex.position == quad.basecoords_, so we can use the first one to determine
+    // vertex positions include offsets (du and dv), so we can't always do this directly. But we submit vertices in groups of four,
+    // and for the first one in each group we always have vertex.position == quad.base_coords, so we can use the first one to determine
     // the lighting and apply it to the whole group.
     std::vector<BlockVertex> *vertex_lists[2] = {&opaque_vertices_, &transparent_vertices_};
     for (auto vertices : vertex_lists)
@@ -1057,13 +1054,14 @@ void Chunk::BuildVertices()
 /*
     The algorithm works as follows.
     
-    For each axis, we consider all planes perpendicular to that axis slicing through the block faces (if N is the length of the chunk along the axis, there
-    are N+1 such planes). It should be clear that each plane represents a set of block faces that could be rendered. For each of these planes, we first construct
-    a mask that indicates which block face, if any, should be rendered at each position, as well as whether it's a front or back face.
+    For each axis, we consider all planes perpendicular to that axis slicing through the block faces. If N is the length of the chunk along the axis, there
+    are N+1 such planes, but each chunk only produces quads for N planes since two of its neighbors will take care of the other planes. It should be clear
+    that each plane represents a set of block faces that could be rendered. For each of these planes, we first construct a mask that indicates which block
+    face, if any, should be rendered at each position, as well as whether it's a front or back face.
 
     Then, for each column of this mask, we move up to the first renderable face. If none is found, we move on to the next column. If one is found, we begin with
     a 1x1 quad, and extend its height until a different mask value is reached. We then extend this new quad's width as far as possible to get the final quad.
-    Finally, all mask positions covered by the final quad are marked as non-renderable, and we continue iterating through this column.
+    Finally, all mask positions covered by the final quad are marked as handled, and we continue iterating through this column.
 */
 std::vector<MeshQuad> Chunk::GreedyMesh(std::array<Chunk *, 4> neighbors)
 {
