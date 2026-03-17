@@ -881,15 +881,27 @@ UIOptionsMenu::UIOptionsMenu()
     show_debug_toggle_.SetSize({40, 40});
     show_debug_toggle_.SetToggled(current_options.show_debug_info);
 
+    // FXAA
+    float fxaa_text_width = UIText::GetTextSizeInPixels("FXAA:", option_font_size).x;
+    fxaa_.SetPosition({bg_pos_x + option_text_align_x2 - fxaa_text_width, 440});
+    fxaa_.SetText("FXAA:");
+    fxaa_.SetFontSize(option_font_size);
+    fxaa_.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
+
+    // FXAA toggle
+    fxaa_toggle_.SetPosition({bg_pos_x + option_text_align_x2 + 20, 440 - 10});
+    fxaa_toggle_.SetSize({40, 40});
+    fxaa_toggle_.SetToggled(current_options.fxaa);
+
     // Fullscreen
     float fullscreen_text_width = UIText::GetTextSizeInPixels("Fullscreen:", option_font_size).x;
-    fullscreen_.SetPosition({bg_pos_x + option_text_align_x2 - fullscreen_text_width, 440});
+    fullscreen_.SetPosition({bg_pos_x + option_text_align_x2 - fullscreen_text_width, 360});
     fullscreen_.SetText("Fullscreen:");
     fullscreen_.SetFontSize(option_font_size);
     fullscreen_.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
 
     // Fullscreen toggle
-    fullscreen_toggle_.SetPosition({bg_pos_x + option_text_align_x2 + 20, 440 - 10});
+    fullscreen_toggle_.SetPosition({bg_pos_x + option_text_align_x2 + 20, 360 - 10});
     fullscreen_toggle_.SetSize({40, 40});
     fullscreen_toggle_.SetToggled(current_options.fullscreen);
 
@@ -952,21 +964,20 @@ void UIOptionsMenu::Update()
     show_gui_toggle_.Update();
     show_fog_toggle_.Update();
     show_debug_toggle_.Update();
+    fxaa_toggle_.Update();
     fullscreen_toggle_.Update();
 
-    // if (mouse_state.left_held)
-    {
-        Options options = OptionsManager::GetOptions();
-        options.sfx_volume = sfx_volume_slider_.GetValue();
-        options.music_volume = music_volume_slider_.GetValue();
-        options.render_distance = render_distance_slider_.GetValue();
-        options.sensitivity = sensitivity_slider_.GetValue();
-        options.show_gui = show_gui_toggle_.IsToggled();
-        options.show_fog = show_fog_toggle_.IsToggled();
-        options.show_debug_info = show_debug_toggle_.IsToggled();
-        options.fullscreen = fullscreen_toggle_.IsToggled();
-        OptionsManager::SetOptions(options);
-    }
+    Options options = OptionsManager::GetOptions();
+    options.sfx_volume = sfx_volume_slider_.GetValue();
+    options.music_volume = music_volume_slider_.GetValue();
+    options.render_distance = render_distance_slider_.GetValue();
+    options.sensitivity = sensitivity_slider_.GetValue();
+    options.show_gui = show_gui_toggle_.IsToggled();
+    options.show_fog = show_fog_toggle_.IsToggled();
+    options.show_debug_info = show_debug_toggle_.IsToggled();
+    options.fxaa = fxaa_toggle_.IsToggled();
+    options.fullscreen = fullscreen_toggle_.IsToggled();
+    OptionsManager::SetOptions(options);
 }
 
 void UIOptionsMenu::Render()
@@ -987,6 +998,8 @@ void UIOptionsMenu::Render()
     show_fog_toggle_.Render();
     show_debug_.Render();
     show_debug_toggle_.Render();
+    fxaa_.Render();
+    fxaa_toggle_.Render();
     fullscreen_.Render();
     fullscreen_toggle_.Render();
     back_button_.Render();

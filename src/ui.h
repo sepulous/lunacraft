@@ -270,24 +270,37 @@ class UIOptionsMenu
 {
     private:
         bool active_ = false;
+
         UIImage background_;
         UIText title_;
+
         UIText sfx_volume_;
         UISlider sfx_volume_slider_;
+
         UIText music_volume_;
         UISlider music_volume_slider_;
+
         UIText sensitivity_;
         UISlider sensitivity_slider_;
+
         UIText render_distance_;
         UISlider render_distance_slider_;
+
         UIText show_gui_;
         UIToggleButton show_gui_toggle_;
+
         UIText show_fog_;
         UIToggleButton show_fog_toggle_;
+
         UIText show_debug_;
         UIToggleButton show_debug_toggle_;
+
+        UIText fxaa_;
+        UIToggleButton fxaa_toggle_;
+
         UIText fullscreen_;
         UIToggleButton fullscreen_toggle_;
+
         UIButton back_button_;
 
     public:

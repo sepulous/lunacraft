@@ -18,6 +18,7 @@
 #include "sound_system.h"
 #include "minilight.h"
 #include "input.h"
+#include "fxaa.h"
 
 Moon *Moon::current_moon_;
 
@@ -326,6 +327,11 @@ void Moon::Render(const glm::mat4 &projection)
     // Render world
     //
 
+    bool fxaa = OptionsManager::GetOptions().fxaa;
+
+    if (fxaa)
+        FXAA::Begin();
+
     Options options = OptionsManager::GetOptions();
 
     Camera player_camera = player_->GetCamera();
@@ -363,6 +369,9 @@ void Moon::Render(const glm::mat4 &projection)
     view_projection = projection * view;
     skybox_.Update(view_projection, GetSkyboxAngle());
     skybox_.Render();
+
+    if (fxaa)
+        FXAA::End();
 }
 
 void Moon::BrownMobExplode(glm::vec3 position)

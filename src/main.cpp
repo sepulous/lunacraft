@@ -24,6 +24,7 @@
 #include "helpers.h"
 #include "moon.h"
 #include "rng.h"
+#include "fxaa.h"
 
 enum class GameState {MAIN_MENU, IN_GAME};
 
@@ -100,6 +101,8 @@ int main()
         glViewport(0, 0, width, height);
         Viewport::SetDimensions({width, height});
         UIRescale();
+        if (FXAA::IsSetup())
+            FXAA::Resize(width, height);
     });
 
     // Input callbacks
@@ -116,6 +119,8 @@ int main()
     UIRescale();
     UIMainMenu ui_main_menu;
     UIGame ui_game;
+
+    FXAA::Setup();
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);

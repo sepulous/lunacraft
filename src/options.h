@@ -10,6 +10,7 @@ struct Options
     bool show_gui = true;
     bool show_debug_info = false;
     bool fullscreen = false;
+    bool fxaa = true;
 };
 
 class OptionsManager

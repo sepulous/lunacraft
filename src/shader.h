@@ -50,6 +50,7 @@ class ShaderManager
         static Shader SIMPLE_UNLIT_SHADER;
         static Shader MOB_SHADER;
         static Shader SKYBOX_SHADER;
+        static Shader FXAA_SHADER;
 
     public:
         ShaderManager() = delete;
