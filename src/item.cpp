@@ -50,7 +50,7 @@ bool ItemIsDisk(ItemID item)
 
 bool ItemIsBlock(ItemID item)
 {
-    return !ItemIsSprite(item);
+    return !(ItemIsSprite(item) || ItemIsDrill(item) || ItemIsPistol(item));
 }
 
 std::string GetItemFile(ItemID item)
