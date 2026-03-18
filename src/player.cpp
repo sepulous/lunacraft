@@ -12,7 +12,7 @@
 Player::Player()
 {
     type_ = EntityType::PLAYER;
-    position_ = glm::vec3(CHUNK_SIZE / 2.0f, 114.0f + 0.5f + 0.9f, CHUNK_SIZE / 2.0f);
+    position_ = glm::vec3(CHUNK_SIZE / 2.0f, 114.0f + 0.5f - 0.9f, CHUNK_SIZE / 2.0f);
     prev_position_ = position_;
     next_position_ = position_;
     velocity_ = glm::vec3(0);
@@ -652,7 +652,7 @@ void Player::Render(const glm::mat4 &vp_matrix)
 {
     if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT) && inventory_.GetSelectedItem() == ItemID::camera)
         return;
-        
+
     auto inv_view = glm::inverse(camera_.GetViewMatrix()); // To do this in camera space
 
     Shader &shader = ShaderManager::MOB_SHADER;

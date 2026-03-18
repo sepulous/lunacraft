@@ -86,28 +86,26 @@ Entity *EntityManager::GetEntityByID(size_t id)
     return entities_.at(id);
 }
 
-void EntityManager::FixedUpdate()
+void EntityManager::SelfUpdate()
 {
     // Remove old entities
-    for (auto it = entities_.begin(); it != entities_.end(); )
-    {
-        Entity *entity = it->second;
-        if (entity->IsDead() && entity->IsDeathAnimationDone())
-            it = entities_.erase(it);
-        else
-            ++it;
-    }
+    std::erase_if(entities_, [](const auto &pair) {
+        const auto &[_, entity] = pair;
+        return entity->IsDead() && entity->IsDeathAnimationDone();
+    });
 
     // Add new entities
     for (Entity *entity : entities_to_spawn_)
     {
         entity->SetID(next_entity_id_);
-        entities_.insert({next_entity_id_, entity});
+        entities_.emplace(next_entity_id_, entity);
         next_entity_id_++;
     }
     entities_to_spawn_.clear();
+}
 
-    // Update
+void EntityManager::FixedUpdate()
+{
     for (auto [entity_id, entity] : entities_)
         entity->FixedUpdate();
 }
@@ -124,7 +122,7 @@ void EntityManager::RenderEntities(const glm::mat4 &vp_matrix)
         entity->Render(vp_matrix);
 }
 
-void EntityManager::PhysicsStep()
+void EntityManager::Integrate(Entity *entity)
 {
     auto &chunk_manager = Moon::GetCurrentMoon()->GetChunkManager();
 
@@ -142,7 +140,7 @@ void EntityManager::PhysicsStep()
             {
                 glm::ivec3 box_chunk_coords = VoxelToChunk({x, 0, z});
                 auto chunk = chunk_manager.GetChunk(box_chunk_coords);
-                if (chunk != nullptr)
+                if (chunk)
                 {
                     for (int y = min_y; y <= max_y; y++)
                     {
@@ -162,7 +160,7 @@ void EntityManager::PhysicsStep()
         auto voxel = GetNearestVoxel(position);
         auto chunk_coords = VoxelToChunk(voxel);
         auto chunk = chunk_manager.GetChunk(chunk_coords);
-        if (chunk != nullptr)
+        if (chunk)
         {
             auto block = chunk->GetBlocks()[GetChunkIndex(GlobalToLocalVoxel(voxel))];
             return block != BlockID::air && block != BlockID::minilight;
@@ -173,150 +171,165 @@ void EntityManager::PhysicsStep()
         }
     };
 
-    for (auto [entity_id, entity] : entities_)
+    if (entity->GetType() == EntityType::MINILIGHT)
+        return;
+
+    if (entity->GetType() == EntityType::SLUG)
     {
-        if (entity->GetType() == EntityType::MINILIGHT)
-            continue;
-
-        if (entity->GetType() == EntityType::SLUG)
+        Slug *slug = dynamic_cast<Slug *>(entity);
+        if (slug->IsFlying())
         {
-            Slug *slug = dynamic_cast<Slug *>(entity);
-            if (slug->IsFlying())
+            Entity *hit_entity = nullptr;
+            for (auto [_, other] : entities_)
             {
-                Entity *hit_entity = nullptr;
-                for (auto [_, other] : entities_)
+                if (other->CanBeDamaged())
                 {
-                    if (other->CanBeDamaged())
+                    auto slug_offset = 0.2f * glm::normalize(slug->GetVelocity());
+                    auto slug_pos = slug->GetPosition() + slug_offset;
+                    auto &other_aabb = other->GetAABB();
+                    auto other_aabb_min = other_aabb.center - other_aabb.extents;
+                    auto other_aabb_max = other_aabb.center + other_aabb.extents;
+                    if (glm::distance(glm::clamp(slug_pos, other_aabb_min, other_aabb_max), slug_pos) < 0.01f)
                     {
-                        auto slug_offset = 0.2f * glm::normalize(slug->GetVelocity());
-                        auto slug_pos = slug->GetPosition() + slug_offset;
-                        auto &other_aabb = other->GetAABB();
-                        auto other_aabb_min = other_aabb.center - other_aabb.extents;
-                        auto other_aabb_max = other_aabb.center + other_aabb.extents;
-                        if (glm::distance(glm::clamp(slug_pos, other_aabb_min, other_aabb_max), slug_pos) < 0.01f)
-                        {
-                            hit_entity = other;
-                            break;
-                        }
+                        hit_entity = other;
+                        break;
                     }
                 }
+            }
 
-                if (hit_entity != nullptr)
+            if (hit_entity != nullptr)
+            {
+                int new_health = hit_entity->GetHealth() - slug->GetSlugData().damage;
+                if (new_health <= 0)
                 {
-                    int new_health = hit_entity->GetHealth() - slug->GetSlugData().damage;
-                    if (new_health <= 0)
-                    {
-                        hit_entity->SetHealth(0);
-                        hit_entity->SetIsDead(true);
-                    }
-                    else
-                    {
-                        hit_entity->SetHealth(new_health);
-                    }
-
-                    slug->SetIsDead(true);
-
-                    if (hit_entity->GetType() == EntityType::BROWN_MOB)
-                        dynamic_cast<BrownMob *>(hit_entity)->NotifyOfAttacker(slug->GetSlugData().source_id);
+                    hit_entity->SetHealth(0);
+                    hit_entity->SetIsDead(true);
                 }
                 else
                 {
-                    slug->SetPrevPosition(slug->GetPosition());
-
-                    glm::vec3 next_position = slug->GetPosition() + glm::vec3{FIXED_DELTA_TIME * slug->GetVelocity()};
-                    slug->SetNextPosition(next_position);
-
-                    glm::vec3 offset = 0.2f * glm::normalize(slug->GetVelocity());
-                    if (TestSlugWorld(next_position + offset))
-                    {
-                        slug->SetIsFlying(false);
-                        slug->SetPrevPosition(next_position);
-                        slug->SetPosition(next_position);
-                    }
+                    hit_entity->SetHealth(new_health);
                 }
-            }
-        }
-        else
-        {
-            glm::vec3 next_position = entity->GetPosition();
-            entity->SetPrevPosition(entity->GetPosition());
 
-            // Gravity
-            if (!entity->IsGrounded())
-            {
-                float gravity = entity->GetType() == EntityType::PLAYER ? PLAYER_GRAVITY : MOB_GRAVITY;
-                entity->SetVelocity(entity->GetVelocity() - glm::vec3(0, gravity * FIXED_DELTA_TIME, 0));
-            }
+                slug->SetIsDead(true);
 
-            // X
-            next_position.x += entity->GetVelocity().x * FIXED_DELTA_TIME;
-            entity->GetAABB().center.x = next_position.x;
-            if (TestAABBWorld(entity->GetAABB()))
-            {
-                next_position.x = entity->GetPosition().x; // Don't actually move
-                entity->GetAABB().center.x = entity->GetPosition().x;
-                entity->SetVelocity({0, entity->GetVelocity().y, entity->GetVelocity().z});
-            }
-
-            // Z
-            next_position.z += entity->GetVelocity().z * FIXED_DELTA_TIME;
-            entity->GetAABB().center.z = next_position.z;
-            if (TestAABBWorld(entity->GetAABB()))
-            {
-                next_position.z = entity->GetPosition().z; // Don't actually move
-                entity->GetAABB().center.z = entity->GetPosition().z;
-                entity->SetVelocity({entity->GetVelocity().x, entity->GetVelocity().y, 0});
-            }
-
-            // Y
-            next_position.y += entity->GetVelocity().y * FIXED_DELTA_TIME;
-            entity->GetAABB().center.y = next_position.y;
-            if (TestAABBWorld(entity->GetAABB()))
-            {
-                if (entity->GetVelocity().y <= 0)
-                {
-                    entity->SetGrounded(true);
-
-                    // Snap feet to avoid sinking
-                    float floor_feet = glm::floor(entity->GetPosition().y - entity->GetAABB().extents.y);
-                    next_position.y = floor_feet + entity->GetAABB().extents.y + 0.5f;
-                    entity->GetAABB().center.y = next_position.y;
-                }
-                else
-                {
-                    next_position.y = entity->GetPosition().y;
-                    entity->GetAABB().center.y = entity->GetPosition().y;
-                }
-                
-                entity->SetVelocity({entity->GetVelocity().x, 0, entity->GetVelocity().z});
+                if (hit_entity->GetType() == EntityType::BROWN_MOB)
+                    dynamic_cast<BrownMob *>(hit_entity)->NotifyOfAttacker(slug->GetSlugData().source_id);
             }
             else
             {
-                // Decide whether on ice
-                auto entity_voxel_g = GetNearestVoxel(entity->GetPosition());
-                auto entity_voxel_l = GlobalToLocalVoxel(entity_voxel_g);
-                auto entity_chunk = chunk_manager.GetChunk(VoxelToChunk(entity_voxel_g));
-                BlockID foot_block = entity_chunk->GetBlocks()[GetChunkIndex(entity_voxel_l - glm::ivec3{0, 1, 0})]; // Can go out of bounds...
-                entity->SetIsOnIce(foot_block == BlockID::water);
+                slug->SetPrevPosition(slug->GetPosition());
 
-                // Decide whether still grounded
-                float actual_feet = entity->GetPosition().y - entity->GetAABB().extents.y;
-                float floor_feet = glm::floor(actual_feet);
-                if (glm::abs(actual_feet - (floor_feet + 0.5f)) > 0.01f || foot_block == BlockID::air)
-                    entity->SetGrounded(false);
+                glm::vec3 next_position = slug->GetPosition() + glm::vec3{FIXED_DELTA_TIME * slug->GetVelocity()};
+                slug->SetNextPosition(next_position);
+
+                glm::vec3 offset = 0.2f * glm::normalize(slug->GetVelocity());
+                if (TestSlugWorld(next_position + offset))
+                {
+                    slug->SetIsFlying(false);
+                    slug->SetPrevPosition(next_position);
+                    slug->SetPosition(next_position);
+                }
             }
-
-            entity->SetNextPosition(next_position);
         }
+    }
+    else
+    {
+        glm::vec3 current_velocity = entity->GetVelocity();
+        auto &aabb = entity->GetAABB();
+
+        glm::vec3 current_next_position = entity->GetNextPosition();
+        entity->SetPrevPosition(current_next_position);
+        glm::vec3 new_next_position = current_next_position;
+
+        // Gravity
+        if (!entity->IsGrounded())
+        {
+            float gravity = entity->GetType() == EntityType::PLAYER ? PLAYER_GRAVITY : MOB_GRAVITY;
+            entity->SetVelocity(current_velocity - glm::vec3(0, gravity * FIXED_DELTA_TIME, 0));
+        }
+
+        // X
+        new_next_position.x += current_velocity.x * FIXED_DELTA_TIME;
+        aabb.center.x = new_next_position.x;
+        if (TestAABBWorld(aabb))
+        {
+            new_next_position.x = current_next_position.x; // Don't actually move
+            aabb.center.x = current_next_position.x;
+            entity->SetVelocity({0, current_velocity.y, current_velocity.z});
+        }
+
+        // Z
+        new_next_position.z += current_velocity.z * FIXED_DELTA_TIME;
+        aabb.center.z = new_next_position.z;
+        if (TestAABBWorld(aabb))
+        {
+            new_next_position.z = current_next_position.z; // Don't actually move
+            aabb.center.z = current_next_position.z;
+            entity->SetVelocity({current_velocity.x, current_velocity.y, 0});
+        }
+
+        // Y
+        new_next_position.y += current_velocity.y * FIXED_DELTA_TIME;
+        aabb.center.y = new_next_position.y;
+        if (TestAABBWorld(aabb))
+        {
+            if (current_velocity.y <= 0)
+            {
+                entity->SetGrounded(true);
+
+                // Snap feet to avoid sinking
+                float floor_feet = glm::floor(current_next_position.y - aabb.extents.y);
+                new_next_position.y = floor_feet + aabb.extents.y + 0.5f;
+                aabb.center.y = new_next_position.y;
+            }
+            else
+            {
+                new_next_position.y = current_next_position.y;
+                aabb.center.y = current_next_position.y;
+            }
+            
+            entity->SetVelocity({current_velocity.x, 0, current_velocity.z});
+        }
+        else
+        {
+            // Decide whether on ice
+            auto entity_voxel_g = GetNearestVoxel(current_next_position);
+            auto entity_voxel_l = GlobalToLocalVoxel(entity_voxel_g);
+            auto entity_chunk = chunk_manager.GetChunk(VoxelToChunk(entity_voxel_g));
+            BlockID foot_block = entity_chunk->GetBlocks()[GetChunkIndex(entity_voxel_l - glm::ivec3{0, 1, 0})]; // Can go out of bounds...
+            entity->SetIsOnIce(foot_block == BlockID::water);
+
+            // Decide whether still grounded
+            float actual_feet = current_next_position.y - aabb.extents.y;
+            float floor_feet = glm::floor(actual_feet);
+            if (glm::abs(actual_feet - (floor_feet + 0.5f)) > 0.01f || foot_block == BlockID::air)
+                entity->SetGrounded(false);
+        }
+
+        entity->SetNextPosition(new_next_position);
     }
 }
 
-void EntityManager::Interpolate(double interp)
+void EntityManager::RunPhysics(double &accumulator)
 {
-    for (auto [entity_id, entity] : entities_)
+    while (accumulator >= FIXED_DELTA_TIME)
     {
-        entity->SetPosition(glm::mix(entity->GetPrevPosition(), entity->GetNextPosition(), interp));
-        entity->GetAABB().center = entity->GetPosition();
+        for (auto [_, entity] : entities_)
+        {
+            entity->FixedUpdate();
+            Integrate(entity);
+        }
+        accumulator -= FIXED_DELTA_TIME;
+    }
+
+    float alpha = accumulator / FIXED_DELTA_TIME;
+    for (auto [_, entity] : entities_)
+    {
+        entity->SetPosition(glm::mix(
+            entity->GetPrevPosition(),
+            entity->GetNextPosition(),
+            alpha
+        ));
     }
 }
 

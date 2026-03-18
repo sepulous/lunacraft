@@ -214,17 +214,10 @@ void Moon::Update(double delta_time)
     // Fixed updates
     //
 
-    int fixed_steps = (int)(accumulator_ / FIXED_DELTA_TIME);
-    accumulator_ -= fixed_steps * FIXED_DELTA_TIME;
+    if (accumulator_ >= FIXED_DELTA_TIME)
+        entity_manager_.SelfUpdate();
 
-    for (int i = 0; i < fixed_steps; i++)
-    {
-        entity_manager_.FixedUpdate();
-        entity_manager_.PhysicsStep();
-    }
-
-    double interp = accumulator_ / FIXED_DELTA_TIME;
-    entity_manager_.Interpolate(interp);
+    entity_manager_.RunPhysics(accumulator_);
 
     //
     // Per-frame updates

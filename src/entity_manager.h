@@ -25,14 +25,17 @@ class EntityManager
 
         void AddEntity(Entity *entity);
         Entity *GetEntityByID(size_t id);
+        void SelfUpdate();
         void FixedUpdate();
         void Update(float delta_time);
-        void PhysicsStep();
-        void Interpolate(double interp);
+        void RunPhysics(double &accumulator);
         void RenderEntities(const glm::mat4 &vp_matrix);
         void DestroyMinilightAt(glm::ivec3 voxel);
         void LoadInitialEntities();
         void LoadChunkEntities(glm::ivec3 chunk_coords);
         void UnloadChunkEntities(glm::ivec3 chunk_coords);
         void SaveAllEntities();
+
+    private:
+        void Integrate(Entity *entity);
 };
