@@ -127,7 +127,7 @@ void Input::CharInputCallback(GLFWwindow *window, unsigned int codepoint)
 
 void Input::MousePositionCallback(GLFWwindow *window, double x, double y)
 {
-    mouse_delta_ = {x - mouse_position_.x, -(y - mouse_position_.y)};
+    mouse_delta_ += glm::dvec2{x - mouse_position_.x, -(y - mouse_position_.y)};
     mouse_position_ = {x, y};
 }
 
