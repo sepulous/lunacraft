@@ -293,10 +293,10 @@ void Player::Update(float delta_time)
                 time_drilling_ += delta_time;
 
                 float arm_shake_freq = glm::clamp(15.0f * time_drilling_, 20.0f, 50.0f);
-                arm_shake_ = 0.005f * glm::pow(glm::sin(arm_shake_freq * time_drilling_), 2);
-                arm_extent_ = glm::clamp(arm_extent_ + 0.0001f * time_drilling_, 0.0f, 0.2f);
+                arm_shake_ = 0.005f * glm::pow(glm::sin(40.0f * time_drilling_), 2);
+                arm_extent_ = glm::clamp(arm_extent_ + 0.3f * delta_time, 0.0f, 0.2f);
 
-                drill_bit_angular_speed_ = glm::clamp(3.0f * time_drilling_, 0.0f, 40.0f);
+                drill_bit_angular_speed_ = glm::clamp(4.0f * time_drilling_, 0.0f, 40.0f);
                 drill_bit_rotation_ = drill_bit_angular_speed_ * time_drilling_;
                 drill_bit_extent_ = glm::clamp(drill_bit_extent_ + 0.0001f * time_drilling_, 0.0f, 0.2f);
             }
@@ -326,7 +326,7 @@ void Player::Update(float delta_time)
                         
                     time_drilling_ += delta_time;
 
-                    arm_extent_ = glm::clamp(arm_extent_ - 0.2f * time_drilling_, 0.0f, 2.0f);
+                    arm_extent_ = glm::clamp(arm_extent_ - 0.2f * delta_time, 0.0f, 2.0f);
 
                     drill_bit_rotation_ += drill_bit_angular_speed_ * time_drilling_;
                     drill_bit_extent_ = glm::clamp(drill_bit_extent_ - 0.2f * time_drilling_, 0.0f, 0.2f);
