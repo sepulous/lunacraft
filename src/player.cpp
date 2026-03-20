@@ -357,14 +357,13 @@ void Player::Update(float delta_time)
             }
             else if (time_charging_gun_ != 0)
             {
-                glm::vec3 offset = 2.0f * camera_.forward + 0.5f * camera_.right - 0.1f * camera_.up;
                 float speed = glm::mix(1.0f, 50.0f, glm::clamp(time_charging_gun_, 0.0f, 4.0f) / 4.0f);
                 int damage_param = selected_item == ItemID::slug_pistol_t3 ? 4  // This is how slug damage was calculated in the latest
                                  : selected_item == ItemID::slug_pistol_t2 ? 2  // version (v2.01) of the original game
                                  :                                           0;
 
                 Slug *slug = new Slug({
-                    .initial_position = camera_.position + offset,
+                    .initial_position = camera_.position + 1.0f * camera_.forward,
                     .initial_velocity = speed * camera_.forward,
                     .source_id = GetID(),
                     .damage = damage_param * 8 + 20
