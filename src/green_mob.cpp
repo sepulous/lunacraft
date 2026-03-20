@@ -13,6 +13,7 @@ GreenMob::GreenMob(GreenMobData data)
     prev_position_ = data.position;
     next_position_ = data.position;
     yaw_ = data.yaw;
+    roll_ = 0;
     health_ = data.health;
     aabb_.center = data.position;
     aabb_.extents = {0.5f, 0.5f, 0.5f};
@@ -90,7 +91,7 @@ void GreenMob::Update(float delta_time)
     {
         if (next_action_time_ <= 0)
         {
-            next_action_time_ = RNG{}.Range(1.0f, 5.0f);
+            next_action_time_ = RNG{}.Range(1.0f, 4.0f);
             if (RNG{}.Range(0, 1) == 0)
             {
                 action_ = GreenMobAction::JUMP;
@@ -98,7 +99,7 @@ void GreenMob::Update(float delta_time)
                 auto yaw_rotation = glm::mat3{glm::rotate(glm::mat4{1.0f}, glm::radians(yaw_), {0, 1, 0})};
                 glm::vec3 forward = yaw_rotation * glm::vec3{0.0f, 0.0f, 1.0f};
                 jump_vector_ = RNG{}.Range(1.0f, 6.0f) * forward
-                             + RNG{}.Range(1.0f, 6.0f) * glm::vec3{0, 1, 0};
+                             + RNG{}.Range(5.0f, 11.0f) * glm::vec3{0, 1, 0};
             }
             else
             {
@@ -173,7 +174,7 @@ void GreenMob::FixedUpdate()
     {
         if (target_yaw_ > 0)
         {
-            float delta = 80.0f * FIXED_DELTA_TIME;
+            float delta = 180.0f * FIXED_DELTA_TIME;
             yaw_ += delta;
             target_yaw_ -= delta;
         }
