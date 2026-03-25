@@ -12,905 +12,10 @@
 #include "chunk_generation.h"
 #include "moon.h"
 
-//
-// Helpers
-//
-
-void GenerateCrystal(BlockID *, RNG &, float, int, int, int, int, BlockID, int, int);
-
-struct TreeBlock
-{
-    BlockID block;
-    int local_x;
-    int local_y;
-    int local_z;
-
-    TreeBlock(BlockID block, int local_x, int local_y, int local_z) : block(block), local_x(local_x), local_y(local_y), local_z(local_z) {}
-};
-
-std::vector<std::vector<TreeBlock>> GREEN_LIGHT_TREE_SHAPES = {
-    {
-        TreeBlock(BlockID::moon_leaf, 8, 0, 0), // max extent
-
-        TreeBlock(BlockID::moon_leaf, 0, 1, 1), TreeBlock(BlockID::moon_leaf, 0, 2, 1), TreeBlock(BlockID::moon_leaf, -1, 1, 1), TreeBlock(BlockID::moon_leaf, -1, 2, 1),
-        TreeBlock(BlockID::moon_leaf, 1, 1, 1), TreeBlock(BlockID::moon_leaf, 1, 2, 1), TreeBlock(BlockID::moon_leaf, 2, 2, 1), TreeBlock(BlockID::moon_leaf, 1, 2, 2),
-        TreeBlock(BlockID::moon_leaf, 0, 1, 2), TreeBlock(BlockID::moon_leaf, -1, 2, 2), TreeBlock(BlockID::moon_leaf, -1, 3, 2), TreeBlock(BlockID::moon_leaf, -1, 3, 1),
-        TreeBlock(BlockID::moon_leaf, -2, 4, 1), TreeBlock(BlockID::moon_leaf, -2, 4, 2), TreeBlock(BlockID::moon_leaf, -2, 3, 2), TreeBlock(BlockID::moon_leaf, -2, 3, 1),
-        TreeBlock(BlockID::moon_leaf, -3, 5, 1), TreeBlock(BlockID::moon_leaf, -3, 5, 2), TreeBlock(BlockID::moon_leaf, -4, 6, 2), TreeBlock(BlockID::moon_leaf, -4, 5, 2),
-        TreeBlock(BlockID::moon_leaf, -5, 7, 2), TreeBlock(BlockID::moon_leaf, -6, 7, 2), TreeBlock(BlockID::moon_leaf, -7, 7, 2), TreeBlock(BlockID::moon_leaf, -7, 6, 2),
-        TreeBlock(BlockID::moon_leaf, -7, 6, 1), TreeBlock(BlockID::moon_leaf, 2, 3, 1), TreeBlock(BlockID::moon_leaf, 2, 3, 2), TreeBlock(BlockID::moon_leaf, 2, 4, 1),
-        TreeBlock(BlockID::moon_leaf, 2, 4, 2), TreeBlock(BlockID::moon_leaf, 3, 5, 2), TreeBlock(BlockID::moon_leaf, 3, 5, 1), TreeBlock(BlockID::moon_leaf, 4, 5, 1),
-        TreeBlock(BlockID::moon_leaf, 4, 6, 1), TreeBlock(BlockID::moon_leaf, 5, 6, 1), TreeBlock(BlockID::moon_leaf, 6, 6, 1), TreeBlock(BlockID::moon_leaf, 6, 5, 1),
-        TreeBlock(BlockID::moon_leaf, 6, 5, 2),
-
-        TreeBlock(BlockID::light, 7, 3, 2), TreeBlock(BlockID::light, 6, 3, 2), TreeBlock(BlockID::light, 7, 3, 1), TreeBlock(BlockID::light, 6, 3, 1),
-        TreeBlock(BlockID::light, 7, 4, 2), TreeBlock(BlockID::light, 6, 4, 2), TreeBlock(BlockID::light, 7, 4, 1), TreeBlock(BlockID::light, 6, 4, 1),
-        TreeBlock(BlockID::light, -8, 4, 0), TreeBlock(BlockID::light, -8, 5, 0), TreeBlock(BlockID::light, -7, 4, 0), TreeBlock(BlockID::light, -7, 5, 0),
-        TreeBlock(BlockID::light, -7, 4, 1), TreeBlock(BlockID::light, -7, 5, 1), TreeBlock(BlockID::light, -8, 5, 1)
-    },
-    {
-        TreeBlock(BlockID::moon_leaf, 9, 0, 0), // max extent
-
-        TreeBlock(BlockID::moon_leaf, 1, 1, 0), TreeBlock(BlockID::moon_leaf, 1, 1, 1), TreeBlock(BlockID::moon_leaf, 1, 1, -1), TreeBlock(BlockID::moon_leaf, 1, 2, 1),
-        TreeBlock(BlockID::moon_leaf, 1, 2, -1), TreeBlock(BlockID::moon_leaf, 2, 1, 1), TreeBlock(BlockID::moon_leaf, 2, 1, 0), TreeBlock(BlockID::moon_leaf, 2, 2, 1),
-        TreeBlock(BlockID::moon_leaf, 2, 2, 0), TreeBlock(BlockID::moon_leaf, 1, 2, 2), TreeBlock(BlockID::moon_leaf, 2, 2, 2), TreeBlock(BlockID::moon_leaf, 1, 3, 2),
-        TreeBlock(BlockID::moon_leaf, 2, 3, 2), TreeBlock(BlockID::moon_leaf, 2, 4, 2), TreeBlock(BlockID::moon_leaf, 1, 4, 3), TreeBlock(BlockID::moon_leaf, 2, 4, 3),
-        TreeBlock(BlockID::moon_leaf, 2, 5, 3), TreeBlock(BlockID::moon_leaf, 1, 5, 3), TreeBlock(BlockID::moon_leaf, 2, 5, 4), TreeBlock(BlockID::moon_leaf, 1, 5, 4),
-        TreeBlock(BlockID::moon_leaf, 1, 6, 4), TreeBlock(BlockID::moon_leaf, 1, 6, 5), TreeBlock(BlockID::moon_leaf, 1, 6, 6), TreeBlock(BlockID::moon_leaf, 0, 6, 6),
-        TreeBlock(BlockID::moon_leaf, 0, 5, 6), TreeBlock(BlockID::moon_leaf, 0, 5, 7), TreeBlock(BlockID::moon_leaf, 1, 2, -2), TreeBlock(BlockID::moon_leaf, 1, 3, -2),
-        TreeBlock(BlockID::moon_leaf, 1, 4, -2), TreeBlock(BlockID::moon_leaf, 2, 2, -1), TreeBlock(BlockID::moon_leaf, 2, 3, -1), TreeBlock(BlockID::moon_leaf, 2, 3, -2),
-        TreeBlock(BlockID::moon_leaf, 2, 4, -2), TreeBlock(BlockID::moon_leaf, 2, 5, -2), TreeBlock(BlockID::moon_leaf, 2, 4, -3), TreeBlock(BlockID::moon_leaf, 2, 5, -3),
-        TreeBlock(BlockID::moon_leaf, 2, 6, -3), TreeBlock(BlockID::moon_leaf, 3, 5, -3), TreeBlock(BlockID::moon_leaf, 3, 6, -3), TreeBlock(BlockID::moon_leaf, 3, 6, -4),
-        TreeBlock(BlockID::moon_leaf, 2, 6, -4), TreeBlock(BlockID::moon_leaf, 3, 7, -4), TreeBlock(BlockID::moon_leaf, 2, 7, -4), TreeBlock(BlockID::moon_leaf, 3, 7, -5),
-        TreeBlock(BlockID::moon_leaf, 2, 7, -5), TreeBlock(BlockID::moon_leaf, 3, 6, -6), TreeBlock(BlockID::moon_leaf, 3, 7, -6), TreeBlock(BlockID::moon_leaf, 4, 6, -6),
-        TreeBlock(BlockID::moon_leaf, 4, 6, -7), TreeBlock(BlockID::moon_leaf, 3, 6, -7), TreeBlock(BlockID::moon_leaf, 4, 5, -7), TreeBlock(BlockID::moon_leaf, 4, 5, -8),
-
-        TreeBlock(BlockID::light, 5, 3, -8), TreeBlock(BlockID::light, 5, 3, -9), TreeBlock(BlockID::light, 4, 3, -8), TreeBlock(BlockID::light, 4, 3, -9),
-        TreeBlock(BlockID::light, 5, 4, -8), TreeBlock(BlockID::light, 5, 4, -9), TreeBlock(BlockID::light, 4, 4, -8), TreeBlock(BlockID::light, 4, 4, -9),
-        TreeBlock(BlockID::light, -1, 3, 8), TreeBlock(BlockID::light, -1, 3, 7), TreeBlock(BlockID::light, 0, 3, 8), TreeBlock(BlockID::light, 0, 3, 7),
-        TreeBlock(BlockID::light, -1, 4, 8), TreeBlock(BlockID::light, -1, 4, 7), TreeBlock(BlockID::light, 0, 4, 8), TreeBlock(BlockID::light, 0, 4, 7)
-    },
-    {
-        TreeBlock(BlockID::moon_leaf, 11, 0, 0), // max extent
-
-        // TODO: Lower max extent to 7
-        // x: -6 to 8  ->  -7 to 7
-        // z: -11 to 3  ->  -7 to 7
-
-        TreeBlock(BlockID::moon_leaf, 1, 1, 0), TreeBlock(BlockID::moon_leaf, 1, 2, 0), TreeBlock(BlockID::moon_leaf, 1, 3, 0), TreeBlock(BlockID::moon_leaf, 1, 1, -1),
-        TreeBlock(BlockID::moon_leaf, 1, 2, -1), TreeBlock(BlockID::moon_leaf, 1, 3, -1), TreeBlock(BlockID::moon_leaf, 0, 1, -1), TreeBlock(BlockID::moon_leaf, 0, 2, -1),
-        TreeBlock(BlockID::moon_leaf, 0, 3, -1), TreeBlock(BlockID::moon_leaf, -1, 4, -1), TreeBlock(BlockID::moon_leaf, -1, 3, -1), TreeBlock(BlockID::moon_leaf, -1, 2, -1),
-        TreeBlock(BlockID::moon_leaf, 2, 3, 0), TreeBlock(BlockID::moon_leaf, 2, 4, 0), TreeBlock(BlockID::moon_leaf, 2, 3, -1), TreeBlock(BlockID::moon_leaf, 2, 4, -1),
-        TreeBlock(BlockID::moon_leaf, 2, 5, -1), TreeBlock(BlockID::moon_leaf, 3, 5, -1), TreeBlock(BlockID::moon_leaf, 3, 5, 0), TreeBlock(BlockID::moon_leaf, 3, 6, 0),
-        TreeBlock(BlockID::moon_leaf, 4, 6, 0), TreeBlock(BlockID::moon_leaf, 4, 7, 0), TreeBlock(BlockID::moon_leaf, 5, 7, 0), TreeBlock(BlockID::moon_leaf, 6, 7, 0),
-        TreeBlock(BlockID::moon_leaf, 6, 6, 0), TreeBlock(BlockID::moon_leaf, 7, 6, 0), TreeBlock(BlockID::moon_leaf, -1, 3, 0), TreeBlock(BlockID::moon_leaf, -1, 3, -2),
-        TreeBlock(BlockID::moon_leaf, -1, 4, -2), TreeBlock(BlockID::moon_leaf, -2, 4, -1), TreeBlock(BlockID::moon_leaf, -2, 4, 0), TreeBlock(BlockID::moon_leaf, -2, 5, 0),
-        TreeBlock(BlockID::moon_leaf, -3, 5, 0), TreeBlock(BlockID::moon_leaf, -3, 6, 0), TreeBlock(BlockID::moon_leaf, -3, 5, -1), TreeBlock(BlockID::moon_leaf, -4, 5, -1),
-        TreeBlock(BlockID::moon_leaf, -4, 6, -1), TreeBlock(BlockID::moon_leaf, -4, 6, 0), TreeBlock(BlockID::moon_leaf, -4, 7, 0), TreeBlock(BlockID::moon_leaf, -5, 6, 0),
-        TreeBlock(BlockID::moon_leaf, -5, 7, 0), TreeBlock(BlockID::moon_leaf, -5, 7, 1), TreeBlock(BlockID::moon_leaf, -6, 7, 0), TreeBlock(BlockID::moon_leaf, -6, 7, 1),
-        TreeBlock(BlockID::moon_leaf, -6, 7, 2), TreeBlock(BlockID::moon_leaf, 1, 1, -2), TreeBlock(BlockID::moon_leaf, 1, 1, -3), TreeBlock(BlockID::moon_leaf, 0, 1, -2),
-        TreeBlock(BlockID::moon_leaf, 0, 1, -3), TreeBlock(BlockID::moon_leaf, 1, 2, -2), TreeBlock(BlockID::moon_leaf, 1, 2, -3), TreeBlock(BlockID::moon_leaf, 0, 2, -2),
-        TreeBlock(BlockID::moon_leaf, 0, 2, -3), TreeBlock(BlockID::moon_leaf, 0, 2, -4), TreeBlock(BlockID::moon_leaf, 1, 3, -3), TreeBlock(BlockID::moon_leaf, 0, 3, -4),
-        TreeBlock(BlockID::moon_leaf, 1, 3, -4), TreeBlock(BlockID::moon_leaf, 0, 4, -4), TreeBlock(BlockID::moon_leaf, 1, 4, -4), TreeBlock(BlockID::moon_leaf, 1, 4, -5),
-        TreeBlock(BlockID::moon_leaf, 1, 5, -5), TreeBlock(BlockID::moon_leaf, 1, 6, -5), TreeBlock(BlockID::moon_leaf, 0, 4, -5), TreeBlock(BlockID::moon_leaf, 0, 5, -5),
-        TreeBlock(BlockID::moon_leaf, 0, 6, -6), TreeBlock(BlockID::moon_leaf, 1, 6, -6), TreeBlock(BlockID::moon_leaf, 1, 7, -6), TreeBlock(BlockID::moon_leaf, 1, 7, -7),
-        TreeBlock(BlockID::moon_leaf, 0, 7, -7), TreeBlock(BlockID::moon_leaf, 1, 8, -7), TreeBlock(BlockID::moon_leaf, 1, 8, -9), TreeBlock(BlockID::moon_leaf, 1, 7, -9),
-        TreeBlock(BlockID::moon_leaf, 1, 7, -10), TreeBlock(BlockID::moon_leaf, 0, 7, -9), TreeBlock(BlockID::moon_leaf, 0, 7, -10), TreeBlock(BlockID::moon_leaf, -1, 7, -10),
-        TreeBlock(BlockID::moon_leaf, 0, 7, -8), TreeBlock(BlockID::moon_leaf, 1, 7, -8), TreeBlock(BlockID::moon_leaf, 1, 8, -8),
-
-        TreeBlock(BlockID::light, 0, 5, -11), TreeBlock(BlockID::light, 0, 6, -11), TreeBlock(BlockID::light, 0, 5, -10), TreeBlock(BlockID::light, 0, 6, -10),
-        TreeBlock(BlockID::light, -1, 5, -11), TreeBlock(BlockID::light, -1, 6, -11), TreeBlock(BlockID::light, -1, 6, -10), TreeBlock(BlockID::light, -5, 5, 3),
-        TreeBlock(BlockID::light, -5, 5, 2), TreeBlock(BlockID::light, -6, 5, 3), TreeBlock(BlockID::light, -6, 5, 2), TreeBlock(BlockID::light, -5, 6, 3),
-        TreeBlock(BlockID::light, -5, 6, 2), TreeBlock(BlockID::light, -6, 6, 3), TreeBlock(BlockID::light, -6, 6, 2), TreeBlock(BlockID::light, 8, 4, 0),
-        TreeBlock(BlockID::light, 8, 4, 1), TreeBlock(BlockID::light, 7, 4, 1), TreeBlock(BlockID::light, 7, 5, 1), TreeBlock(BlockID::light, 7, 5, 0),
-        TreeBlock(BlockID::light, 8, 5, 0)
-    },
-    {
-        TreeBlock(BlockID::moon_leaf, 9, 0, 0), // max extent
-
-        // x: -5 to 11  ->  -8 to 8 TreeBlock(DONE)
-        // z: -10 to 7  ->  -9 to 8 TreeBlock(DONE)
-
-        TreeBlock(BlockID::moon_leaf, -2, 1, 1), TreeBlock(BlockID::moon_leaf, -2, 2, 1), TreeBlock(BlockID::moon_leaf, -2, 3, 1), TreeBlock(BlockID::moon_leaf, -2, 4, 1),
-        TreeBlock(BlockID::moon_leaf, -3, 1, 0), TreeBlock(BlockID::moon_leaf, -2, 1, -1), TreeBlock(BlockID::moon_leaf, -1, 1, -1), TreeBlock(BlockID::moon_leaf, -1, 1, 2),
-        TreeBlock(BlockID::moon_leaf, 0, 1, 1), TreeBlock(BlockID::moon_leaf, 0, 1, 0), TreeBlock(BlockID::moon_leaf, -1, 1, 1), TreeBlock(BlockID::moon_leaf, -1, 2, 1),
-        TreeBlock(BlockID::moon_leaf, -2, 1, 0), TreeBlock(BlockID::moon_leaf, -2, 2, 0), TreeBlock(BlockID::moon_leaf, -2, 3, 0), TreeBlock(BlockID::moon_leaf, -2, 4, 0),
-        TreeBlock(BlockID::moon_leaf, -2, 5, 0), TreeBlock(BlockID::moon_leaf, -1, 4, -2), TreeBlock(BlockID::moon_leaf, -2, 4, -2), TreeBlock(BlockID::moon_leaf, -2, 4, -1),
-        TreeBlock(BlockID::moon_leaf, -1, 4, -1), TreeBlock(BlockID::moon_leaf, -1, 1, 0), TreeBlock(BlockID::moon_leaf, -1, 2, 0), TreeBlock(BlockID::moon_leaf, -1, 3, 0),
-        TreeBlock(BlockID::moon_leaf, -1, 4, 1), TreeBlock(BlockID::moon_leaf, 0, 3, 0), TreeBlock(BlockID::moon_leaf, 0, 4, 0), TreeBlock(BlockID::moon_leaf, 0, 5, 0),
-        TreeBlock(BlockID::moon_leaf, 0, 5, -1), TreeBlock(BlockID::moon_leaf, 0, 6, -1), TreeBlock(BlockID::moon_leaf, -2, 5, -2), TreeBlock(BlockID::moon_leaf, 1, 5, 0),
-        TreeBlock(BlockID::moon_leaf, 1, 6, 0), TreeBlock(BlockID::moon_leaf, 1, 7, 0), TreeBlock(BlockID::moon_leaf, 1, 6, -1), TreeBlock(BlockID::moon_leaf, 1, 7, -1),
-        TreeBlock(BlockID::moon_leaf, 2, 7, 0), TreeBlock(BlockID::moon_leaf, 2, 8, 0), TreeBlock(BlockID::moon_leaf, 2, 8, -1), TreeBlock(BlockID::moon_leaf, 2, 9, -1),
-        TreeBlock(BlockID::moon_leaf, 3, 8, -1), TreeBlock(BlockID::moon_leaf, 3, 9, -1), TreeBlock(BlockID::moon_leaf, 4, 9, -1), TreeBlock(BlockID::moon_leaf, 5, 9, -1),
-        TreeBlock(BlockID::moon_leaf, 6, 9, -1), TreeBlock(BlockID::moon_leaf, 6, 8, -1), TreeBlock(BlockID::moon_leaf, 7, 8, -1), TreeBlock(BlockID::moon_leaf, 7, 7, -1),
-        TreeBlock(BlockID::moon_leaf, 8, 7, -1), TreeBlock(BlockID::moon_leaf, 7, 7, 0), TreeBlock(BlockID::moon_leaf, -1, 4, 2), TreeBlock(BlockID::moon_leaf, -1, 5, 2),
-        TreeBlock(BlockID::moon_leaf, -1, 6, 2), TreeBlock(BlockID::moon_leaf, -1, 7, 2), TreeBlock(BlockID::moon_leaf, -2, 5, 2), TreeBlock(BlockID::moon_leaf, -2, 6, 2),
-        TreeBlock(BlockID::moon_leaf, -2, 7, 2), TreeBlock(BlockID::moon_leaf, -2, 7, 3), TreeBlock(BlockID::moon_leaf, -2, 8, 3), TreeBlock(BlockID::moon_leaf, -1, 8, 3),
-        TreeBlock(BlockID::moon_leaf, -1, 8, 4), TreeBlock(BlockID::moon_leaf, -1, 8, 5), TreeBlock(BlockID::moon_leaf, -1, 8, 6), TreeBlock(BlockID::moon_leaf, -1, 7, 6),
-        TreeBlock(BlockID::moon_leaf, 0, 7, 6), TreeBlock(BlockID::moon_leaf, -1, 7, 7), TreeBlock(BlockID::moon_leaf, -1, 6, 7), TreeBlock(BlockID::moon_leaf, 0, 6, 6),
-        TreeBlock(BlockID::moon_leaf, -3, 5, -1), TreeBlock(BlockID::moon_leaf, -3, 6, -1), TreeBlock(BlockID::moon_leaf, -3, 6, 0), TreeBlock(BlockID::moon_leaf, -4, 7, -1),
-        TreeBlock(BlockID::moon_leaf, -4, 8, -1), TreeBlock(BlockID::moon_leaf, -4, 7, 0), TreeBlock(BlockID::moon_leaf, -5, 8, 0), TreeBlock(BlockID::moon_leaf, -5, 9, 0),
-        TreeBlock(BlockID::moon_leaf, -5, 9, -1), TreeBlock(BlockID::moon_leaf, -6, 9, 0), TreeBlock(BlockID::moon_leaf, -7, 9, 0), TreeBlock(BlockID::moon_leaf, -1, 5, -3),
-        TreeBlock(BlockID::moon_leaf, -1, 5, -3), TreeBlock(BlockID::moon_leaf, -2, 5, -3), TreeBlock(BlockID::moon_leaf, -1, 6, -3), TreeBlock(BlockID::moon_leaf, -2, 6, -3),
-        TreeBlock(BlockID::moon_leaf, -2, 6, -4), TreeBlock(BlockID::moon_leaf, -2, 7, -4), TreeBlock(BlockID::moon_leaf, -1, 7, -4), TreeBlock(BlockID::moon_leaf, -1, 8, -5),
-        TreeBlock(BlockID::moon_leaf, -1, 8, -6), TreeBlock(BlockID::moon_leaf, -2, 8, -5), TreeBlock(BlockID::moon_leaf, -2, 8, -6), TreeBlock(BlockID::moon_leaf, -2, 8, -7),
-        TreeBlock(BlockID::moon_leaf, -1, 7, -7), TreeBlock(BlockID::moon_leaf, -1, 6, -8), TreeBlock(BlockID::moon_leaf, -1, 7, -8), TreeBlock(BlockID::moon_leaf, -2, 7, -8),
-        TreeBlock(BlockID::moon_leaf, -1, 6, -9), TreeBlock(BlockID::moon_leaf, -2, 6, -9),
-
-        TreeBlock(BlockID::light, -7, 7, 0), TreeBlock(BlockID::light, -8, 7, 0), TreeBlock(BlockID::light, -7, 7, 1), TreeBlock(BlockID::light, -8, 7, 1),
-        TreeBlock(BlockID::light, -7, 8, 0), TreeBlock(BlockID::light, -8, 8, 0), TreeBlock(BlockID::light, -7, 8, 1), TreeBlock(BlockID::light, -8, 8, 1),
-        TreeBlock(BlockID::light, -1, 4, -9), TreeBlock(BlockID::light, -2, 4, -9), TreeBlock(BlockID::light, -1, 4, -8), TreeBlock(BlockID::light, -2, 4, -8),
-        TreeBlock(BlockID::light, -1, 5, -9), TreeBlock(BlockID::light, -2, 5, -9), TreeBlock(BlockID::light, -1, 5, -8), TreeBlock(BlockID::light, -2, 5, -8),
-        TreeBlock(BlockID::light, 7, 5, 0), TreeBlock(BlockID::light, 7, 5, -1), TreeBlock(BlockID::light, 8, 5, -1), TreeBlock(BlockID::light, 7, 6, 0),
-        TreeBlock(BlockID::light, 8, 6, 0), TreeBlock(BlockID::light, 7, 6, -1), TreeBlock(BlockID::light, 8, 6, -1), TreeBlock(BlockID::light, 0, 4, 8),
-        TreeBlock(BlockID::light, -1, 4, 8), TreeBlock(BlockID::light, 0, 4, 7), TreeBlock(BlockID::light, -1, 4, 7), TreeBlock(BlockID::light, -1, 5, 8),
-        TreeBlock(BlockID::light, 0, 5, 7), TreeBlock(BlockID::light, -1, 5, 7)
-    },
-    {
-        TreeBlock(BlockID::moon_leaf, 8, 0, 0), // max extent
-
-        // x: -7 to 9  ->  -8 to 8 TreeBlock(DONE)
-        // z: -7 to 8
-
-        TreeBlock(BlockID::moon_leaf, 0, 2, 0), TreeBlock(BlockID::moon_leaf, 0, 3, 0), TreeBlock(BlockID::moon_leaf, 0, 4, 0), TreeBlock(BlockID::moon_leaf, -1, 2, 0),
-        TreeBlock(BlockID::moon_leaf, -1, 3, 0), TreeBlock(BlockID::moon_leaf, -1, 4, 0), TreeBlock(BlockID::moon_leaf, -1, 1, -1), TreeBlock(BlockID::moon_leaf, -1, 2, -1),
-        TreeBlock(BlockID::moon_leaf, -1, 3, -1), TreeBlock(BlockID::moon_leaf, -1, 4, -1), TreeBlock(BlockID::moon_leaf, 1, 3, 0), TreeBlock(BlockID::moon_leaf, 1, 4, 0),
-        TreeBlock(BlockID::moon_leaf, 1, 3, -1), TreeBlock(BlockID::moon_leaf, 1, 4, -1), TreeBlock(BlockID::moon_leaf, 0, 1, -1), TreeBlock(BlockID::moon_leaf, 0, 2, -1),
-        TreeBlock(BlockID::moon_leaf, 0, 3, -1), TreeBlock(BlockID::moon_leaf, 0, 2, -2), TreeBlock(BlockID::moon_leaf, 0, 3, -2), TreeBlock(BlockID::moon_leaf, 0, 4, -2),
-        TreeBlock(BlockID::moon_leaf, -1, 2, -2), TreeBlock(BlockID::moon_leaf, -1, 3, -2), TreeBlock(BlockID::moon_leaf, -1, 4, -2), TreeBlock(BlockID::moon_leaf, -1, 5, -2),
-        TreeBlock(BlockID::moon_leaf, 0, 4, -3), TreeBlock(BlockID::moon_leaf, 0, 5, -3), TreeBlock(BlockID::moon_leaf, -1, 3, -3), TreeBlock(BlockID::moon_leaf, -1, 4, -3),
-        TreeBlock(BlockID::moon_leaf, -1, 5, -3), TreeBlock(BlockID::moon_leaf, -1, 6, -3), TreeBlock(BlockID::moon_leaf, 0, 5, -4), TreeBlock(BlockID::moon_leaf, -1, 5, -4),
-        TreeBlock(BlockID::moon_leaf, 0, 6, -4), TreeBlock(BlockID::moon_leaf, -1, 6, -4), TreeBlock(BlockID::moon_leaf, 0, 5, -5), TreeBlock(BlockID::moon_leaf, -1, 5, -5),
-        TreeBlock(BlockID::moon_leaf, -1, 4, -5), TreeBlock(BlockID::moon_leaf, -1, 3, -6), TreeBlock(BlockID::moon_leaf, -1, 4, -6), TreeBlock(BlockID::moon_leaf, -2, 4, 0),
-        TreeBlock(BlockID::moon_leaf, -2, 4, 1), TreeBlock(BlockID::moon_leaf, -2, 5, 0), TreeBlock(BlockID::moon_leaf, -2, 5, 1), TreeBlock(BlockID::moon_leaf, -3, 5, 1),
-        TreeBlock(BlockID::moon_leaf, -3, 6, 1), TreeBlock(BlockID::moon_leaf, -4, 6, 1), TreeBlock(BlockID::moon_leaf, -5, 6, 1), TreeBlock(BlockID::moon_leaf, -4, 6, 2),
-        TreeBlock(BlockID::moon_leaf, -5, 6, 2), TreeBlock(BlockID::moon_leaf, -5, 5, 2), TreeBlock(BlockID::moon_leaf, -6, 5, 2), TreeBlock(BlockID::moon_leaf, -6, 5, 1),
-        TreeBlock(BlockID::moon_leaf, -6, 4, 2), TreeBlock(BlockID::moon_leaf, -7, 4, 2), TreeBlock(BlockID::moon_leaf, -7, 3, 2), TreeBlock(BlockID::moon_leaf, -7, 2, 2),
-        TreeBlock(BlockID::moon_leaf, -7, 1, 2), TreeBlock(BlockID::moon_leaf, -8, 1, 2), TreeBlock(BlockID::moon_leaf, -8, 2, 2), TreeBlock(BlockID::moon_leaf, -8, 1, 3),
-        TreeBlock(BlockID::moon_leaf, 0, 3, 1), TreeBlock(BlockID::moon_leaf, 0, 4, 1), TreeBlock(BlockID::moon_leaf, 0, 5, 1), TreeBlock(BlockID::moon_leaf, -1, 4, 1),
-        TreeBlock(BlockID::moon_leaf, -1, 5, 1), TreeBlock(BlockID::moon_leaf, -1, 6, 2), TreeBlock(BlockID::moon_leaf, -1, 6, 3), TreeBlock(BlockID::moon_leaf, -1, 6, 4),
-        TreeBlock(BlockID::moon_leaf, 0, 6, 2), TreeBlock(BlockID::moon_leaf, 0, 6, 3), TreeBlock(BlockID::moon_leaf, 0, 7, 3), TreeBlock(BlockID::moon_leaf, -1, 7, 3),
-        TreeBlock(BlockID::moon_leaf, -1, 7, 4), TreeBlock(BlockID::moon_leaf, -1, 7, 5), TreeBlock(BlockID::moon_leaf, -1, 8, 5), TreeBlock(BlockID::moon_leaf, -1, 8, 6),
-        TreeBlock(BlockID::moon_leaf, -1, 8, 7), TreeBlock(BlockID::moon_leaf, -1, 7, 7), TreeBlock(BlockID::moon_leaf, 0, 7, 7), TreeBlock(BlockID::moon_leaf, 2, 4, 0),
-        TreeBlock(BlockID::moon_leaf, 2, 4, -1), TreeBlock(BlockID::moon_leaf, 2, 5, 0), TreeBlock(BlockID::moon_leaf, 2, 5, -1), TreeBlock(BlockID::moon_leaf, 2, 6, 0),
-        TreeBlock(BlockID::moon_leaf, 2, 6, -1), TreeBlock(BlockID::moon_leaf, 3, 6, -1), TreeBlock(BlockID::moon_leaf, 3, 7, -1), TreeBlock(BlockID::moon_leaf, 3, 7, 0),
-        TreeBlock(BlockID::moon_leaf, 4, 7, 0), TreeBlock(BlockID::moon_leaf, 4, 7, -1), TreeBlock(BlockID::moon_leaf, 5, 7, -1), TreeBlock(BlockID::moon_leaf, 4, 8, -1),
-        TreeBlock(BlockID::moon_leaf, 5, 8, -1), TreeBlock(BlockID::moon_leaf, 6, 8, -1), TreeBlock(BlockID::moon_leaf, 6, 9, -1), TreeBlock(BlockID::moon_leaf, 7, 8, -1),
-        TreeBlock(BlockID::moon_leaf, 7, 8, -2),
-
-        TreeBlock(BlockID::light, 0, 5, 8), TreeBlock(BlockID::light, -1, 5, 8), TreeBlock(BlockID::light, 0, 5, 7), TreeBlock(BlockID::light, -1, 5, 7),
-        TreeBlock(BlockID::light, -1, 6, 8), TreeBlock(BlockID::light, 0, 6, 7), TreeBlock(BlockID::light, -1, 6, 7), TreeBlock(BlockID::light, 8, 6, -3),
-        TreeBlock(BlockID::light, 7, 6, -3), TreeBlock(BlockID::light, 8, 6, -2), TreeBlock(BlockID::light, 7, 6, -2), TreeBlock(BlockID::light, 8, 7, -3),
-        TreeBlock(BlockID::light, 7, 7, -3), TreeBlock(BlockID::light, 8, 7, -2), TreeBlock(BlockID::light, 7, 7, -2), TreeBlock(BlockID::light, -2, 1, -7),
-        TreeBlock(BlockID::light, -1, 1, -7), TreeBlock(BlockID::light, -2, 1, -6), TreeBlock(BlockID::light, -1, 1, -6), TreeBlock(BlockID::light, -1, 2, -7),
-        TreeBlock(BlockID::light, -2, 2, -6), TreeBlock(BlockID::light, -1, 2, -6)
-    }
-};
-
-std::vector<std::vector<TreeBlock>> COLOR_WOOD_TREE_SHAPES = {
-    {
-        TreeBlock(BlockID::moon_bark, 5, 0, 0), // max extent
-
-        TreeBlock(BlockID::moon_bark, -1, 1, 0), TreeBlock(BlockID::moon_bark, -2, 1, 0), TreeBlock(BlockID::moon_bark, -2, 1, -1), TreeBlock(BlockID::moon_bark, -1, 1, -1),
-        TreeBlock(BlockID::moon_bark, -2, 2, 0), TreeBlock(BlockID::moon_bark, -1, 2, -1), TreeBlock(BlockID::moon_bark, -2, 2, 1), TreeBlock(BlockID::moon_bark, -2, 3, 1),
-        TreeBlock(BlockID::moon_bark, -2, 4, 1), TreeBlock(BlockID::moon_bark, -3, 4, 1), TreeBlock(BlockID::moon_bark, -3, 5, 1), TreeBlock(BlockID::moon_bark, -3, 6, 1),
-        TreeBlock(BlockID::moon_bark, -3, 7, 1), TreeBlock(BlockID::moon_bark, -3, 8, 1), TreeBlock(BlockID::moon_bark, -3, 9, 1), TreeBlock(BlockID::moon_bark, -4, 8, 1),
-        TreeBlock(BlockID::moon_bark, -4, 9, 1), TreeBlock(BlockID::moon_bark, -4, 10, 1), TreeBlock(BlockID::moon_bark, -4, 10, 2), TreeBlock(BlockID::moon_bark, -4, 11, 2),
-        TreeBlock(BlockID::moon_bark, -4, 12, 2), TreeBlock(BlockID::moon_bark, 0, 2, -1), TreeBlock(BlockID::moon_bark, 0, 3, -1), TreeBlock(BlockID::moon_bark, 0, 3, -2),
-        TreeBlock(BlockID::moon_bark, 0, 4, -2), TreeBlock(BlockID::moon_bark, 0, 5, -2), TreeBlock(BlockID::moon_bark, 0, 6, -2), TreeBlock(BlockID::moon_bark, 0, 7, -2),
-        TreeBlock(BlockID::moon_bark, 0, 8, -2), TreeBlock(BlockID::moon_bark, 1, 7, -2), TreeBlock(BlockID::moon_bark, 1, 8, -2), TreeBlock(BlockID::moon_bark, 1, 9, -2),
-        TreeBlock(BlockID::moon_bark, 1, 10, -2), TreeBlock(BlockID::moon_bark, 1, 11, -2), TreeBlock(BlockID::moon_bark, 1, 12, -2), TreeBlock(BlockID::moon_bark, 2, 10, -2),
-        TreeBlock(BlockID::moon_bark, 2, 11, -2), TreeBlock(BlockID::moon_bark, 2, 12, -2), TreeBlock(BlockID::moon_bark, 1, 12, -3), TreeBlock(BlockID::moon_bark, 1, 13, -3),
-        TreeBlock(BlockID::moon_bark, 1, 14, -3), TreeBlock(BlockID::moon_bark, 1, 15, -3), TreeBlock(BlockID::moon_bark, 1, 16, -3), TreeBlock(BlockID::moon_bark, 0, 16, -3),
-        TreeBlock(BlockID::moon_bark, 0, 17, -3), TreeBlock(BlockID::moon_bark, 0, 18, -3), TreeBlock(BlockID::moon_bark, 0, 19, -3),
-
-        TreeBlock(BlockID::light, -1, 21, -4), TreeBlock(BlockID::light, 1, 21, -4), TreeBlock(BlockID::light, -1, 21, -2), TreeBlock(BlockID::light, 0, 21, -2),
-        TreeBlock(BlockID::light, -1, 21, -3), TreeBlock(BlockID::light, 0, 21, -3), TreeBlock(BlockID::light, 1, 21, -3), TreeBlock(BlockID::light, 0, 21, -4),
-        TreeBlock(BlockID::light, -5, 13, 3), TreeBlock(BlockID::light, -4, 13, 3), TreeBlock(BlockID::light, -3, 13, 3), TreeBlock(BlockID::light, -5, 13, 2),
-        TreeBlock(BlockID::light, -4, 13, 2), TreeBlock(BlockID::light, -3, 13, 2), TreeBlock(BlockID::light, -4, 13, 1),
-
-        TreeBlock(BlockID::chalchanthite, 0, 20, -3), TreeBlock(BlockID::chalchanthite, 0, 20, -4), TreeBlock(BlockID::chalchanthite, 1, 20, -4), TreeBlock(BlockID::chalchanthite, 1, 20, -3),
-        TreeBlock(BlockID::chalchanthite, 1, 20, -2), TreeBlock(BlockID::chalchanthite, 0, 20, -2), TreeBlock(BlockID::chalchanthite, -1, 20, -2), TreeBlock(BlockID::chalchanthite, -1, 20, -3),
-        TreeBlock(BlockID::chalchanthite, 0, 22, -4), TreeBlock(BlockID::chalchanthite, 1, 22, -4), TreeBlock(BlockID::chalchanthite, -1, 22, -3), TreeBlock(BlockID::chalchanthite, 0, 22, -3),
-        TreeBlock(BlockID::chalchanthite, 1, 22, -3), TreeBlock(BlockID::chalchanthite, 0, 23, -3), TreeBlock(BlockID::chalchanthite, 1, 23, -3), TreeBlock(BlockID::chalchanthite, 0, 22, -2),
-        TreeBlock(BlockID::chalchanthite, 1, 22, -2),
-
-        TreeBlock(BlockID::feldspar, -5, 14, 1), TreeBlock(BlockID::feldspar, -5, 14, 2), TreeBlock(BlockID::feldspar, -5, 14, 3), TreeBlock(BlockID::feldspar, -4, 14, 1),
-        TreeBlock(BlockID::feldspar, -4, 14, 2), TreeBlock(BlockID::feldspar, -4, 14, 3), TreeBlock(BlockID::feldspar, -3, 14, 2), TreeBlock(BlockID::feldspar, -3, 14, 3),
-        TreeBlock(BlockID::feldspar, -4, 15, 2)
-    },
-    {
-        TreeBlock(BlockID::moon_bark, 5, 0, 0), // max extent
-
-        TreeBlock(BlockID::moon_bark, -1, 1, 0), TreeBlock(BlockID::moon_bark, -2, 1, 0), TreeBlock(BlockID::moon_bark, -2, 1, -1), TreeBlock(BlockID::moon_bark, -1, 1, -1),
-        TreeBlock(BlockID::moon_bark, -2, 2, 0), TreeBlock(BlockID::moon_bark, -1, 2, -1), TreeBlock(BlockID::moon_bark, -2, 2, 1), TreeBlock(BlockID::moon_bark, -2, 3, 1),
-        TreeBlock(BlockID::moon_bark, -2, 4, 1), TreeBlock(BlockID::moon_bark, -3, 4, 1), TreeBlock(BlockID::moon_bark, -3, 5, 1), TreeBlock(BlockID::moon_bark, -3, 6, 1),
-        TreeBlock(BlockID::moon_bark, -3, 7, 1), TreeBlock(BlockID::moon_bark, -3, 8, 1), TreeBlock(BlockID::moon_bark, -3, 9, 1), TreeBlock(BlockID::moon_bark, -4, 8, 1),
-        TreeBlock(BlockID::moon_bark, -4, 9, 1), TreeBlock(BlockID::moon_bark, -4, 10, 1), TreeBlock(BlockID::moon_bark, -4, 10, 2), TreeBlock(BlockID::moon_bark, -4, 11, 2),
-        TreeBlock(BlockID::moon_bark, -4, 12, 2), TreeBlock(BlockID::moon_bark, 0, 2, -1), TreeBlock(BlockID::moon_bark, 0, 3, -1), TreeBlock(BlockID::moon_bark, 0, 3, -2),
-        TreeBlock(BlockID::moon_bark, 0, 4, -2), TreeBlock(BlockID::moon_bark, 0, 5, -2), TreeBlock(BlockID::moon_bark, 0, 6, -2), TreeBlock(BlockID::moon_bark, 0, 7, -2),
-        TreeBlock(BlockID::moon_bark, 0, 8, -2), TreeBlock(BlockID::moon_bark, 1, 7, -2), TreeBlock(BlockID::moon_bark, 1, 8, -2), TreeBlock(BlockID::moon_bark, 1, 9, -2),
-        TreeBlock(BlockID::moon_bark, 1, 10, -2), TreeBlock(BlockID::moon_bark, 1, 11, -2), TreeBlock(BlockID::moon_bark, 1, 12, -2), TreeBlock(BlockID::moon_bark, 2, 10, -2),
-        TreeBlock(BlockID::moon_bark, 2, 11, -2), TreeBlock(BlockID::moon_bark, 2, 12, -2), TreeBlock(BlockID::moon_bark, 1, 12, -3), TreeBlock(BlockID::moon_bark, 1, 13, -3),
-        TreeBlock(BlockID::moon_bark, 1, 14, -3), TreeBlock(BlockID::moon_bark, 1, 15, -3), TreeBlock(BlockID::moon_bark, 1, 16, -3), TreeBlock(BlockID::moon_bark, 0, 16, -3),
-        TreeBlock(BlockID::moon_bark, 0, 17, -3), TreeBlock(BlockID::moon_bark, 0, 18, -3), TreeBlock(BlockID::moon_bark, 0, 19, -3),
-
-        TreeBlock(BlockID::light, -1, 21, -2), TreeBlock(BlockID::light, 0, 21, -2), TreeBlock(BlockID::light, -1, 21, -3), TreeBlock(BlockID::light, 0, 21, -3),
-        TreeBlock(BlockID::light, 1, 21, -3), TreeBlock(BlockID::light, 0, 21, -4), TreeBlock(BlockID::light, -5, 13, 3), TreeBlock(BlockID::light, -4, 13, 3),
-        TreeBlock(BlockID::light, -3, 13, 3), TreeBlock(BlockID::light, -5, 13, 2), TreeBlock(BlockID::light, -4, 13, 2), TreeBlock(BlockID::light, -3, 13, 2),
-        TreeBlock(BlockID::light, -4, 13, 1),
-
-        TreeBlock(BlockID::feldspar, 0, 20, -3), TreeBlock(BlockID::feldspar, -1, 22, -4), TreeBlock(BlockID::feldspar, 0, 22, -4), TreeBlock(BlockID::feldspar, 1, 22, -4),
-        TreeBlock(BlockID::feldspar, -1, 22, -3), TreeBlock(BlockID::feldspar, 0, 22, -3), TreeBlock(BlockID::feldspar, 1, 22, -3), TreeBlock(BlockID::feldspar, -1, 23, -3),
-        TreeBlock(BlockID::feldspar, 0, 23, -3), TreeBlock(BlockID::feldspar, -1, 22, -2), TreeBlock(BlockID::feldspar, 0, 22, -2), TreeBlock(BlockID::feldspar, 1, 22, -2),
-
-        TreeBlock(BlockID::chalchanthite, -5, 14, 1), TreeBlock(BlockID::chalchanthite, -5, 14, 2), TreeBlock(BlockID::chalchanthite, -5, 14, 3), TreeBlock(BlockID::chalchanthite, -4, 14, 1),
-        TreeBlock(BlockID::chalchanthite, -4, 14, 2), TreeBlock(BlockID::chalchanthite, -4, 14, 3), TreeBlock(BlockID::chalchanthite, -3, 14, 2), TreeBlock(BlockID::chalchanthite, -3, 14, 3),
-        TreeBlock(BlockID::chalchanthite, -4, 15, 2)
-    },
-    {
-        TreeBlock(BlockID::moon_bark, 5, 0, 0), // max extent
-
-        TreeBlock(BlockID::moon_bark, -1, 1, 0), TreeBlock(BlockID::moon_bark, -2, 1, 0), TreeBlock(BlockID::moon_bark, -2, 1, -1), TreeBlock(BlockID::moon_bark, -1, 1, -1),
-        TreeBlock(BlockID::moon_bark, -2, 2, 0), TreeBlock(BlockID::moon_bark, -1, 2, -1), TreeBlock(BlockID::moon_bark, -2, 2, 1), TreeBlock(BlockID::moon_bark, -2, 3, 1),
-        TreeBlock(BlockID::moon_bark, -2, 4, 1), TreeBlock(BlockID::moon_bark, -3, 4, 1), TreeBlock(BlockID::moon_bark, -3, 5, 1), TreeBlock(BlockID::moon_bark, -3, 6, 1),
-        TreeBlock(BlockID::moon_bark, -3, 7, 1), TreeBlock(BlockID::moon_bark, -3, 8, 1), TreeBlock(BlockID::moon_bark, -3, 9, 1), TreeBlock(BlockID::moon_bark, -4, 8, 1),
-        TreeBlock(BlockID::moon_bark, -4, 9, 1), TreeBlock(BlockID::moon_bark, -4, 10, 1), TreeBlock(BlockID::moon_bark, -4, 10, 2), TreeBlock(BlockID::moon_bark, -4, 11, 2),
-        TreeBlock(BlockID::moon_bark, -4, 12, 2), TreeBlock(BlockID::moon_bark, 0, 2, -1), TreeBlock(BlockID::moon_bark, 0, 3, -1), TreeBlock(BlockID::moon_bark, 0, 3, -2),
-        TreeBlock(BlockID::moon_bark, 0, 4, -2), TreeBlock(BlockID::moon_bark, 0, 5, -2), TreeBlock(BlockID::moon_bark, 0, 6, -2), TreeBlock(BlockID::moon_bark, 0, 7, -2),
-        TreeBlock(BlockID::moon_bark, 0, 8, -2), TreeBlock(BlockID::moon_bark, 1, 7, -2), TreeBlock(BlockID::moon_bark, 1, 8, -2), TreeBlock(BlockID::moon_bark, 1, 9, -2),
-        TreeBlock(BlockID::moon_bark, 1, 10, -2), TreeBlock(BlockID::moon_bark, 1, 11, -2), TreeBlock(BlockID::moon_bark, 1, 12, -2), TreeBlock(BlockID::moon_bark, 2, 10, -2),
-        TreeBlock(BlockID::moon_bark, 2, 11, -2), TreeBlock(BlockID::moon_bark, 2, 12, -2), TreeBlock(BlockID::moon_bark, 1, 12, -3), TreeBlock(BlockID::moon_bark, 1, 13, -3),
-        TreeBlock(BlockID::moon_bark, 1, 14, -3), TreeBlock(BlockID::moon_bark, 1, 15, -3), TreeBlock(BlockID::moon_bark, 1, 16, -3), TreeBlock(BlockID::moon_bark, 0, 16, -3),
-        TreeBlock(BlockID::moon_bark, 0, 17, -3), TreeBlock(BlockID::moon_bark, 0, 18, -3), TreeBlock(BlockID::moon_bark, 0, 19, -3),
-
-        TreeBlock(BlockID::light, -1, 21, -2), TreeBlock(BlockID::light, 0, 21, -2), TreeBlock(BlockID::light, -1, 21, -3), TreeBlock(BlockID::light, 0, 21, -3),
-        TreeBlock(BlockID::light, 1, 21, -3), TreeBlock(BlockID::light, 0, 21, -4), TreeBlock(BlockID::light, -5, 13, 3), TreeBlock(BlockID::light, -4, 13, 3),
-        TreeBlock(BlockID::light, -3, 13, 3), TreeBlock(BlockID::light, -5, 13, 2), TreeBlock(BlockID::light, -4, 13, 2), TreeBlock(BlockID::light, -3, 13, 1),
-        TreeBlock(BlockID::light, -3, 13, 2), TreeBlock(BlockID::light, -4, 13, 1),
-
-        TreeBlock(BlockID::chalchanthite, 0, 20, -3), TreeBlock(BlockID::chalchanthite, -1, 22, -4), TreeBlock(BlockID::chalchanthite, 0, 22, -4), TreeBlock(BlockID::chalchanthite, 1, 22, -4),
-        TreeBlock(BlockID::chalchanthite, -1, 22, -3), TreeBlock(BlockID::chalchanthite, 0, 22, -3), TreeBlock(BlockID::chalchanthite, 1, 22, -3), TreeBlock(BlockID::chalchanthite, -1, 23, -3),
-        TreeBlock(BlockID::chalchanthite, 0, 23, -3), TreeBlock(BlockID::chalchanthite, 1, 23, -3), TreeBlock(BlockID::chalchanthite, -1, 22, -2), TreeBlock(BlockID::chalchanthite, 0, 22, -2),
-        TreeBlock(BlockID::chalchanthite, 1, 22, -2),
-
-        TreeBlock(BlockID::sulphur_ore, -5, 14, 2), TreeBlock(BlockID::sulphur_ore, -5, 14, 3), TreeBlock(BlockID::sulphur_ore, -4, 14, 1), TreeBlock(BlockID::sulphur_ore, -4, 14, 2),
-        TreeBlock(BlockID::sulphur_ore, -4, 14, 3), TreeBlock(BlockID::sulphur_ore, -3, 14, 2), TreeBlock(BlockID::sulphur_ore, -3, 14, 3), TreeBlock(BlockID::sulphur_ore, -4, 15, 2)
-    },
-    {
-        TreeBlock(BlockID::moon_bark, 5, 0, 0), // max extent
-
-        TreeBlock(BlockID::moon_bark, -1, 1, 0), TreeBlock(BlockID::moon_bark, -2, 1, 0), TreeBlock(BlockID::moon_bark, -2, 1, -1), TreeBlock(BlockID::moon_bark, -1, 1, -1),
-        TreeBlock(BlockID::moon_bark, -2, 2, 0), TreeBlock(BlockID::moon_bark, -1, 2, -1), TreeBlock(BlockID::moon_bark, -2, 2, 1), TreeBlock(BlockID::moon_bark, -2, 3, 1),
-        TreeBlock(BlockID::moon_bark, -2, 4, 1), TreeBlock(BlockID::moon_bark, -3, 4, 1), TreeBlock(BlockID::moon_bark, -3, 5, 1), TreeBlock(BlockID::moon_bark, -3, 6, 1),
-        TreeBlock(BlockID::moon_bark, -3, 7, 1), TreeBlock(BlockID::moon_bark, -3, 8, 1), TreeBlock(BlockID::moon_bark, -3, 9, 1), TreeBlock(BlockID::moon_bark, -4, 8, 1),
-        TreeBlock(BlockID::moon_bark, -4, 9, 1), TreeBlock(BlockID::moon_bark, -4, 10, 1), TreeBlock(BlockID::moon_bark, -4, 10, 2), TreeBlock(BlockID::moon_bark, -4, 11, 2),
-        TreeBlock(BlockID::moon_bark, -4, 12, 2), TreeBlock(BlockID::moon_bark, 0, 2, -1), TreeBlock(BlockID::moon_bark, 0, 3, -1), TreeBlock(BlockID::moon_bark, 0, 3, -2),
-        TreeBlock(BlockID::moon_bark, 0, 4, -2), TreeBlock(BlockID::moon_bark, 0, 5, -2), TreeBlock(BlockID::moon_bark, 0, 6, -2), TreeBlock(BlockID::moon_bark, 0, 7, -2),
-        TreeBlock(BlockID::moon_bark, 0, 8, -2), TreeBlock(BlockID::moon_bark, 1, 7, -2), TreeBlock(BlockID::moon_bark, 1, 8, -2), TreeBlock(BlockID::moon_bark, 1, 9, -2),
-        TreeBlock(BlockID::moon_bark, 1, 10, -2), TreeBlock(BlockID::moon_bark, 1, 11, -2), TreeBlock(BlockID::moon_bark, 1, 12, -2), TreeBlock(BlockID::moon_bark, 2, 10, -2),
-        TreeBlock(BlockID::moon_bark, 2, 11, -2), TreeBlock(BlockID::moon_bark, 2, 12, -2), TreeBlock(BlockID::moon_bark, 1, 12, -3), TreeBlock(BlockID::moon_bark, 1, 13, -3),
-        TreeBlock(BlockID::moon_bark, 1, 14, -3), TreeBlock(BlockID::moon_bark, 1, 15, -3), TreeBlock(BlockID::moon_bark, 1, 16, -3), TreeBlock(BlockID::moon_bark, 0, 16, -3),
-        TreeBlock(BlockID::moon_bark, 0, 17, -3), TreeBlock(BlockID::moon_bark, 0, 18, -3), TreeBlock(BlockID::moon_bark, 0, 19, -3),
-
-        TreeBlock(BlockID::light, -1, 21, -2), TreeBlock(BlockID::light, 0, 21, -2), TreeBlock(BlockID::light, -1, 21, -3), TreeBlock(BlockID::light, 0, 21, -3),
-        TreeBlock(BlockID::light, 1, 21, -3), TreeBlock(BlockID::light, 0, 21, -4), TreeBlock(BlockID::light, -5, 13, 3), TreeBlock(BlockID::light, -4, 13, 3),
-        TreeBlock(BlockID::light, -3, 13, 3), TreeBlock(BlockID::light, -5, 13, 2), TreeBlock(BlockID::light, -4, 13, 2), TreeBlock(BlockID::light, -3, 13, 2),
-        TreeBlock(BlockID::light, -4, 13, 1),
-
-        TreeBlock(BlockID::sulphur_ore, 0, 20, -3), TreeBlock(BlockID::sulphur_ore, -1, 22, -4), TreeBlock(BlockID::sulphur_ore, 0, 22, -4), TreeBlock(BlockID::sulphur_ore, 1, 22, -4),
-        TreeBlock(BlockID::sulphur_ore, -1, 22, -3), TreeBlock(BlockID::sulphur_ore, 0, 22, -3), TreeBlock(BlockID::sulphur_ore, 1, 22, -3), TreeBlock(BlockID::sulphur_ore, 0, 23, -3),
-        TreeBlock(BlockID::sulphur_ore, 1, 23, -3), TreeBlock(BlockID::sulphur_ore, -1, 22, -2), TreeBlock(BlockID::sulphur_ore, 0, 22, -2), TreeBlock(BlockID::sulphur_ore, 1, 22, -2),
-
-        TreeBlock(BlockID::chalchanthite, -5, 14, 1), TreeBlock(BlockID::chalchanthite, -5, 14, 2), TreeBlock(BlockID::chalchanthite, -5, 14, 3), TreeBlock(BlockID::chalchanthite, -4, 14, 1),
-        TreeBlock(BlockID::chalchanthite, -4, 14, 2), TreeBlock(BlockID::chalchanthite, -4, 14, 3), TreeBlock(BlockID::chalchanthite, -3, 14, 2), TreeBlock(BlockID::chalchanthite, -3, 14, 3),
-        TreeBlock(BlockID::chalchanthite, -4, 15, 2)
-    },
-    {
-        TreeBlock(BlockID::moon_bark, 5, 0, 0), // max extent
-
-        TreeBlock(BlockID::moon_bark, -1, 1, 0), TreeBlock(BlockID::moon_bark, -2, 1, 0), TreeBlock(BlockID::moon_bark, -2, 1, -1), TreeBlock(BlockID::moon_bark, -1, 1, -1),
-        TreeBlock(BlockID::moon_bark, -2, 2, 0), TreeBlock(BlockID::moon_bark, -1, 2, -1), TreeBlock(BlockID::moon_bark, -2, 2, 1), TreeBlock(BlockID::moon_bark, -2, 3, 1),
-        TreeBlock(BlockID::moon_bark, -2, 4, 1), TreeBlock(BlockID::moon_bark, -3, 4, 1), TreeBlock(BlockID::moon_bark, -3, 5, 1), TreeBlock(BlockID::moon_bark, -3, 6, 1),
-        TreeBlock(BlockID::moon_bark, -3, 7, 1), TreeBlock(BlockID::moon_bark, -3, 8, 1), TreeBlock(BlockID::moon_bark, -3, 9, 1), TreeBlock(BlockID::moon_bark, -4, 8, 1),
-        TreeBlock(BlockID::moon_bark, -4, 9, 1), TreeBlock(BlockID::moon_bark, -4, 10, 1), TreeBlock(BlockID::moon_bark, -4, 10, 2), TreeBlock(BlockID::moon_bark, -4, 11, 2),
-        TreeBlock(BlockID::moon_bark, -4, 12, 2), TreeBlock(BlockID::moon_bark, 0, 2, -1), TreeBlock(BlockID::moon_bark, 0, 3, -1), TreeBlock(BlockID::moon_bark, 0, 3, -2),
-        TreeBlock(BlockID::moon_bark, 0, 4, -2), TreeBlock(BlockID::moon_bark, 0, 5, -2), TreeBlock(BlockID::moon_bark, 0, 6, -2), TreeBlock(BlockID::moon_bark, 0, 7, -2),
-        TreeBlock(BlockID::moon_bark, 0, 8, -2), TreeBlock(BlockID::moon_bark, 1, 7, -2), TreeBlock(BlockID::moon_bark, 1, 8, -2), TreeBlock(BlockID::moon_bark, 1, 9, -2),
-        TreeBlock(BlockID::moon_bark, 1, 10, -2), TreeBlock(BlockID::moon_bark, 1, 11, -2), TreeBlock(BlockID::moon_bark, 1, 12, -2), TreeBlock(BlockID::moon_bark, 2, 10, -2),
-        TreeBlock(BlockID::moon_bark, 2, 11, -2), TreeBlock(BlockID::moon_bark, 2, 12, -2), TreeBlock(BlockID::moon_bark, 1, 12, -3), TreeBlock(BlockID::moon_bark, 1, 13, -3),
-        TreeBlock(BlockID::moon_bark, 1, 14, -3), TreeBlock(BlockID::moon_bark, 1, 15, -3), TreeBlock(BlockID::moon_bark, 1, 16, -3), TreeBlock(BlockID::moon_bark, 0, 16, -3),
-        TreeBlock(BlockID::moon_bark, 0, 17, -3), TreeBlock(BlockID::moon_bark, 0, 18, -3), TreeBlock(BlockID::moon_bark, 0, 19, -3),
-
-        TreeBlock(BlockID::light, -1, 21, -4), TreeBlock(BlockID::light, 1, 21, -4), TreeBlock(BlockID::light, -1, 21, -2), TreeBlock(BlockID::light, 0, 21, -2),
-        TreeBlock(BlockID::light, -1, 21, -3), TreeBlock(BlockID::light, 0, 21, -3), TreeBlock(BlockID::light, 1, 21, -3), TreeBlock(BlockID::light, 0, 21, -4),
-        TreeBlock(BlockID::light, -5, 13, 3), TreeBlock(BlockID::light, -4, 13, 3), TreeBlock(BlockID::light, -3, 13, 3), TreeBlock(BlockID::light, -5, 13, 2),
-        TreeBlock(BlockID::light, -4, 13, 2), TreeBlock(BlockID::light, -3, 13, 2), TreeBlock(BlockID::light, -4, 13, 1), TreeBlock(BlockID::light, -3, 13, 1),
-
-        TreeBlock(BlockID::feldspar, 0, 20, -4), TreeBlock(BlockID::feldspar, 1, 20, -4), TreeBlock(BlockID::feldspar, 1, 20, -3), TreeBlock(BlockID::feldspar, 1, 20, -2),
-        TreeBlock(BlockID::feldspar, 0, 20, -2), TreeBlock(BlockID::feldspar, -1, 20, -2), TreeBlock(BlockID::feldspar, -1, 20, -3), TreeBlock(BlockID::feldspar, 0, 20, -3),
-        TreeBlock(BlockID::feldspar, 0, 22, -4), TreeBlock(BlockID::feldspar, 1, 22, -4), TreeBlock(BlockID::feldspar, -1, 22, -3), TreeBlock(BlockID::feldspar, 0, 22, -3),
-        TreeBlock(BlockID::feldspar, 1, 22, -3), TreeBlock(BlockID::feldspar, 0, 23, -3), TreeBlock(BlockID::feldspar, 1, 23, -3), TreeBlock(BlockID::feldspar, 0, 22, -2),
-        TreeBlock(BlockID::feldspar, 1, 22, -2),
-
-        TreeBlock(BlockID::sulphur_ore, -5, 14, 2), TreeBlock(BlockID::sulphur_ore, -5, 14, 3), TreeBlock(BlockID::sulphur_ore, -4, 14, 1), TreeBlock(BlockID::sulphur_ore, -4, 14, 2),
-        TreeBlock(BlockID::sulphur_ore, -4, 14, 3), TreeBlock(BlockID::sulphur_ore, -3, 14, 2), TreeBlock(BlockID::sulphur_ore, -3, 14, 3), TreeBlock(BlockID::sulphur_ore, -4, 15, 2)
-    },
-    {
-        TreeBlock(BlockID::moon_bark, 5, 0, 0), // max extent
-
-        TreeBlock(BlockID::moon_bark, -1, 1, 0), TreeBlock(BlockID::moon_bark, -2, 1, 0), TreeBlock(BlockID::moon_bark, -2, 1, -1), TreeBlock(BlockID::moon_bark, -1, 1, -1),
-        TreeBlock(BlockID::moon_bark, -2, 2, 0), TreeBlock(BlockID::moon_bark, -1, 2, -1), TreeBlock(BlockID::moon_bark, -2, 2, 1), TreeBlock(BlockID::moon_bark, -2, 3, 1),
-        TreeBlock(BlockID::moon_bark, -2, 4, 1), TreeBlock(BlockID::moon_bark, -3, 4, 1), TreeBlock(BlockID::moon_bark, -3, 5, 1), TreeBlock(BlockID::moon_bark, -3, 6, 1),
-        TreeBlock(BlockID::moon_bark, -3, 7, 1), TreeBlock(BlockID::moon_bark, -3, 8, 1), TreeBlock(BlockID::moon_bark, -3, 9, 1), TreeBlock(BlockID::moon_bark, -4, 8, 1),
-        TreeBlock(BlockID::moon_bark, -4, 9, 1), TreeBlock(BlockID::moon_bark, -4, 10, 1), TreeBlock(BlockID::moon_bark, -4, 10, 2), TreeBlock(BlockID::moon_bark, -4, 11, 2),
-        TreeBlock(BlockID::moon_bark, -4, 12, 2), TreeBlock(BlockID::moon_bark, 0, 2, -1), TreeBlock(BlockID::moon_bark, 0, 3, -1), TreeBlock(BlockID::moon_bark, 0, 3, -2),
-        TreeBlock(BlockID::moon_bark, 0, 4, -2), TreeBlock(BlockID::moon_bark, 0, 5, -2), TreeBlock(BlockID::moon_bark, 0, 6, -2), TreeBlock(BlockID::moon_bark, 0, 7, -2),
-        TreeBlock(BlockID::moon_bark, 0, 8, -2), TreeBlock(BlockID::moon_bark, 1, 7, -2), TreeBlock(BlockID::moon_bark, 1, 8, -2), TreeBlock(BlockID::moon_bark, 1, 9, -2),
-        TreeBlock(BlockID::moon_bark, 1, 10, -2), TreeBlock(BlockID::moon_bark, 1, 11, -2), TreeBlock(BlockID::moon_bark, 1, 12, -2), TreeBlock(BlockID::moon_bark, 2, 10, -2),
-        TreeBlock(BlockID::moon_bark, 2, 11, -2), TreeBlock(BlockID::moon_bark, 2, 12, -2), TreeBlock(BlockID::moon_bark, 1, 12, -3), TreeBlock(BlockID::moon_bark, 1, 13, -3),
-        TreeBlock(BlockID::moon_bark, 1, 14, -3), TreeBlock(BlockID::moon_bark, 1, 15, -3), TreeBlock(BlockID::moon_bark, 1, 16, -3), TreeBlock(BlockID::moon_bark, 0, 16, -3),
-        TreeBlock(BlockID::moon_bark, 0, 17, -3), TreeBlock(BlockID::moon_bark, 0, 18, -3), TreeBlock(BlockID::moon_bark, 0, 19, -3),
-
-        TreeBlock(BlockID::light, -1, 21, -2), TreeBlock(BlockID::light, 0, 21, -2), TreeBlock(BlockID::light, -1, 21, -3), TreeBlock(BlockID::light, 0, 21, -3),
-        TreeBlock(BlockID::light, 1, 21, -3), TreeBlock(BlockID::light, 0, 21, -4), TreeBlock(BlockID::light, -5, 13, 3), TreeBlock(BlockID::light, -4, 13, 3),
-        TreeBlock(BlockID::light, -3, 13, 3), TreeBlock(BlockID::light, -5, 13, 2), TreeBlock(BlockID::light, -4, 13, 2), TreeBlock(BlockID::light, -3, 13, 2),
-        TreeBlock(BlockID::light, -4, 13, 1),
-
-        TreeBlock(BlockID::sulphur_ore, 0, 20, -3), TreeBlock(BlockID::sulphur_ore, -1, 22, -4), TreeBlock(BlockID::sulphur_ore, 0, 22, -4), TreeBlock(BlockID::sulphur_ore, 1, 22, -4),
-        TreeBlock(BlockID::sulphur_ore, -1, 22, -3), TreeBlock(BlockID::sulphur_ore, 0, 22, -3), TreeBlock(BlockID::sulphur_ore, 1, 22, -3), TreeBlock(BlockID::sulphur_ore, -1, 22, -2),
-        TreeBlock(BlockID::sulphur_ore, 0, 22, -2), TreeBlock(BlockID::sulphur_ore, 1, 22, -2), TreeBlock(BlockID::sulphur_ore, -1, 23, -3), TreeBlock(BlockID::sulphur_ore, 0, 23, -3),
-
-        TreeBlock(BlockID::feldspar, -5, 14, 1), TreeBlock(BlockID::feldspar, -5, 14, 2), TreeBlock(BlockID::feldspar, -5, 14, 3), TreeBlock(BlockID::feldspar, -4, 14, 1),
-        TreeBlock(BlockID::feldspar, -4, 14, 2), TreeBlock(BlockID::feldspar, -4, 14, 3), TreeBlock(BlockID::feldspar, -3, 14, 2), TreeBlock(BlockID::feldspar, -3, 14, 3),
-        TreeBlock(BlockID::feldspar, -4, 15, 2)
-    },
-    {
-        TreeBlock(BlockID::moon_bark, 5, 0, 0), // max extent
-
-        TreeBlock(BlockID::moon_bark, -1, 1, 0), TreeBlock(BlockID::moon_bark, -2, 1, 0), TreeBlock(BlockID::moon_bark, -2, 1, -1), TreeBlock(BlockID::moon_bark, -1, 1, -1),
-        TreeBlock(BlockID::moon_bark, -2, 2, 0), TreeBlock(BlockID::moon_bark, -1, 2, -1), TreeBlock(BlockID::moon_bark, -2, 2, 1), TreeBlock(BlockID::moon_bark, -2, 3, 1),
-        TreeBlock(BlockID::moon_bark, -2, 4, 1), TreeBlock(BlockID::moon_bark, -3, 4, 1), TreeBlock(BlockID::moon_bark, -3, 5, 1), TreeBlock(BlockID::moon_bark, -3, 6, 1),
-        TreeBlock(BlockID::moon_bark, -3, 7, 1), TreeBlock(BlockID::moon_bark, -3, 8, 1), TreeBlock(BlockID::moon_bark, -3, 9, 1), TreeBlock(BlockID::moon_bark, -4, 8, 1),
-        TreeBlock(BlockID::moon_bark, -4, 9, 1), TreeBlock(BlockID::moon_bark, -4, 10, 1), TreeBlock(BlockID::moon_bark, -4, 10, 2), TreeBlock(BlockID::moon_bark, -4, 11, 2),
-        TreeBlock(BlockID::moon_bark, -4, 12, 2), TreeBlock(BlockID::moon_bark, 0, 2, -1), TreeBlock(BlockID::moon_bark, 0, 3, -1), TreeBlock(BlockID::moon_bark, 0, 3, -2),
-        TreeBlock(BlockID::moon_bark, 0, 4, -2), TreeBlock(BlockID::moon_bark, 0, 5, -2), TreeBlock(BlockID::moon_bark, 0, 6, -2), TreeBlock(BlockID::moon_bark, 0, 7, -2),
-        TreeBlock(BlockID::moon_bark, 0, 8, -2), TreeBlock(BlockID::moon_bark, 1, 7, -2), TreeBlock(BlockID::moon_bark, 1, 8, -2), TreeBlock(BlockID::moon_bark, 1, 9, -2),
-        TreeBlock(BlockID::moon_bark, 1, 10, -2), TreeBlock(BlockID::moon_bark, 1, 11, -2), TreeBlock(BlockID::moon_bark, 1, 12, -2), TreeBlock(BlockID::moon_bark, 2, 10, -2),
-        TreeBlock(BlockID::moon_bark, 2, 11, -2), TreeBlock(BlockID::moon_bark, 2, 12, -2), TreeBlock(BlockID::moon_bark, 1, 12, -3), TreeBlock(BlockID::moon_bark, 1, 13, -3),
-        TreeBlock(BlockID::moon_bark, 1, 14, -3), TreeBlock(BlockID::moon_bark, 1, 15, -3), TreeBlock(BlockID::moon_bark, 1, 16, -3), TreeBlock(BlockID::moon_bark, 0, 16, -3),
-        TreeBlock(BlockID::moon_bark, 0, 17, -3), TreeBlock(BlockID::moon_bark, 0, 18, -3), TreeBlock(BlockID::moon_bark, 0, 19, -3),
-
-        TreeBlock(BlockID::light, -1, 21, -2), TreeBlock(BlockID::light, 0, 21, -2), TreeBlock(BlockID::light, -1, 21, -3), TreeBlock(BlockID::light, 0, 21, -3),
-        TreeBlock(BlockID::light, 1, 21, -3), TreeBlock(BlockID::light, 0, 21, -4), TreeBlock(BlockID::light, -5, 13, 3), TreeBlock(BlockID::light, -4, 13, 3),
-        TreeBlock(BlockID::light, -3, 13, 3), TreeBlock(BlockID::light, -5, 13, 2), TreeBlock(BlockID::light, -4, 13, 2), TreeBlock(BlockID::light, -3, 13, 2),
-        TreeBlock(BlockID::light, -4, 13, 1),
-
-        TreeBlock(BlockID::feldspar, 0, 20, -3), TreeBlock(BlockID::feldspar, -1, 22, -4), TreeBlock(BlockID::feldspar, 0, 22, -4), TreeBlock(BlockID::feldspar, 1, 22, -4),
-        TreeBlock(BlockID::feldspar, -1, 22, -3), TreeBlock(BlockID::feldspar, 0, 22, -3), TreeBlock(BlockID::feldspar, 1, 22, -3), TreeBlock(BlockID::feldspar, -1, 22, -2),
-        TreeBlock(BlockID::feldspar, 0, 22, -2), TreeBlock(BlockID::feldspar, 1, 22, -2), TreeBlock(BlockID::feldspar, -1, 23, -3), TreeBlock(BlockID::feldspar, 0, 23, -3),
-
-        TreeBlock(BlockID::feldspar, -5, 14, 1), TreeBlock(BlockID::feldspar, -5, 14, 2), TreeBlock(BlockID::feldspar, -5, 14, 3), TreeBlock(BlockID::feldspar, -4, 14, 1),
-        TreeBlock(BlockID::feldspar, -4, 14, 2), TreeBlock(BlockID::feldspar, -4, 14, 3), TreeBlock(BlockID::feldspar, -3, 14, 2), TreeBlock(BlockID::feldspar, -3, 14, 3),
-        TreeBlock(BlockID::feldspar, -4, 15, 2)
-    },
-    {
-        TreeBlock(BlockID::moon_bark, 5, 0, 0), // max extent
-
-        TreeBlock(BlockID::moon_bark, -1, 1, 0), TreeBlock(BlockID::moon_bark, -2, 1, 0), TreeBlock(BlockID::moon_bark, -2, 1, -1), TreeBlock(BlockID::moon_bark, -1, 1, -1),
-        TreeBlock(BlockID::moon_bark, -2, 2, 0), TreeBlock(BlockID::moon_bark, -1, 2, -1), TreeBlock(BlockID::moon_bark, -2, 2, 1), TreeBlock(BlockID::moon_bark, -2, 3, 1),
-        TreeBlock(BlockID::moon_bark, -2, 4, 1), TreeBlock(BlockID::moon_bark, -3, 4, 1), TreeBlock(BlockID::moon_bark, -3, 5, 1), TreeBlock(BlockID::moon_bark, -3, 6, 1),
-        TreeBlock(BlockID::moon_bark, -3, 7, 1), TreeBlock(BlockID::moon_bark, -3, 8, 1), TreeBlock(BlockID::moon_bark, -3, 9, 1), TreeBlock(BlockID::moon_bark, -4, 8, 1),
-        TreeBlock(BlockID::moon_bark, -4, 9, 1), TreeBlock(BlockID::moon_bark, -4, 10, 1), TreeBlock(BlockID::moon_bark, -4, 10, 2), TreeBlock(BlockID::moon_bark, -4, 11, 2),
-        TreeBlock(BlockID::moon_bark, -4, 12, 2), TreeBlock(BlockID::moon_bark, 0, 2, -1), TreeBlock(BlockID::moon_bark, 0, 3, -1), TreeBlock(BlockID::moon_bark, 0, 3, -2),
-        TreeBlock(BlockID::moon_bark, 0, 4, -2), TreeBlock(BlockID::moon_bark, 0, 5, -2), TreeBlock(BlockID::moon_bark, 0, 6, -2), TreeBlock(BlockID::moon_bark, 0, 7, -2),
-        TreeBlock(BlockID::moon_bark, 0, 8, -2), TreeBlock(BlockID::moon_bark, 1, 7, -2), TreeBlock(BlockID::moon_bark, 1, 8, -2), TreeBlock(BlockID::moon_bark, 1, 9, -2),
-        TreeBlock(BlockID::moon_bark, 1, 10, -2), TreeBlock(BlockID::moon_bark, 1, 11, -2), TreeBlock(BlockID::moon_bark, 1, 12, -2), TreeBlock(BlockID::moon_bark, 2, 10, -2),
-        TreeBlock(BlockID::moon_bark, 2, 11, -2), TreeBlock(BlockID::moon_bark, 2, 12, -2), TreeBlock(BlockID::moon_bark, 1, 12, -3), TreeBlock(BlockID::moon_bark, 1, 13, -3),
-        TreeBlock(BlockID::moon_bark, 1, 14, -3), TreeBlock(BlockID::moon_bark, 1, 15, -3), TreeBlock(BlockID::moon_bark, 1, 16, -3), TreeBlock(BlockID::moon_bark, 0, 16, -3),
-        TreeBlock(BlockID::moon_bark, 0, 17, -3), TreeBlock(BlockID::moon_bark, 0, 18, -3), TreeBlock(BlockID::moon_bark, 0, 19, -3),
-
-        TreeBlock(BlockID::light, -1, 21, -2), TreeBlock(BlockID::light, 0, 21, -2), TreeBlock(BlockID::light, -1, 21, -3), TreeBlock(BlockID::light, 0, 21, -3),
-        TreeBlock(BlockID::light, 1, 21, -3), TreeBlock(BlockID::light, 0, 21, -4), TreeBlock(BlockID::light, -5, 13, 3), TreeBlock(BlockID::light, -4, 13, 3),
-        TreeBlock(BlockID::light, -3, 13, 3), TreeBlock(BlockID::light, -5, 13, 2), TreeBlock(BlockID::light, -4, 13, 2), TreeBlock(BlockID::light, -3, 13, 1),
-        TreeBlock(BlockID::light, -3, 13, 2), TreeBlock(BlockID::light, -4, 13, 1),
-
-        TreeBlock(BlockID::chalchanthite, 0, 20, -3), TreeBlock(BlockID::chalchanthite, -1, 22, -4), TreeBlock(BlockID::chalchanthite, 0, 22, -4), TreeBlock(BlockID::chalchanthite, 1, 22, -4),
-        TreeBlock(BlockID::chalchanthite, -1, 22, -3), TreeBlock(BlockID::chalchanthite, 0, 22, -3), TreeBlock(BlockID::chalchanthite, 1, 22, -3), TreeBlock(BlockID::chalchanthite, -1, 23, -3),
-        TreeBlock(BlockID::chalchanthite, 0, 23, -3), TreeBlock(BlockID::chalchanthite, 1, 23, -3), TreeBlock(BlockID::chalchanthite, -1, 22, -2), TreeBlock(BlockID::chalchanthite, 0, 22, -2),
-        TreeBlock(BlockID::chalchanthite, 1, 22, -2),
-
-        TreeBlock(BlockID::chalchanthite, -5, 14, 2), TreeBlock(BlockID::chalchanthite, -5, 14, 3), TreeBlock(BlockID::chalchanthite, -4, 14, 1), TreeBlock(BlockID::chalchanthite, -4, 14, 2),
-        TreeBlock(BlockID::chalchanthite, -4, 14, 3), TreeBlock(BlockID::chalchanthite, -3, 14, 2), TreeBlock(BlockID::chalchanthite, -3, 14, 3), TreeBlock(BlockID::chalchanthite, -4, 15, 2)
-    },
-    {
-        TreeBlock(BlockID::moon_bark, 6, 0, 0), // max extent
-
-        TreeBlock(BlockID::moon_bark, 1, 1, 0), TreeBlock(BlockID::moon_bark, 0, 1, -1), TreeBlock(BlockID::moon_bark, 1, 1, -1), TreeBlock(BlockID::moon_bark, 2, 1, -1),
-        TreeBlock(BlockID::moon_bark, 0, 2, -1), TreeBlock(BlockID::moon_bark, 1, 2, -1), TreeBlock(BlockID::moon_bark, 2, 2, -1), TreeBlock(BlockID::moon_bark, 2, 1, -2),
-        TreeBlock(BlockID::moon_bark, 1, 1, -2), TreeBlock(BlockID::moon_bark, 1, 2, -2), TreeBlock(BlockID::moon_bark, 0, 2, -2), TreeBlock(BlockID::moon_bark, 0, 3, -2),
-        TreeBlock(BlockID::moon_bark, -1, 3, -2), TreeBlock(BlockID::moon_bark, -1, 4, -2), TreeBlock(BlockID::moon_bark, -1, 4, -3), TreeBlock(BlockID::moon_bark, -1, 5, -3),
-        TreeBlock(BlockID::moon_bark, -1, 6, -3), TreeBlock(BlockID::moon_bark, -1, 7, -3), TreeBlock(BlockID::moon_bark, -1, 6, -4), TreeBlock(BlockID::moon_bark, -1, 7, -4),
-        TreeBlock(BlockID::moon_bark, -1, 8, -4), TreeBlock(BlockID::moon_bark, -1, 9, -4), TreeBlock(BlockID::moon_bark, -2, 7, -4), TreeBlock(BlockID::moon_bark, -2, 8, -4),
-        TreeBlock(BlockID::moon_bark, -2, 9, -4), TreeBlock(BlockID::moon_bark, -2, 8, -5), TreeBlock(BlockID::moon_bark, -2, 9, -5), TreeBlock(BlockID::moon_bark, -2, 10, -5),
-        TreeBlock(BlockID::moon_bark, -2, 11, -5), TreeBlock(BlockID::moon_bark, -2, 12, -5), TreeBlock(BlockID::moon_bark, -2, 13, -5), TreeBlock(BlockID::moon_bark, -2, 14, -5),
-        TreeBlock(BlockID::moon_bark, -2, 15, -5), TreeBlock(BlockID::moon_bark, -1, 9, -5), TreeBlock(BlockID::moon_bark, -1, 10, -5), TreeBlock(BlockID::moon_bark, -1, 11, -5),
-        TreeBlock(BlockID::moon_bark, -1, 14, -5), TreeBlock(BlockID::moon_bark, -1, 15, -5), TreeBlock(BlockID::moon_bark, -1, 15, -4), TreeBlock(BlockID::moon_bark, 2, 2, 0),
-        TreeBlock(BlockID::moon_bark, 2, 3, 0), TreeBlock(BlockID::moon_bark, 2, 3, 1), TreeBlock(BlockID::moon_bark, 2, 4, 1), TreeBlock(BlockID::moon_bark, 3, 4, 1),
-        TreeBlock(BlockID::moon_bark, 3, 5, 1), TreeBlock(BlockID::moon_bark, 3, 6, 1), TreeBlock(BlockID::moon_bark, 3, 7, 1), TreeBlock(BlockID::moon_bark, 3, 7, 2),
-        TreeBlock(BlockID::moon_bark, 3, 8, 2), TreeBlock(BlockID::moon_bark, 3, 9, 2), TreeBlock(BlockID::moon_bark, 3, 10, 2), TreeBlock(BlockID::moon_bark, 3, 11, 2),
-        TreeBlock(BlockID::moon_bark, 3, 12, 2), TreeBlock(BlockID::moon_bark, 4, 11, 2), TreeBlock(BlockID::moon_bark, 4, 12, 2), TreeBlock(BlockID::moon_bark, 4, 13, 2),
-        TreeBlock(BlockID::moon_bark, 4, 14, 2), TreeBlock(BlockID::moon_bark, 5, 12, 2), TreeBlock(BlockID::moon_bark, 5, 13, 2), TreeBlock(BlockID::moon_bark, 5, 14, 2),
-        TreeBlock(BlockID::moon_bark, 5, 14, 3), TreeBlock(BlockID::moon_bark, 4, 14, 3),
-
-        TreeBlock(BlockID::light, 5, 16, 4), TreeBlock(BlockID::light, 4, 16, 3), TreeBlock(BlockID::light, 5, 16, 3), TreeBlock(BlockID::light, 6, 16, 3),
-        TreeBlock(BlockID::light, 5, 16, 2), TreeBlock(BlockID::light, 4, 16, 2), TreeBlock(BlockID::light, -3, 17, -6), TreeBlock(BlockID::light, -3, 17, -5),
-        TreeBlock(BlockID::light, -3, 17, -4), TreeBlock(BlockID::light, -2, 17, -6), TreeBlock(BlockID::light, -2, 17, -5), TreeBlock(BlockID::light, -2, 17, -4),
-        TreeBlock(BlockID::light, -1, 17, -5),
-
-        TreeBlock(BlockID::feldspar, -1, 16, -6), TreeBlock(BlockID::feldspar, -1, 16, -5), TreeBlock(BlockID::feldspar, -1, 16, -4), TreeBlock(BlockID::feldspar, -2, 16, -6),
-        TreeBlock(BlockID::feldspar, -2, 16, -5), TreeBlock(BlockID::feldspar, -2, 16, -4), TreeBlock(BlockID::feldspar, -3, 16, -5), TreeBlock(BlockID::feldspar, -3, 16, -4),
-        TreeBlock(BlockID::feldspar, -1, 18, -5), TreeBlock(BlockID::feldspar, -1, 18, -4), TreeBlock(BlockID::feldspar, -2, 18, -6), TreeBlock(BlockID::feldspar, -2, 18, -5),
-        TreeBlock(BlockID::feldspar, -2, 18, -4), TreeBlock(BlockID::feldspar, -3, 18, -6), TreeBlock(BlockID::feldspar, -3, 18, -5),
-
-        TreeBlock(BlockID::chalchanthite, 4, 15, 4), TreeBlock(BlockID::chalchanthite, 4, 15, 3), TreeBlock(BlockID::chalchanthite, 4, 15, 2), TreeBlock(BlockID::chalchanthite, 5, 15, 4),
-        TreeBlock(BlockID::chalchanthite, 5, 15, 3), TreeBlock(BlockID::chalchanthite, 5, 15, 2), TreeBlock(BlockID::chalchanthite, 6, 15, 3), TreeBlock(BlockID::chalchanthite, 6, 15, 2),
-        TreeBlock(BlockID::chalchanthite, 4, 17, 3), TreeBlock(BlockID::chalchanthite, 5, 17, 4), TreeBlock(BlockID::chalchanthite, 5, 17, 3), TreeBlock(BlockID::chalchanthite, 5, 17, 2),
-        TreeBlock(BlockID::chalchanthite, 6, 17, 4), TreeBlock(BlockID::chalchanthite, 6, 17, 3)
-    },
-    {
-        TreeBlock(BlockID::moon_bark, 6, 0, 0), // max extent
-
-        TreeBlock(BlockID::moon_bark, 1, 1, 0), TreeBlock(BlockID::moon_bark, 0, 1, -1), TreeBlock(BlockID::moon_bark, 1, 1, -1), TreeBlock(BlockID::moon_bark, 2, 1, -1),
-        TreeBlock(BlockID::moon_bark, 0, 2, -1), TreeBlock(BlockID::moon_bark, 1, 2, -1), TreeBlock(BlockID::moon_bark, 2, 2, -1), TreeBlock(BlockID::moon_bark, 2, 1, -2),
-        TreeBlock(BlockID::moon_bark, 1, 1, -2), TreeBlock(BlockID::moon_bark, 1, 2, -2), TreeBlock(BlockID::moon_bark, 0, 2, -2), TreeBlock(BlockID::moon_bark, 0, 3, -2),
-        TreeBlock(BlockID::moon_bark, -1, 3, -2), TreeBlock(BlockID::moon_bark, -1, 4, -2), TreeBlock(BlockID::moon_bark, -1, 4, -3), TreeBlock(BlockID::moon_bark, -1, 5, -3),
-        TreeBlock(BlockID::moon_bark, -1, 6, -3), TreeBlock(BlockID::moon_bark, -1, 7, -3), TreeBlock(BlockID::moon_bark, -1, 6, -4), TreeBlock(BlockID::moon_bark, -1, 7, -4),
-        TreeBlock(BlockID::moon_bark, -1, 8, -4), TreeBlock(BlockID::moon_bark, -1, 9, -4), TreeBlock(BlockID::moon_bark, -2, 7, -4), TreeBlock(BlockID::moon_bark, -2, 8, -4),
-        TreeBlock(BlockID::moon_bark, -2, 9, -4), TreeBlock(BlockID::moon_bark, -2, 8, -5), TreeBlock(BlockID::moon_bark, -2, 9, -5), TreeBlock(BlockID::moon_bark, -2, 10, -5),
-        TreeBlock(BlockID::moon_bark, -2, 11, -5), TreeBlock(BlockID::moon_bark, -2, 12, -5), TreeBlock(BlockID::moon_bark, -2, 13, -5), TreeBlock(BlockID::moon_bark, -2, 14, -5),
-        TreeBlock(BlockID::moon_bark, -2, 15, -5), TreeBlock(BlockID::moon_bark, -1, 9, -5), TreeBlock(BlockID::moon_bark, -1, 10, -5), TreeBlock(BlockID::moon_bark, -1, 11, -5),
-        TreeBlock(BlockID::moon_bark, -1, 14, -5), TreeBlock(BlockID::moon_bark, -1, 15, -5), TreeBlock(BlockID::moon_bark, -1, 15, -4), TreeBlock(BlockID::moon_bark, 2, 2, 0),
-        TreeBlock(BlockID::moon_bark, 2, 3, 0), TreeBlock(BlockID::moon_bark, 2, 3, 1), TreeBlock(BlockID::moon_bark, 2, 4, 1), TreeBlock(BlockID::moon_bark, 3, 4, 1),
-        TreeBlock(BlockID::moon_bark, 3, 5, 1), TreeBlock(BlockID::moon_bark, 3, 6, 1), TreeBlock(BlockID::moon_bark, 3, 7, 1), TreeBlock(BlockID::moon_bark, 3, 7, 2),
-        TreeBlock(BlockID::moon_bark, 3, 8, 2), TreeBlock(BlockID::moon_bark, 3, 9, 2), TreeBlock(BlockID::moon_bark, 3, 10, 2), TreeBlock(BlockID::moon_bark, 3, 11, 2),
-        TreeBlock(BlockID::moon_bark, 3, 12, 2), TreeBlock(BlockID::moon_bark, 4, 11, 2), TreeBlock(BlockID::moon_bark, 4, 12, 2), TreeBlock(BlockID::moon_bark, 4, 13, 2),
-        TreeBlock(BlockID::moon_bark, 4, 14, 2), TreeBlock(BlockID::moon_bark, 5, 12, 2), TreeBlock(BlockID::moon_bark, 5, 13, 2), TreeBlock(BlockID::moon_bark, 5, 14, 2),
-        TreeBlock(BlockID::moon_bark, 5, 14, 3), TreeBlock(BlockID::moon_bark, 4, 14, 3),
-
-        TreeBlock(BlockID::light, 5, 16, 4), TreeBlock(BlockID::light, 4, 16, 3), TreeBlock(BlockID::light, 5, 16, 3), TreeBlock(BlockID::light, 6, 16, 3),
-        TreeBlock(BlockID::light, 5, 16, 2), TreeBlock(BlockID::light, 4, 16, 2), TreeBlock(BlockID::light, -3, 17, -6), TreeBlock(BlockID::light, -3, 17, -5),
-        TreeBlock(BlockID::light, -3, 17, -4), TreeBlock(BlockID::light, -2, 17, -6), TreeBlock(BlockID::light, -2, 17, -5), TreeBlock(BlockID::light, -2, 17, -4),
-        TreeBlock(BlockID::light, -1, 17, -5),
-
-        TreeBlock(BlockID::chalchanthite, -1, 16, -6), TreeBlock(BlockID::chalchanthite, -1, 16, -5), TreeBlock(BlockID::chalchanthite, -1, 16, -4), TreeBlock(BlockID::chalchanthite, -2, 16, -6),
-        TreeBlock(BlockID::chalchanthite, -2, 16, -5), TreeBlock(BlockID::chalchanthite, -2, 16, -4), TreeBlock(BlockID::chalchanthite, -3, 16, -5), TreeBlock(BlockID::chalchanthite, -3, 16, -4),
-        TreeBlock(BlockID::chalchanthite, -1, 18, -5), TreeBlock(BlockID::chalchanthite, -1, 18, -4), TreeBlock(BlockID::chalchanthite, -2, 18, -6), TreeBlock(BlockID::chalchanthite, -2, 18, -5),
-        TreeBlock(BlockID::chalchanthite, -2, 18, -4), TreeBlock(BlockID::chalchanthite, -3, 18, -6), TreeBlock(BlockID::chalchanthite, -3, 18, -5),
-
-        TreeBlock(BlockID::sulphur_ore, 4, 15, 4), TreeBlock(BlockID::sulphur_ore, 4, 15, 3), TreeBlock(BlockID::sulphur_ore, 4, 15, 2), TreeBlock(BlockID::sulphur_ore, 5, 15, 4),
-        TreeBlock(BlockID::sulphur_ore, 5, 15, 3), TreeBlock(BlockID::sulphur_ore, 5, 15, 2), TreeBlock(BlockID::sulphur_ore, 6, 15, 3), TreeBlock(BlockID::sulphur_ore, 6, 15, 2),
-        TreeBlock(BlockID::sulphur_ore, 4, 17, 3), TreeBlock(BlockID::sulphur_ore, 5, 17, 4), TreeBlock(BlockID::sulphur_ore, 5, 17, 3), TreeBlock(BlockID::sulphur_ore, 5, 17, 2),
-        TreeBlock(BlockID::sulphur_ore, 6, 17, 4), TreeBlock(BlockID::sulphur_ore, 6, 17, 3)
-    },
-    {
-        TreeBlock(BlockID::moon_bark, 6, 0, 0), // max extent
-
-        TreeBlock(BlockID::moon_bark, 1, 1, 0), TreeBlock(BlockID::moon_bark, 0, 1, -1), TreeBlock(BlockID::moon_bark, 1, 1, -1), TreeBlock(BlockID::moon_bark, 2, 1, -1),
-        TreeBlock(BlockID::moon_bark, 0, 2, -1), TreeBlock(BlockID::moon_bark, 1, 2, -1), TreeBlock(BlockID::moon_bark, 2, 2, -1), TreeBlock(BlockID::moon_bark, 2, 1, -2),
-        TreeBlock(BlockID::moon_bark, 1, 1, -2), TreeBlock(BlockID::moon_bark, 1, 2, -2), TreeBlock(BlockID::moon_bark, 0, 2, -2), TreeBlock(BlockID::moon_bark, 0, 3, -2),
-        TreeBlock(BlockID::moon_bark, -1, 3, -2), TreeBlock(BlockID::moon_bark, -1, 4, -2), TreeBlock(BlockID::moon_bark, -1, 4, -3), TreeBlock(BlockID::moon_bark, -1, 5, -3),
-        TreeBlock(BlockID::moon_bark, -1, 6, -3), TreeBlock(BlockID::moon_bark, -1, 7, -3), TreeBlock(BlockID::moon_bark, -1, 6, -4), TreeBlock(BlockID::moon_bark, -1, 7, -4),
-        TreeBlock(BlockID::moon_bark, -1, 8, -4), TreeBlock(BlockID::moon_bark, -1, 9, -4), TreeBlock(BlockID::moon_bark, -2, 7, -4), TreeBlock(BlockID::moon_bark, -2, 8, -4),
-        TreeBlock(BlockID::moon_bark, -2, 9, -4), TreeBlock(BlockID::moon_bark, -2, 8, -5), TreeBlock(BlockID::moon_bark, -2, 9, -5), TreeBlock(BlockID::moon_bark, -2, 10, -5),
-        TreeBlock(BlockID::moon_bark, -2, 11, -5), TreeBlock(BlockID::moon_bark, -2, 12, -5), TreeBlock(BlockID::moon_bark, -2, 13, -5), TreeBlock(BlockID::moon_bark, -2, 14, -5),
-        TreeBlock(BlockID::moon_bark, -2, 15, -5), TreeBlock(BlockID::moon_bark, -1, 9, -5), TreeBlock(BlockID::moon_bark, -1, 10, -5), TreeBlock(BlockID::moon_bark, -1, 11, -5),
-        TreeBlock(BlockID::moon_bark, -1, 14, -5), TreeBlock(BlockID::moon_bark, -1, 15, -5), TreeBlock(BlockID::moon_bark, -1, 15, -4), TreeBlock(BlockID::moon_bark, 2, 2, 0),
-        TreeBlock(BlockID::moon_bark, 2, 3, 0), TreeBlock(BlockID::moon_bark, 2, 3, 1), TreeBlock(BlockID::moon_bark, 2, 4, 1), TreeBlock(BlockID::moon_bark, 3, 4, 1),
-        TreeBlock(BlockID::moon_bark, 3, 5, 1), TreeBlock(BlockID::moon_bark, 3, 6, 1), TreeBlock(BlockID::moon_bark, 3, 7, 1), TreeBlock(BlockID::moon_bark, 3, 7, 2),
-        TreeBlock(BlockID::moon_bark, 3, 8, 2), TreeBlock(BlockID::moon_bark, 3, 9, 2), TreeBlock(BlockID::moon_bark, 3, 10, 2), TreeBlock(BlockID::moon_bark, 3, 11, 2),
-        TreeBlock(BlockID::moon_bark, 3, 12, 2), TreeBlock(BlockID::moon_bark, 4, 11, 2), TreeBlock(BlockID::moon_bark, 4, 12, 2), TreeBlock(BlockID::moon_bark, 4, 13, 2),
-        TreeBlock(BlockID::moon_bark, 4, 14, 2), TreeBlock(BlockID::moon_bark, 5, 12, 2), TreeBlock(BlockID::moon_bark, 5, 13, 2), TreeBlock(BlockID::moon_bark, 5, 14, 2),
-        TreeBlock(BlockID::moon_bark, 5, 14, 3), TreeBlock(BlockID::moon_bark, 4, 14, 3),
-
-        TreeBlock(BlockID::light, 5, 16, 4), TreeBlock(BlockID::light, 4, 16, 3), TreeBlock(BlockID::light, 5, 16, 3), TreeBlock(BlockID::light, 6, 16, 3),
-        TreeBlock(BlockID::light, 5, 16, 2), TreeBlock(BlockID::light, 4, 16, 2), TreeBlock(BlockID::light, -3, 17, -6), TreeBlock(BlockID::light, -3, 17, -5),
-        TreeBlock(BlockID::light, -3, 17, -4), TreeBlock(BlockID::light, -2, 17, -6), TreeBlock(BlockID::light, -2, 17, -5), TreeBlock(BlockID::light, -2, 17, -4),
-        TreeBlock(BlockID::light, -1, 17, -5),
-
-        TreeBlock(BlockID::sulphur_ore, -1, 16, -6), TreeBlock(BlockID::sulphur_ore, -1, 16, -5), TreeBlock(BlockID::sulphur_ore, -1, 16, -4), TreeBlock(BlockID::sulphur_ore, -2, 16, -6),
-        TreeBlock(BlockID::sulphur_ore, -2, 16, -5), TreeBlock(BlockID::sulphur_ore, -2, 16, -4), TreeBlock(BlockID::sulphur_ore, -3, 16, -5), TreeBlock(BlockID::sulphur_ore, -3, 16, -4),
-        TreeBlock(BlockID::sulphur_ore, -1, 18, -5), TreeBlock(BlockID::sulphur_ore, -1, 18, -4), TreeBlock(BlockID::sulphur_ore, -2, 18, -6), TreeBlock(BlockID::sulphur_ore, -2, 18, -5),
-        TreeBlock(BlockID::sulphur_ore, -2, 18, -4), TreeBlock(BlockID::sulphur_ore, -3, 18, -6), TreeBlock(BlockID::sulphur_ore, -3, 18, -5),
-
-        TreeBlock(BlockID::chalchanthite, 4, 15, 4), TreeBlock(BlockID::chalchanthite, 4, 15, 3), TreeBlock(BlockID::chalchanthite, 4, 15, 2), TreeBlock(BlockID::chalchanthite, 5, 15, 4),
-        TreeBlock(BlockID::chalchanthite, 5, 15, 3), TreeBlock(BlockID::chalchanthite, 5, 15, 2), TreeBlock(BlockID::chalchanthite, 6, 15, 3), TreeBlock(BlockID::chalchanthite, 6, 15, 2),
-        TreeBlock(BlockID::chalchanthite, 4, 17, 3), TreeBlock(BlockID::chalchanthite, 5, 17, 4), TreeBlock(BlockID::chalchanthite, 5, 17, 3), TreeBlock(BlockID::chalchanthite, 5, 17, 2),
-        TreeBlock(BlockID::chalchanthite, 6, 17, 4), TreeBlock(BlockID::chalchanthite, 6, 17, 3)
-    },
-    {
-        TreeBlock(BlockID::moon_bark, 6, 0, 0), // max extent
-
-        TreeBlock(BlockID::moon_bark, 1, 1, 0), TreeBlock(BlockID::moon_bark, 0, 1, -1), TreeBlock(BlockID::moon_bark, 1, 1, -1), TreeBlock(BlockID::moon_bark, 2, 1, -1),
-        TreeBlock(BlockID::moon_bark, 0, 2, -1), TreeBlock(BlockID::moon_bark, 1, 2, -1), TreeBlock(BlockID::moon_bark, 2, 2, -1), TreeBlock(BlockID::moon_bark, 2, 1, -2),
-        TreeBlock(BlockID::moon_bark, 1, 1, -2), TreeBlock(BlockID::moon_bark, 1, 2, -2), TreeBlock(BlockID::moon_bark, 0, 2, -2), TreeBlock(BlockID::moon_bark, 0, 3, -2),
-        TreeBlock(BlockID::moon_bark, -1, 3, -2), TreeBlock(BlockID::moon_bark, -1, 4, -2), TreeBlock(BlockID::moon_bark, -1, 4, -3), TreeBlock(BlockID::moon_bark, -1, 5, -3),
-        TreeBlock(BlockID::moon_bark, -1, 6, -3), TreeBlock(BlockID::moon_bark, -1, 7, -3), TreeBlock(BlockID::moon_bark, -1, 6, -4), TreeBlock(BlockID::moon_bark, -1, 7, -4),
-        TreeBlock(BlockID::moon_bark, -1, 8, -4), TreeBlock(BlockID::moon_bark, -1, 9, -4), TreeBlock(BlockID::moon_bark, -2, 7, -4), TreeBlock(BlockID::moon_bark, -2, 8, -4),
-        TreeBlock(BlockID::moon_bark, -2, 9, -4), TreeBlock(BlockID::moon_bark, -2, 8, -5), TreeBlock(BlockID::moon_bark, -2, 9, -5), TreeBlock(BlockID::moon_bark, -2, 10, -5),
-        TreeBlock(BlockID::moon_bark, -2, 11, -5), TreeBlock(BlockID::moon_bark, -2, 12, -5), TreeBlock(BlockID::moon_bark, -2, 13, -5), TreeBlock(BlockID::moon_bark, -2, 14, -5),
-        TreeBlock(BlockID::moon_bark, -2, 15, -5), TreeBlock(BlockID::moon_bark, -1, 9, -5), TreeBlock(BlockID::moon_bark, -1, 10, -5), TreeBlock(BlockID::moon_bark, -1, 11, -5),
-        TreeBlock(BlockID::moon_bark, -1, 14, -5), TreeBlock(BlockID::moon_bark, -1, 15, -5), TreeBlock(BlockID::moon_bark, -1, 15, -4), TreeBlock(BlockID::moon_bark, 2, 2, 0),
-        TreeBlock(BlockID::moon_bark, 2, 3, 0), TreeBlock(BlockID::moon_bark, 2, 3, 1), TreeBlock(BlockID::moon_bark, 2, 4, 1), TreeBlock(BlockID::moon_bark, 3, 4, 1),
-        TreeBlock(BlockID::moon_bark, 3, 5, 1), TreeBlock(BlockID::moon_bark, 3, 6, 1), TreeBlock(BlockID::moon_bark, 3, 7, 1), TreeBlock(BlockID::moon_bark, 3, 7, 2),
-        TreeBlock(BlockID::moon_bark, 3, 8, 2), TreeBlock(BlockID::moon_bark, 3, 9, 2), TreeBlock(BlockID::moon_bark, 3, 10, 2), TreeBlock(BlockID::moon_bark, 3, 11, 2),
-        TreeBlock(BlockID::moon_bark, 3, 12, 2), TreeBlock(BlockID::moon_bark, 4, 11, 2), TreeBlock(BlockID::moon_bark, 4, 12, 2), TreeBlock(BlockID::moon_bark, 4, 13, 2),
-        TreeBlock(BlockID::moon_bark, 4, 14, 2), TreeBlock(BlockID::moon_bark, 5, 12, 2), TreeBlock(BlockID::moon_bark, 5, 13, 2), TreeBlock(BlockID::moon_bark, 5, 14, 2),
-        TreeBlock(BlockID::moon_bark, 5, 14, 3), TreeBlock(BlockID::moon_bark, 4, 14, 3),
-
-        TreeBlock(BlockID::light, 5, 16, 4), TreeBlock(BlockID::light, 4, 16, 3), TreeBlock(BlockID::light, 5, 16, 3), TreeBlock(BlockID::light, 6, 16, 3),
-        TreeBlock(BlockID::light, 5, 16, 2), TreeBlock(BlockID::light, 4, 16, 2), TreeBlock(BlockID::light, -3, 17, -6), TreeBlock(BlockID::light, -3, 17, -5),
-        TreeBlock(BlockID::light, -3, 17, -4), TreeBlock(BlockID::light, -2, 17, -6), TreeBlock(BlockID::light, -2, 17, -5), TreeBlock(BlockID::light, -2, 17, -4),
-        TreeBlock(BlockID::light, -1, 17, -5),
-
-        TreeBlock(BlockID::feldspar, -1, 16, -6), TreeBlock(BlockID::feldspar, -1, 16, -5), TreeBlock(BlockID::feldspar, -1, 16, -4), TreeBlock(BlockID::feldspar, -2, 16, -6),
-        TreeBlock(BlockID::feldspar, -2, 16, -5), TreeBlock(BlockID::feldspar, -2, 16, -4), TreeBlock(BlockID::feldspar, -3, 16, -5), TreeBlock(BlockID::feldspar, -3, 16, -4),
-        TreeBlock(BlockID::feldspar, -1, 18, -5), TreeBlock(BlockID::feldspar, -1, 18, -4), TreeBlock(BlockID::feldspar, -2, 18, -6), TreeBlock(BlockID::feldspar, -2, 18, -5),
-        TreeBlock(BlockID::feldspar, -2, 18, -4), TreeBlock(BlockID::feldspar, -3, 18, -6), TreeBlock(BlockID::feldspar, -3, 18, -5),
-
-        TreeBlock(BlockID::sulphur_ore, 4, 15, 4), TreeBlock(BlockID::sulphur_ore, 4, 15, 3), TreeBlock(BlockID::sulphur_ore, 4, 15, 2), TreeBlock(BlockID::sulphur_ore, 5, 15, 4),
-        TreeBlock(BlockID::sulphur_ore, 5, 15, 3), TreeBlock(BlockID::sulphur_ore, 5, 15, 2), TreeBlock(BlockID::sulphur_ore, 6, 15, 3), TreeBlock(BlockID::sulphur_ore, 6, 15, 2),
-        TreeBlock(BlockID::sulphur_ore, 4, 17, 3), TreeBlock(BlockID::sulphur_ore, 5, 17, 4), TreeBlock(BlockID::sulphur_ore, 5, 17, 3), TreeBlock(BlockID::sulphur_ore, 5, 17, 2),
-        TreeBlock(BlockID::sulphur_ore, 6, 17, 4), TreeBlock(BlockID::sulphur_ore, 6, 17, 3)
-    },
-    {
-        TreeBlock(BlockID::moon_bark, 6, 0, 0), // max extent
-
-        TreeBlock(BlockID::moon_bark, 1, 1, 0), TreeBlock(BlockID::moon_bark, 0, 1, -1), TreeBlock(BlockID::moon_bark, 1, 1, -1), TreeBlock(BlockID::moon_bark, 2, 1, -1),
-        TreeBlock(BlockID::moon_bark, 0, 2, -1), TreeBlock(BlockID::moon_bark, 1, 2, -1), TreeBlock(BlockID::moon_bark, 2, 2, -1), TreeBlock(BlockID::moon_bark, 2, 1, -2),
-        TreeBlock(BlockID::moon_bark, 1, 1, -2), TreeBlock(BlockID::moon_bark, 1, 2, -2), TreeBlock(BlockID::moon_bark, 0, 2, -2), TreeBlock(BlockID::moon_bark, 0, 3, -2),
-        TreeBlock(BlockID::moon_bark, -1, 3, -2), TreeBlock(BlockID::moon_bark, -1, 4, -2), TreeBlock(BlockID::moon_bark, -1, 4, -3), TreeBlock(BlockID::moon_bark, -1, 5, -3),
-        TreeBlock(BlockID::moon_bark, -1, 6, -3), TreeBlock(BlockID::moon_bark, -1, 7, -3), TreeBlock(BlockID::moon_bark, -1, 6, -4), TreeBlock(BlockID::moon_bark, -1, 7, -4),
-        TreeBlock(BlockID::moon_bark, -1, 8, -4), TreeBlock(BlockID::moon_bark, -1, 9, -4), TreeBlock(BlockID::moon_bark, -2, 7, -4), TreeBlock(BlockID::moon_bark, -2, 8, -4),
-        TreeBlock(BlockID::moon_bark, -2, 9, -4), TreeBlock(BlockID::moon_bark, -2, 8, -5), TreeBlock(BlockID::moon_bark, -2, 9, -5), TreeBlock(BlockID::moon_bark, -2, 10, -5),
-        TreeBlock(BlockID::moon_bark, -2, 11, -5), TreeBlock(BlockID::moon_bark, -2, 12, -5), TreeBlock(BlockID::moon_bark, -2, 13, -5), TreeBlock(BlockID::moon_bark, -2, 14, -5),
-        TreeBlock(BlockID::moon_bark, -2, 15, -5), TreeBlock(BlockID::moon_bark, -1, 9, -5), TreeBlock(BlockID::moon_bark, -1, 10, -5), TreeBlock(BlockID::moon_bark, -1, 11, -5),
-        TreeBlock(BlockID::moon_bark, -1, 14, -5), TreeBlock(BlockID::moon_bark, -1, 15, -5), TreeBlock(BlockID::moon_bark, -1, 15, -4), TreeBlock(BlockID::moon_bark, 2, 2, 0),
-        TreeBlock(BlockID::moon_bark, 2, 3, 0), TreeBlock(BlockID::moon_bark, 2, 3, 1), TreeBlock(BlockID::moon_bark, 2, 4, 1), TreeBlock(BlockID::moon_bark, 3, 4, 1),
-        TreeBlock(BlockID::moon_bark, 3, 5, 1), TreeBlock(BlockID::moon_bark, 3, 6, 1), TreeBlock(BlockID::moon_bark, 3, 7, 1), TreeBlock(BlockID::moon_bark, 3, 7, 2),
-        TreeBlock(BlockID::moon_bark, 3, 8, 2), TreeBlock(BlockID::moon_bark, 3, 9, 2), TreeBlock(BlockID::moon_bark, 3, 10, 2), TreeBlock(BlockID::moon_bark, 3, 11, 2),
-        TreeBlock(BlockID::moon_bark, 3, 12, 2), TreeBlock(BlockID::moon_bark, 4, 11, 2), TreeBlock(BlockID::moon_bark, 4, 12, 2), TreeBlock(BlockID::moon_bark, 4, 13, 2),
-        TreeBlock(BlockID::moon_bark, 4, 14, 2), TreeBlock(BlockID::moon_bark, 5, 12, 2), TreeBlock(BlockID::moon_bark, 5, 13, 2), TreeBlock(BlockID::moon_bark, 5, 14, 2),
-        TreeBlock(BlockID::moon_bark, 5, 14, 3), TreeBlock(BlockID::moon_bark, 4, 14, 3),
-
-        TreeBlock(BlockID::light, 5, 16, 4), TreeBlock(BlockID::light, 4, 16, 3), TreeBlock(BlockID::light, 5, 16, 3), TreeBlock(BlockID::light, 6, 16, 3),
-        TreeBlock(BlockID::light, 5, 16, 2), TreeBlock(BlockID::light, 4, 16, 2), TreeBlock(BlockID::light, -3, 17, -6), TreeBlock(BlockID::light, -3, 17, -5),
-        TreeBlock(BlockID::light, -3, 17, -4), TreeBlock(BlockID::light, -2, 17, -6), TreeBlock(BlockID::light, -2, 17, -5), TreeBlock(BlockID::light, -2, 17, -4),
-        TreeBlock(BlockID::light, -1, 17, -5),
-
-        TreeBlock(BlockID::sulphur_ore, -1, 16, -6), TreeBlock(BlockID::sulphur_ore, -1, 16, -5), TreeBlock(BlockID::sulphur_ore, -1, 16, -4), TreeBlock(BlockID::sulphur_ore, -2, 16, -6),
-        TreeBlock(BlockID::sulphur_ore, -2, 16, -5), TreeBlock(BlockID::sulphur_ore, -2, 16, -4), TreeBlock(BlockID::sulphur_ore, -3, 16, -5), TreeBlock(BlockID::sulphur_ore, -3, 16, -4),
-        TreeBlock(BlockID::sulphur_ore, -1, 18, -5), TreeBlock(BlockID::sulphur_ore, -1, 18, -4), TreeBlock(BlockID::sulphur_ore, -2, 18, -6), TreeBlock(BlockID::sulphur_ore, -2, 18, -5),
-        TreeBlock(BlockID::sulphur_ore, -2, 18, -4), TreeBlock(BlockID::sulphur_ore, -3, 18, -6), TreeBlock(BlockID::sulphur_ore, -3, 18, -5),
-
-        TreeBlock(BlockID::feldspar, 4, 15, 4), TreeBlock(BlockID::feldspar, 4, 15, 3), TreeBlock(BlockID::feldspar, 4, 15, 2), TreeBlock(BlockID::feldspar, 5, 15, 4),
-        TreeBlock(BlockID::feldspar, 5, 15, 3), TreeBlock(BlockID::feldspar, 5, 15, 2), TreeBlock(BlockID::feldspar, 6, 15, 3), TreeBlock(BlockID::feldspar, 6, 15, 2),
-        TreeBlock(BlockID::feldspar, 4, 17, 3), TreeBlock(BlockID::feldspar, 5, 17, 4), TreeBlock(BlockID::feldspar, 5, 17, 3), TreeBlock(BlockID::feldspar, 5, 17, 2),
-        TreeBlock(BlockID::feldspar, 6, 17, 4), TreeBlock(BlockID::feldspar, 6, 17, 3)
-    },
-    {
-        TreeBlock(BlockID::moon_bark, 6, 0, 0), // max extent
-
-        TreeBlock(BlockID::moon_bark, 1, 1, 0), TreeBlock(BlockID::moon_bark, 0, 1, -1), TreeBlock(BlockID::moon_bark, 1, 1, -1), TreeBlock(BlockID::moon_bark, 2, 1, -1),
-        TreeBlock(BlockID::moon_bark, 0, 2, -1), TreeBlock(BlockID::moon_bark, 1, 2, -1), TreeBlock(BlockID::moon_bark, 2, 2, -1), TreeBlock(BlockID::moon_bark, 2, 1, -2),
-        TreeBlock(BlockID::moon_bark, 1, 1, -2), TreeBlock(BlockID::moon_bark, 1, 2, -2), TreeBlock(BlockID::moon_bark, 0, 2, -2), TreeBlock(BlockID::moon_bark, 0, 3, -2),
-        TreeBlock(BlockID::moon_bark, -1, 3, -2), TreeBlock(BlockID::moon_bark, -1, 4, -2), TreeBlock(BlockID::moon_bark, -1, 4, -3), TreeBlock(BlockID::moon_bark, -1, 5, -3),
-        TreeBlock(BlockID::moon_bark, -1, 6, -3), TreeBlock(BlockID::moon_bark, -1, 7, -3), TreeBlock(BlockID::moon_bark, -1, 6, -4), TreeBlock(BlockID::moon_bark, -1, 7, -4),
-        TreeBlock(BlockID::moon_bark, -1, 8, -4), TreeBlock(BlockID::moon_bark, -1, 9, -4), TreeBlock(BlockID::moon_bark, -2, 7, -4), TreeBlock(BlockID::moon_bark, -2, 8, -4),
-        TreeBlock(BlockID::moon_bark, -2, 9, -4), TreeBlock(BlockID::moon_bark, -2, 8, -5), TreeBlock(BlockID::moon_bark, -2, 9, -5), TreeBlock(BlockID::moon_bark, -2, 10, -5),
-        TreeBlock(BlockID::moon_bark, -2, 11, -5), TreeBlock(BlockID::moon_bark, -2, 12, -5), TreeBlock(BlockID::moon_bark, -2, 13, -5), TreeBlock(BlockID::moon_bark, -2, 14, -5),
-        TreeBlock(BlockID::moon_bark, -2, 15, -5), TreeBlock(BlockID::moon_bark, -1, 9, -5), TreeBlock(BlockID::moon_bark, -1, 10, -5), TreeBlock(BlockID::moon_bark, -1, 11, -5),
-        TreeBlock(BlockID::moon_bark, -1, 14, -5), TreeBlock(BlockID::moon_bark, -1, 15, -5), TreeBlock(BlockID::moon_bark, -1, 15, -4), TreeBlock(BlockID::moon_bark, 2, 2, 0),
-        TreeBlock(BlockID::moon_bark, 2, 3, 0), TreeBlock(BlockID::moon_bark, 2, 3, 1), TreeBlock(BlockID::moon_bark, 2, 4, 1), TreeBlock(BlockID::moon_bark, 3, 4, 1),
-        TreeBlock(BlockID::moon_bark, 3, 5, 1), TreeBlock(BlockID::moon_bark, 3, 6, 1), TreeBlock(BlockID::moon_bark, 3, 7, 1), TreeBlock(BlockID::moon_bark, 3, 7, 2),
-        TreeBlock(BlockID::moon_bark, 3, 8, 2), TreeBlock(BlockID::moon_bark, 3, 9, 2), TreeBlock(BlockID::moon_bark, 3, 10, 2), TreeBlock(BlockID::moon_bark, 3, 11, 2),
-        TreeBlock(BlockID::moon_bark, 3, 12, 2), TreeBlock(BlockID::moon_bark, 4, 11, 2), TreeBlock(BlockID::moon_bark, 4, 12, 2), TreeBlock(BlockID::moon_bark, 4, 13, 2),
-        TreeBlock(BlockID::moon_bark, 4, 14, 2), TreeBlock(BlockID::moon_bark, 5, 12, 2), TreeBlock(BlockID::moon_bark, 5, 13, 2), TreeBlock(BlockID::moon_bark, 5, 14, 2),
-        TreeBlock(BlockID::moon_bark, 5, 14, 3), TreeBlock(BlockID::moon_bark, 4, 14, 3),
-
-        TreeBlock(BlockID::light, 5, 16, 4), TreeBlock(BlockID::light, 4, 16, 3), TreeBlock(BlockID::light, 5, 16, 3), TreeBlock(BlockID::light, 6, 16, 3),
-        TreeBlock(BlockID::light, 5, 16, 2), TreeBlock(BlockID::light, 4, 16, 2), TreeBlock(BlockID::light, -3, 17, -6), TreeBlock(BlockID::light, -3, 17, -5),
-        TreeBlock(BlockID::light, -3, 17, -4), TreeBlock(BlockID::light, -2, 17, -6), TreeBlock(BlockID::light, -2, 17, -5), TreeBlock(BlockID::light, -2, 17, -4),
-        TreeBlock(BlockID::light, -1, 17, -5),
-
-        TreeBlock(BlockID::sulphur_ore, -1, 16, -6), TreeBlock(BlockID::sulphur_ore, -1, 16, -5), TreeBlock(BlockID::sulphur_ore, -1, 16, -4), TreeBlock(BlockID::sulphur_ore, -2, 16, -6),
-        TreeBlock(BlockID::sulphur_ore, -2, 16, -5), TreeBlock(BlockID::sulphur_ore, -2, 16, -4), TreeBlock(BlockID::sulphur_ore, -3, 16, -5), TreeBlock(BlockID::sulphur_ore, -3, 16, -4),
-        TreeBlock(BlockID::sulphur_ore, -1, 18, -5), TreeBlock(BlockID::sulphur_ore, -1, 18, -4), TreeBlock(BlockID::sulphur_ore, -2, 18, -6), TreeBlock(BlockID::sulphur_ore, -2, 18, -5),
-        TreeBlock(BlockID::sulphur_ore, -2, 18, -4), TreeBlock(BlockID::sulphur_ore, -3, 18, -6), TreeBlock(BlockID::sulphur_ore, -3, 18, -5),
-
-        TreeBlock(BlockID::sulphur_ore, 4, 15, 4), TreeBlock(BlockID::sulphur_ore, 4, 15, 3), TreeBlock(BlockID::sulphur_ore, 4, 15, 2), TreeBlock(BlockID::sulphur_ore, 5, 15, 4),
-        TreeBlock(BlockID::sulphur_ore, 5, 15, 3), TreeBlock(BlockID::sulphur_ore, 5, 15, 2), TreeBlock(BlockID::sulphur_ore, 6, 15, 3), TreeBlock(BlockID::sulphur_ore, 6, 15, 2),
-        TreeBlock(BlockID::sulphur_ore, 4, 17, 3), TreeBlock(BlockID::sulphur_ore, 5, 17, 4), TreeBlock(BlockID::sulphur_ore, 5, 17, 3), TreeBlock(BlockID::sulphur_ore, 5, 17, 2),
-        TreeBlock(BlockID::sulphur_ore, 6, 17, 4), TreeBlock(BlockID::sulphur_ore, 6, 17, 3)
-    },
-    {
-        TreeBlock(BlockID::moon_bark, 3, 0, 0), // max extent
-
-        TreeBlock(BlockID::moon_bark, -2, 1, 0), TreeBlock(BlockID::moon_bark, -3, 1, -1), TreeBlock(BlockID::moon_bark, -2, 1, -1), TreeBlock(BlockID::moon_bark, -2, 2, -1),
-        TreeBlock(BlockID::moon_bark, -1, 2, -1), TreeBlock(BlockID::moon_bark, -1, 3, -1), TreeBlock(BlockID::moon_bark, -1, 3, 0), TreeBlock(BlockID::moon_bark, -1, 4, 0),
-        TreeBlock(BlockID::moon_bark, 0, 4, 0), TreeBlock(BlockID::moon_bark, 0, 4, -1), TreeBlock(BlockID::moon_bark, 0, 5, 0), TreeBlock(BlockID::moon_bark, 0, 5, -1),
-        TreeBlock(BlockID::moon_bark, 0, 6, 0), TreeBlock(BlockID::moon_bark, 1, 5, 0), TreeBlock(BlockID::moon_bark, 1, 6, 0), TreeBlock(BlockID::moon_bark, 1, 7, 0),
-        TreeBlock(BlockID::moon_bark, 1, 8, 0), TreeBlock(BlockID::moon_bark, 1, 9, 0), TreeBlock(BlockID::moon_bark, 1, 7, -1), TreeBlock(BlockID::moon_bark, 1, 8, -1),
-        TreeBlock(BlockID::moon_bark, 1, 9, -1), TreeBlock(BlockID::moon_bark, 1, 10, -1), TreeBlock(BlockID::moon_bark, 2, 10, -1), TreeBlock(BlockID::moon_bark, 2, 11, -1),
-        TreeBlock(BlockID::moon_bark, 2, 12, -1), TreeBlock(BlockID::moon_bark, 2, 13, -1), TreeBlock(BlockID::moon_bark, 2, 13, 0), TreeBlock(BlockID::moon_bark, 2, 14, 0),
-        TreeBlock(BlockID::moon_bark, 2, 15, 0), TreeBlock(BlockID::moon_bark, 3, 15, 0), TreeBlock(BlockID::moon_bark, 3, 16, 0), TreeBlock(BlockID::moon_bark, 3, 17, 0),
-        TreeBlock(BlockID::moon_bark, 3, 18, 0), TreeBlock(BlockID::moon_bark, 3, 18, 1), TreeBlock(BlockID::moon_bark, 3, 19, 1), TreeBlock(BlockID::moon_bark, 2, 19, 1),
-
-        TreeBlock(BlockID::feldspar, 1, 20, 0), TreeBlock(BlockID::feldspar, 2, 20, 0), TreeBlock(BlockID::feldspar, 1, 20, 1), TreeBlock(BlockID::feldspar, 2, 20, 1),
-        TreeBlock(BlockID::feldspar, 3, 20, 1), TreeBlock(BlockID::feldspar, 1, 20, 2), TreeBlock(BlockID::feldspar, 3, 20, 2), TreeBlock(BlockID::feldspar, 1, 22, 0),
-        TreeBlock(BlockID::feldspar, 2, 22, 0), TreeBlock(BlockID::feldspar, 3, 22, 0), TreeBlock(BlockID::feldspar, 1, 22, 1), TreeBlock(BlockID::feldspar, 2, 22, 1),
-        TreeBlock(BlockID::feldspar, 3, 22, 1), TreeBlock(BlockID::feldspar, 2, 22, 2), TreeBlock(BlockID::feldspar, 3, 22, 2),
-
-        TreeBlock(BlockID::light, 1, 21, 0), TreeBlock(BlockID::light, 1, 21, 1), TreeBlock(BlockID::light, 1, 21, 2), TreeBlock(BlockID::light, 2, 21, 0),
-        TreeBlock(BlockID::light, 2, 21, 1), TreeBlock(BlockID::light, 2, 21, 2), TreeBlock(BlockID::light, 3, 21, 0), TreeBlock(BlockID::light, 3, 21, 1)
-    },
-    {
-        TreeBlock(BlockID::moon_bark, 3, 0, 0), // max extent
-
-        TreeBlock(BlockID::moon_bark, -2, 1, 0), TreeBlock(BlockID::moon_bark, -3, 1, -1), TreeBlock(BlockID::moon_bark, -2, 1, -1), TreeBlock(BlockID::moon_bark, -2, 2, -1),
-        TreeBlock(BlockID::moon_bark, -1, 2, -1), TreeBlock(BlockID::moon_bark, -1, 3, -1), TreeBlock(BlockID::moon_bark, -1, 3, 0), TreeBlock(BlockID::moon_bark, -1, 4, 0),
-        TreeBlock(BlockID::moon_bark, 0, 4, 0), TreeBlock(BlockID::moon_bark, 0, 4, -1), TreeBlock(BlockID::moon_bark, 0, 5, 0), TreeBlock(BlockID::moon_bark, 0, 5, -1),
-        TreeBlock(BlockID::moon_bark, 0, 6, 0), TreeBlock(BlockID::moon_bark, 1, 5, 0), TreeBlock(BlockID::moon_bark, 1, 6, 0), TreeBlock(BlockID::moon_bark, 1, 7, 0),
-        TreeBlock(BlockID::moon_bark, 1, 8, 0), TreeBlock(BlockID::moon_bark, 1, 9, 0), TreeBlock(BlockID::moon_bark, 1, 7, -1), TreeBlock(BlockID::moon_bark, 1, 8, -1),
-        TreeBlock(BlockID::moon_bark, 1, 9, -1), TreeBlock(BlockID::moon_bark, 1, 10, -1), TreeBlock(BlockID::moon_bark, 2, 10, -1), TreeBlock(BlockID::moon_bark, 2, 11, -1),
-        TreeBlock(BlockID::moon_bark, 2, 12, -1), TreeBlock(BlockID::moon_bark, 2, 13, -1), TreeBlock(BlockID::moon_bark, 2, 13, 0), TreeBlock(BlockID::moon_bark, 2, 14, 0),
-        TreeBlock(BlockID::moon_bark, 2, 15, 0), TreeBlock(BlockID::moon_bark, 3, 15, 0), TreeBlock(BlockID::moon_bark, 3, 16, 0), TreeBlock(BlockID::moon_bark, 3, 17, 0),
-        TreeBlock(BlockID::moon_bark, 3, 18, 0), TreeBlock(BlockID::moon_bark, 3, 18, 1), TreeBlock(BlockID::moon_bark, 3, 19, 1), TreeBlock(BlockID::moon_bark, 2, 19, 1),
-
-        TreeBlock(BlockID::chalchanthite, 1, 20, 0), TreeBlock(BlockID::chalchanthite, 2, 20, 0), TreeBlock(BlockID::chalchanthite, 1, 20, 1), TreeBlock(BlockID::chalchanthite, 2, 20, 1),
-        TreeBlock(BlockID::chalchanthite, 3, 20, 1), TreeBlock(BlockID::chalchanthite, 1, 20, 2), TreeBlock(BlockID::chalchanthite, 3, 20, 2), TreeBlock(BlockID::chalchanthite, 1, 22, 0),
-        TreeBlock(BlockID::chalchanthite, 2, 22, 0), TreeBlock(BlockID::chalchanthite, 3, 22, 0), TreeBlock(BlockID::chalchanthite, 1, 22, 1), TreeBlock(BlockID::chalchanthite, 2, 22, 1),
-        TreeBlock(BlockID::chalchanthite, 3, 22, 1),
-
-        TreeBlock(BlockID::light, 1, 21, 0), TreeBlock(BlockID::light, 1, 21, 1), TreeBlock(BlockID::light, 1, 21, 2), TreeBlock(BlockID::light, 2, 21, 0),
-        TreeBlock(BlockID::light, 2, 21, 1), TreeBlock(BlockID::light, 2, 21, 2), TreeBlock(BlockID::light, 3, 21, 0), TreeBlock(BlockID::light, 3, 21, 1)
-    },
-    {
-        TreeBlock(BlockID::moon_bark, 3, 0, 0), // max extent
-
-        TreeBlock(BlockID::moon_bark, -2, 1, 0), TreeBlock(BlockID::moon_bark, -3, 1, -1), TreeBlock(BlockID::moon_bark, -2, 1, -1), TreeBlock(BlockID::moon_bark, -2, 2, -1),
-        TreeBlock(BlockID::moon_bark, -1, 2, -1), TreeBlock(BlockID::moon_bark, -1, 3, -1), TreeBlock(BlockID::moon_bark, -1, 3, 0), TreeBlock(BlockID::moon_bark, -1, 4, 0),
-        TreeBlock(BlockID::moon_bark, 0, 4, 0), TreeBlock(BlockID::moon_bark, 0, 4, -1), TreeBlock(BlockID::moon_bark, 0, 5, 0), TreeBlock(BlockID::moon_bark, 0, 5, -1),
-        TreeBlock(BlockID::moon_bark, 0, 6, 0), TreeBlock(BlockID::moon_bark, 1, 5, 0), TreeBlock(BlockID::moon_bark, 1, 6, 0), TreeBlock(BlockID::moon_bark, 1, 7, 0),
-        TreeBlock(BlockID::moon_bark, 1, 8, 0), TreeBlock(BlockID::moon_bark, 1, 9, 0), TreeBlock(BlockID::moon_bark, 1, 7, -1), TreeBlock(BlockID::moon_bark, 1, 8, -1),
-        TreeBlock(BlockID::moon_bark, 1, 9, -1), TreeBlock(BlockID::moon_bark, 1, 10, -1), TreeBlock(BlockID::moon_bark, 2, 10, -1), TreeBlock(BlockID::moon_bark, 2, 11, -1),
-        TreeBlock(BlockID::moon_bark, 2, 12, -1), TreeBlock(BlockID::moon_bark, 2, 13, -1), TreeBlock(BlockID::moon_bark, 2, 13, 0), TreeBlock(BlockID::moon_bark, 2, 14, 0),
-        TreeBlock(BlockID::moon_bark, 2, 15, 0), TreeBlock(BlockID::moon_bark, 3, 15, 0), TreeBlock(BlockID::moon_bark, 3, 16, 0), TreeBlock(BlockID::moon_bark, 3, 17, 0),
-        TreeBlock(BlockID::moon_bark, 3, 18, 0), TreeBlock(BlockID::moon_bark, 3, 18, 1), TreeBlock(BlockID::moon_bark, 3, 19, 1), TreeBlock(BlockID::moon_bark, 2, 19, 1),
-
-        TreeBlock(BlockID::sulphur_ore, 2, 20, 0), TreeBlock(BlockID::sulphur_ore, 1, 20, 1), TreeBlock(BlockID::sulphur_ore, 2, 20, 1), TreeBlock(BlockID::sulphur_ore, 3, 20, 1),
-        TreeBlock(BlockID::sulphur_ore, 1, 20, 2), TreeBlock(BlockID::sulphur_ore, 3, 20, 2), TreeBlock(BlockID::sulphur_ore, 1, 22, 0), TreeBlock(BlockID::sulphur_ore, 2, 22, 0),
-        TreeBlock(BlockID::sulphur_ore, 3, 22, 0), TreeBlock(BlockID::sulphur_ore, 1, 22, 1), TreeBlock(BlockID::sulphur_ore, 2, 22, 1), TreeBlock(BlockID::sulphur_ore, 3, 22, 1),
-        TreeBlock(BlockID::sulphur_ore, 2, 22, 2), TreeBlock(BlockID::sulphur_ore, 3, 22, 2),
-
-        TreeBlock(BlockID::light, 1, 21, 0), TreeBlock(BlockID::light, 1, 21, 1), TreeBlock(BlockID::light, 1, 21, 2), TreeBlock(BlockID::light, 2, 21, 0),
-        TreeBlock(BlockID::light, 2, 21, 1), TreeBlock(BlockID::light, 2, 21, 2), TreeBlock(BlockID::light, 3, 21, 0), TreeBlock(BlockID::light, 3, 21, 1)
-    },
-};
-
-std::vector<std::vector<TreeBlock>> SPIRAL_LIGHT_TREE_SHAPES = {
-    {
-        TreeBlock(BlockID::moon_wood, 5, 0, 0), // max extent
-
-        TreeBlock(BlockID::moon_wood, -1, 1, 0), TreeBlock(BlockID::moon_wood, -2, 1, 0), TreeBlock(BlockID::moon_wood, -3, 1, 0), TreeBlock(BlockID::moon_wood, -4, 1, 0),
-        TreeBlock(BlockID::moon_wood, 0, 1, 1), TreeBlock(BlockID::moon_wood, -1, 1, 1), TreeBlock(BlockID::moon_wood, -2, 1, 1), TreeBlock(BlockID::moon_wood, -3, 1, 1),
-        TreeBlock(BlockID::moon_wood, -1, 2, 1), TreeBlock(BlockID::moon_wood, -2, 2, 1), TreeBlock(BlockID::moon_wood, -3, 2, 1), TreeBlock(BlockID::moon_wood, -4, 2, 1),
-        TreeBlock(BlockID::moon_wood, 0, 1, 2), TreeBlock(BlockID::moon_wood, -1, 1, 2), TreeBlock(BlockID::moon_wood, -2, 1, 2), TreeBlock(BlockID::moon_wood, -3, 1, 2),
-        TreeBlock(BlockID::moon_wood, 0, 2, 2), TreeBlock(BlockID::moon_wood, -1, 2, 2), TreeBlock(BlockID::moon_wood, -2, 1, 3), TreeBlock(BlockID::moon_wood, -2, 2, 3),
-        TreeBlock(BlockID::moon_wood, -2, 3, 3), TreeBlock(BlockID::moon_wood, -2, 4, 3), TreeBlock(BlockID::moon_wood, -2, 5, 3), TreeBlock(BlockID::moon_wood, -2, 6, 3),
-        TreeBlock(BlockID::moon_wood, -2, 7, 3), TreeBlock(BlockID::moon_wood, -3, 4, 3), TreeBlock(BlockID::moon_wood, -3, 5, 3), TreeBlock(BlockID::moon_wood, -3, 6, 3),
-        TreeBlock(BlockID::moon_wood, -2, 3, 4), TreeBlock(BlockID::moon_wood, -2, 4, 4), TreeBlock(BlockID::moon_wood, -2, 5, 4), TreeBlock(BlockID::moon_wood, -2, 6, 4),
-        TreeBlock(BlockID::moon_wood, -1, 2, 4), TreeBlock(BlockID::moon_wood, -1, 3, 4), TreeBlock(BlockID::moon_wood, -1, 4, 4), TreeBlock(BlockID::moon_wood, -1, 1, 3),
-        TreeBlock(BlockID::moon_wood, -1, 2, 3), TreeBlock(BlockID::moon_wood, -1, 3, 3), TreeBlock(BlockID::moon_wood, -1, 4, 3), TreeBlock(BlockID::moon_wood, 0, 2, 3),
-        TreeBlock(BlockID::moon_wood, 0, 3, 3), TreeBlock(BlockID::moon_wood, -2, 6, 2), TreeBlock(BlockID::moon_wood, -1, 7, 2), TreeBlock(BlockID::moon_wood, -1, 8, 2),
-        TreeBlock(BlockID::moon_wood, 0, 8, 2), TreeBlock(BlockID::moon_wood, 0, 8, 3), TreeBlock(BlockID::moon_wood, 0, 9, 3), TreeBlock(BlockID::moon_wood, -1, 6, 3),
-        TreeBlock(BlockID::moon_wood, 1, 9, 3), TreeBlock(BlockID::moon_wood, 0, 9, 4), TreeBlock(BlockID::moon_wood, 0, 10, 4), TreeBlock(BlockID::moon_wood, 1, 10, 4),
-        TreeBlock(BlockID::moon_wood, 0, 10, 5), TreeBlock(BlockID::moon_wood, 0, 11, 5), TreeBlock(BlockID::moon_wood, -1, 11, 5), TreeBlock(BlockID::moon_wood, -2, 11, 5),
-        TreeBlock(BlockID::moon_wood, -2, 12, 5), TreeBlock(BlockID::moon_wood, -2, 12, 4), TreeBlock(BlockID::moon_wood, -2, 13, 4), TreeBlock(BlockID::moon_wood, -2, 13, 3),
-        TreeBlock(BlockID::moon_wood, -3, 13, 4), TreeBlock(BlockID::moon_wood, -3, 13, 3), TreeBlock(BlockID::moon_wood, -2, 14, 3), TreeBlock(BlockID::moon_wood, -2, 14, 2),
-        TreeBlock(BlockID::moon_wood, -4, 3, 1), TreeBlock(BlockID::moon_wood, -4, 1, -1), TreeBlock(BlockID::moon_wood, -3, 1, -1), TreeBlock(BlockID::moon_wood, -4, 2, 0),
-        TreeBlock(BlockID::moon_wood, -4, 3, 0), TreeBlock(BlockID::moon_wood, -4, 4, 0), TreeBlock(BlockID::moon_wood, -3, 2, 0), TreeBlock(BlockID::moon_wood, -3, 3, 0),
-        TreeBlock(BlockID::moon_wood, -3, 4, 0), TreeBlock(BlockID::moon_wood, -3, 4, -1), TreeBlock(BlockID::moon_wood, -4, 4, -1), TreeBlock(BlockID::moon_wood, -3, 5, -1),
-        TreeBlock(BlockID::moon_wood, -4, 5, -1), TreeBlock(BlockID::moon_wood, -3, 5, -2), TreeBlock(BlockID::moon_wood, -4, 5, -2), TreeBlock(BlockID::moon_wood, -3, 6, -2),
-        TreeBlock(BlockID::moon_wood, -2, 6, -2), TreeBlock(BlockID::moon_wood, -3, 6, -3), TreeBlock(BlockID::moon_wood, -2, 6, -3), TreeBlock(BlockID::moon_wood, -2, 7, -3),
-        TreeBlock(BlockID::moon_wood, -1, 7, -3), TreeBlock(BlockID::moon_wood, -1, 8, -3), TreeBlock(BlockID::moon_wood, 0, 8, -3), TreeBlock(BlockID::moon_wood, 0, 9, -3),
-        TreeBlock(BlockID::moon_wood, 0, 9, -2), TreeBlock(BlockID::moon_wood, 1, 9, -3), TreeBlock(BlockID::moon_wood, 1, 9, -2), TreeBlock(BlockID::moon_wood, 1, 10, -2),
-        TreeBlock(BlockID::moon_wood, 1, 10, -1), TreeBlock(BlockID::moon_wood, 1, 11, -1), TreeBlock(BlockID::moon_wood, 2, 11, -1), TreeBlock(BlockID::moon_wood, 1, 11, 0),
-        TreeBlock(BlockID::moon_wood, 2, 11, 0), TreeBlock(BlockID::moon_wood, 1, 12, 0), TreeBlock(BlockID::moon_wood, 2, 12, 0), TreeBlock(BlockID::moon_wood, 1, 12, 1),
-        TreeBlock(BlockID::moon_wood, 0, 13, 1), TreeBlock(BlockID::moon_wood, 0, 13, 2), TreeBlock(BlockID::moon_wood, 0, 14, 1),
-
-        TreeBlock(BlockID::light, -1, 14, 3), TreeBlock(BlockID::light, 0, 14, 3), TreeBlock(BlockID::light, -1, 15, 3), TreeBlock(BlockID::light, 0, 15, 3),
-        TreeBlock(BlockID::light, 1, 15, 3), TreeBlock(BlockID::light, -2, 15, 2), TreeBlock(BlockID::light, -1, 15, 2), TreeBlock(BlockID::light, 0, 15, 2),
-        TreeBlock(BlockID::light, 1, 15, 2), TreeBlock(BlockID::light, 0, 15, 1), TreeBlock(BlockID::light, 0, 14, 2), TreeBlock(BlockID::light, -1, 14, 2),
-        TreeBlock(BlockID::light, 0, 16, 2), TreeBlock(BlockID::light, -1, 16, 2), TreeBlock(BlockID::light, 1, 14, 2)
-    },
-    {
-        TreeBlock(BlockID::moon_wood, 3, 0, 0), // max extent
-
-        TreeBlock(BlockID::moon_wood, -1, 1, -1), TreeBlock(BlockID::moon_wood, -1, 2, -1), TreeBlock(BlockID::moon_wood, 0, 1, -2), TreeBlock(BlockID::moon_wood, 0, 2, -2),
-        TreeBlock(BlockID::moon_wood, 0, 1, -3), TreeBlock(BlockID::moon_wood, -1, 1, -3), TreeBlock(BlockID::moon_wood, -2, 1, -3), TreeBlock(BlockID::moon_wood, -1, 2, -3),
-        TreeBlock(BlockID::moon_wood, -2, 2, -3), TreeBlock(BlockID::moon_wood, -1, 1, -2), TreeBlock(BlockID::moon_wood, -2, 1, -2), TreeBlock(BlockID::moon_wood, -1, 2, -2),
-        TreeBlock(BlockID::moon_wood, -2, 2, -2), TreeBlock(BlockID::moon_wood, -1, 3, -2), TreeBlock(BlockID::moon_wood, -2, 3, -2), TreeBlock(BlockID::moon_wood, -1, 4, -2),
-        TreeBlock(BlockID::moon_wood, -1, 5, -2), TreeBlock(BlockID::moon_wood, -1, 6, -2), TreeBlock(BlockID::moon_wood, -1, 7, -2), TreeBlock(BlockID::moon_wood, -1, 8, -2),
-        TreeBlock(BlockID::moon_wood, -1, 9, -2), TreeBlock(BlockID::moon_wood, -2, 4, -3), TreeBlock(BlockID::moon_wood, -1, 4, -3), TreeBlock(BlockID::moon_wood, -1, 5, -3),
-        TreeBlock(BlockID::moon_wood, 0, 5, -3), TreeBlock(BlockID::moon_wood, 0, 4, -2), TreeBlock(BlockID::moon_wood, 0, 5, -2), TreeBlock(BlockID::moon_wood, 0, 6, -2),
-        TreeBlock(BlockID::moon_wood, 0, 5, -1), TreeBlock(BlockID::moon_wood, 0, 6, -1), TreeBlock(BlockID::moon_wood, 0, 7, -1), TreeBlock(BlockID::moon_wood, -1, 6, -1),
-        TreeBlock(BlockID::moon_wood, -1, 7, -1), TreeBlock(BlockID::moon_wood, -1, 8, -1), TreeBlock(BlockID::moon_wood, 0, 7, 0), TreeBlock(BlockID::moon_wood, 0, 7, 1),
-        TreeBlock(BlockID::moon_wood, 0, 8, 1), TreeBlock(BlockID::moon_wood, 0, 8, 2), TreeBlock(BlockID::moon_wood, 0, 9, 2), TreeBlock(BlockID::moon_wood, -2, 7, -1),
-        TreeBlock(BlockID::moon_wood, -2, 8, -1), TreeBlock(BlockID::moon_wood, -2, 9, -1), TreeBlock(BlockID::moon_wood, -3, 8, -1), TreeBlock(BlockID::moon_wood, -2, 8, -2),
-        TreeBlock(BlockID::moon_wood, -2, 9, -2), TreeBlock(BlockID::moon_wood, -2, 10, -2), TreeBlock(BlockID::moon_wood, -3, 9, -2), TreeBlock(BlockID::moon_wood, -2, 9, -3),
-        TreeBlock(BlockID::moon_wood, -2, 10, -3), TreeBlock(BlockID::moon_wood, -1, 10, -3), TreeBlock(BlockID::moon_wood, -1, 11, -3), TreeBlock(BlockID::moon_wood, 0, 11, -3),
-        TreeBlock(BlockID::moon_wood, 0, 11, -2), TreeBlock(BlockID::moon_wood, 0, 12, -2), TreeBlock(BlockID::moon_wood, 0, 12, -1), TreeBlock(BlockID::moon_wood, 0, 13, -1),
-        TreeBlock(BlockID::moon_wood, 0, 13, 0), TreeBlock(BlockID::moon_wood, -1, 13, 0), TreeBlock(BlockID::moon_wood, -2, 15, 0), TreeBlock(BlockID::moon_wood, -1, 14, 0),
-        TreeBlock(BlockID::moon_wood, -2, 14, 0),
-
-        TreeBlock(BlockID::light, -1, 8, 1), TreeBlock(BlockID::light, 1, 8, 1), TreeBlock(BlockID::light, -1, 9, 1), TreeBlock(BlockID::light, 0, 9, 1),
-        TreeBlock(BlockID::light, 1, 9, 1), TreeBlock(BlockID::light, -1, 9, 2), TreeBlock(BlockID::light, 1, 9, 2), TreeBlock(BlockID::light, -1, 9, 3),
-        TreeBlock(BlockID::light, 0, 9, 3), TreeBlock(BlockID::light, 1, 9, 3), TreeBlock(BlockID::light, -1, 8, 2), TreeBlock(BlockID::light, 0, 8, 3),
-        TreeBlock(BlockID::light, 1, 8, 2), TreeBlock(BlockID::light, 1, 10, 2), TreeBlock(BlockID::light, 0, 10, 2), TreeBlock(BlockID::light, -1, 10, 2),
-        TreeBlock(BlockID::light, 1, 10, 3), TreeBlock(BlockID::light, 0, 10, 3), TreeBlock(BlockID::light, 0, 10, 1), TreeBlock(BlockID::light, -1, 15, -1),
-        TreeBlock(BlockID::light, -1, 15, 0), TreeBlock(BlockID::light, -1, 15, 1), TreeBlock(BlockID::light, -2, 15, -1), TreeBlock(BlockID::light, -2, 15, 1),
-        TreeBlock(BlockID::light, -3, 15, -1), TreeBlock(BlockID::light, -3, 15, 0), TreeBlock(BlockID::light, -3, 15, 1), TreeBlock(BlockID::light, -1, 14, 1),
-        TreeBlock(BlockID::light, -2, 14, 1), TreeBlock(BlockID::light, -3, 14, 1), TreeBlock(BlockID::light, -2, 14, -1), TreeBlock(BlockID::light, -3, 14, 0),
-        TreeBlock(BlockID::light, -1, 16, 0), TreeBlock(BlockID::light, -2, 16, 0), TreeBlock(BlockID::light, -3, 16, 0), TreeBlock(BlockID::light, -2, 16, -1),
-        TreeBlock(BlockID::light, -3, 16, -1), TreeBlock(BlockID::light, -2, 16, 1)
-    },
-    {
-        TreeBlock(BlockID::moon_wood, 5, 0, 0), // max extent
-
-        TreeBlock(BlockID::moon_wood, 2, 1, -1), TreeBlock(BlockID::moon_wood, 2, 2, -1), TreeBlock(BlockID::moon_wood, 3, 2, -1), TreeBlock(BlockID::moon_wood, 3, 3, -1),
-        TreeBlock(BlockID::moon_wood, 4, 3, -1), TreeBlock(BlockID::moon_wood, 4, 4, -1), TreeBlock(BlockID::moon_wood, 4, 4, 0), TreeBlock(BlockID::moon_wood, 4, 5, 0),
-        TreeBlock(BlockID::moon_wood, 4, 5, 1), TreeBlock(BlockID::moon_wood, 3, 5, 1), TreeBlock(BlockID::moon_wood, 3, 6, 1), TreeBlock(BlockID::moon_wood, 2, 6, 1),
-        TreeBlock(BlockID::moon_wood, 2, 7, 1), TreeBlock(BlockID::moon_wood, 2, 7, 2), TreeBlock(BlockID::moon_wood, 2, 8, 2), TreeBlock(BlockID::moon_wood, 2, 8, 3),
-        TreeBlock(BlockID::moon_wood, 2, 8, 4), TreeBlock(BlockID::moon_wood, 2, 9, 4), TreeBlock(BlockID::moon_wood, 1, 9, 4), TreeBlock(BlockID::moon_wood, 0, 10, 4),
-        TreeBlock(BlockID::moon_wood, -1, 10, 4), TreeBlock(BlockID::moon_wood, 1, 7, 1), TreeBlock(BlockID::moon_wood, 1, 7, 0), TreeBlock(BlockID::moon_wood, 1, 8, 0),
-        TreeBlock(BlockID::moon_wood, 1, 8, -1), TreeBlock(BlockID::moon_wood, 1, 9, -1), TreeBlock(BlockID::moon_wood, 2, 9, -1), TreeBlock(BlockID::moon_wood, 2, 10, -1),
-        TreeBlock(BlockID::moon_wood, 3, 10, -1), TreeBlock(BlockID::moon_wood, 3, 11, -1), TreeBlock(BlockID::moon_wood, 3, 12, -1), TreeBlock(BlockID::moon_wood, 3, 12, 0),
-        TreeBlock(BlockID::moon_wood, 3, 13, 0), TreeBlock(BlockID::moon_wood, 2, 13, 0), TreeBlock(BlockID::moon_wood, 2, 14, 0), TreeBlock(BlockID::moon_wood, 2, 14, 1),
-        TreeBlock(BlockID::moon_wood, 3, 1, 1), TreeBlock(BlockID::moon_wood, 2, 1, 1), TreeBlock(BlockID::moon_wood, 2, 2, 1), TreeBlock(BlockID::moon_wood, 1, 2, 1),
-        TreeBlock(BlockID::moon_wood, 1, 3, 1), TreeBlock(BlockID::moon_wood, 0, 3, 1), TreeBlock(BlockID::moon_wood, -1, 3, 1), TreeBlock(BlockID::moon_wood, 0, 4, 1),
-        TreeBlock(BlockID::moon_wood, -1, 4, 1), TreeBlock(BlockID::moon_wood, 1, 2, 0), TreeBlock(BlockID::moon_wood, 1, 3, 0), TreeBlock(BlockID::moon_wood, 0, 3, 0),
-        TreeBlock(BlockID::moon_wood, -1, 3, 0), TreeBlock(BlockID::moon_wood, -1, 4, 0), TreeBlock(BlockID::moon_wood, -2, 4, 0), TreeBlock(BlockID::moon_wood, -2, 4, 1),
-        TreeBlock(BlockID::moon_wood, -2, 5, 1), TreeBlock(BlockID::moon_wood, -3, 5, 1), TreeBlock(BlockID::moon_wood, -3, 5, 0), TreeBlock(BlockID::moon_wood, -3, 6, 0),
-        TreeBlock(BlockID::moon_wood, -4, 6, 1), TreeBlock(BlockID::moon_wood, -5, 6, 1), TreeBlock(BlockID::moon_wood, -5, 7, 1), TreeBlock(BlockID::moon_wood, -5, 7, 0),
-        TreeBlock(BlockID::moon_wood, -5, 8, 0), TreeBlock(BlockID::moon_wood, -5, 8, -1), TreeBlock(BlockID::moon_wood, -5, 9, -1), TreeBlock(BlockID::moon_wood, -4, 6, 0),
-        TreeBlock(BlockID::moon_wood, -4, 7, 0), TreeBlock(BlockID::moon_wood, -4, 8, -1), TreeBlock(BlockID::moon_wood, -4, 9, -1), TreeBlock(BlockID::moon_wood, -4, 9, -2),
-        TreeBlock(BlockID::moon_wood, -4, 10, -2), TreeBlock(BlockID::moon_wood, -4, 10, -3), TreeBlock(BlockID::moon_wood, -3, 10, -3), TreeBlock(BlockID::moon_wood, -3, 11, -3),
-        TreeBlock(BlockID::moon_wood, 3, 1, 0), TreeBlock(BlockID::moon_wood, 3, 2, 0), TreeBlock(BlockID::moon_wood, 3, 3, 0), TreeBlock(BlockID::moon_wood, 3, 4, 0),
-        TreeBlock(BlockID::moon_wood, 3, 5, 0), TreeBlock(BlockID::moon_wood, 3, 6, 0), TreeBlock(BlockID::moon_wood, 3, 7, 0), TreeBlock(BlockID::moon_wood, 2, 1, 0),
-        TreeBlock(BlockID::moon_wood, 2, 2, 0), TreeBlock(BlockID::moon_wood, 2, 3, 0), TreeBlock(BlockID::moon_wood, 2, 4, 0), TreeBlock(BlockID::moon_wood, 2, 5, 0),
-        TreeBlock(BlockID::moon_wood, 2, 6, 0), TreeBlock(BlockID::moon_wood, 2, 7, 0), TreeBlock(BlockID::moon_wood, 2, 8, 0),
-
-        TreeBlock(BlockID::light, -1, 9, 3), TreeBlock(BlockID::light, -1, 9, 4), TreeBlock(BlockID::light, -1, 9, 5), TreeBlock(BlockID::light, 0, 9, 4),
-        TreeBlock(BlockID::light, 0, 9, 5), TreeBlock(BlockID::light, 0, 10, 3), TreeBlock(BlockID::light, 0, 10, 5), TreeBlock(BlockID::light, -1, 10, 3),
-        TreeBlock(BlockID::light, -1, 10, 5), TreeBlock(BlockID::light, 0, 11, 4), TreeBlock(BlockID::light, -1, 11, 3), TreeBlock(BlockID::light, -1, 11, 4),
-        TreeBlock(BlockID::light, -1, 11, 5), TreeBlock(BlockID::light, -2, 11, 3), TreeBlock(BlockID::light, -2, 11, 4), TreeBlock(BlockID::light, -2, 11, 5),
-        TreeBlock(BlockID::light, -2, 10, 4), TreeBlock(BlockID::light, -2, 12, -3), TreeBlock(BlockID::light, -3, 12, -3), TreeBlock(BlockID::light, -1, 13, -3),
-        TreeBlock(BlockID::light, -2, 13, -3), TreeBlock(BlockID::light, -3, 13, -3), TreeBlock(BlockID::light, -1, 12, -2), TreeBlock(BlockID::light, -2, 12, -2),
-        TreeBlock(BlockID::light, -3, 12, -2), TreeBlock(BlockID::light, -1, 13, -2), TreeBlock(BlockID::light, -2, 13, -2), TreeBlock(BlockID::light, -3, 13, -2),
-        TreeBlock(BlockID::light, -2, 14, -3), TreeBlock(BlockID::light, -2, 14, -2), TreeBlock(BlockID::light, -3, 14, -2), TreeBlock(BlockID::light, -1, 14, -1),
-        TreeBlock(BlockID::light, -2, 14, -1), TreeBlock(BlockID::light, -1, 13, -1), TreeBlock(BlockID::light, -2, 13, -1), TreeBlock(BlockID::light, -3, 13, -1),
-        TreeBlock(BlockID::light, -2, 12, -1), TreeBlock(BlockID::light, 2, 15, 0), TreeBlock(BlockID::light, 1, 15, 0), TreeBlock(BlockID::light, 3, 16, 0),
-        TreeBlock(BlockID::light, 2, 16, 0), TreeBlock(BlockID::light, 1, 16, 0), TreeBlock(BlockID::light, 3, 16, 1), TreeBlock(BlockID::light, 2, 16, 1),
-        TreeBlock(BlockID::light, 1, 16, 1), TreeBlock(BlockID::light, 3, 16, 2), TreeBlock(BlockID::light, 2, 16, 2), TreeBlock(BlockID::light, 1, 16, 2),
-        TreeBlock(BlockID::light, 3, 17, 0), TreeBlock(BlockID::light, 2, 17, 0), TreeBlock(BlockID::light, 3, 17, 1), TreeBlock(BlockID::light, 2, 17, 1),
-        TreeBlock(BlockID::light, 1, 17, 1), TreeBlock(BlockID::light, 2, 17, 2), TreeBlock(BlockID::light, 1, 17, 2), TreeBlock(BlockID::light, 1, 15, 1),
-        TreeBlock(BlockID::light, 3, 15, 1), TreeBlock(BlockID::light, 3, 15, 2), TreeBlock(BlockID::light, 2, 15, 1), TreeBlock(BlockID::light, 2, 15, 2)
-    },
-    {
-        TreeBlock(BlockID::moon_wood, 6, 0, 0), // max extent
-
-        TreeBlock(BlockID::moon_wood, 0, 1, 0), TreeBlock(BlockID::moon_wood, -1, 1, 0), TreeBlock(BlockID::moon_wood, 0, 1, 1), TreeBlock(BlockID::moon_wood, 1, 1, 1),
-        TreeBlock(BlockID::moon_wood, 1, 2, 2), TreeBlock(BlockID::moon_wood, 1, 3, 2), TreeBlock(BlockID::moon_wood, 2, 3, 2), TreeBlock(BlockID::moon_wood, 1, 4, 3),
-        TreeBlock(BlockID::moon_wood, 1, 5, 3), TreeBlock(BlockID::moon_wood, 0, 5, 3), TreeBlock(BlockID::moon_wood, 0, 6, 4), TreeBlock(BlockID::moon_wood, -1, 6, 4),
-        TreeBlock(BlockID::moon_wood, -1, 7, 4), TreeBlock(BlockID::moon_wood, -2, 7, 4), TreeBlock(BlockID::moon_wood, -2, 8, 4), TreeBlock(BlockID::moon_wood, -3, 8, 4),
-        TreeBlock(BlockID::moon_wood, -3, 9, 4), TreeBlock(BlockID::moon_wood, -3, 9, 3), TreeBlock(BlockID::moon_wood, -4, 9, 3), TreeBlock(BlockID::moon_wood, -4, 10, 3),
-        TreeBlock(BlockID::moon_wood, -5, 10, 3), TreeBlock(BlockID::moon_wood, -5, 10, 4), TreeBlock(BlockID::moon_wood, -1, 2, -1), TreeBlock(BlockID::moon_wood, -1, 3, -1),
-        TreeBlock(BlockID::moon_wood, 0, 3, -1), TreeBlock(BlockID::moon_wood, 0, 4, -1), TreeBlock(BlockID::moon_wood, 0, 4, 0), TreeBlock(BlockID::moon_wood, 0, 5, 0),
-        TreeBlock(BlockID::moon_wood, -1, 5, 0), TreeBlock(BlockID::moon_wood, -1, 6, 0), TreeBlock(BlockID::moon_wood, -2, 6, 0), TreeBlock(BlockID::moon_wood, -2, 7, 0),
-        TreeBlock(BlockID::moon_wood, -3, 7, 0), TreeBlock(BlockID::moon_wood, -3, 8, 0), TreeBlock(BlockID::moon_wood, -3, 8, 1),
-
-        TreeBlock(BlockID::light, -4, 8, 0), TreeBlock(BlockID::light, -4, 8, 1), TreeBlock(BlockID::light, -4, 9, 0), TreeBlock(BlockID::light, -4, 9, 1),
-        TreeBlock(BlockID::light, -5, 9, 0), TreeBlock(BlockID::light, -5, 9, 1), TreeBlock(BlockID::light, -3, 11, 3), TreeBlock(BlockID::light, -4, 11, 3),
-        TreeBlock(BlockID::light, -5, 11, 3), TreeBlock(BlockID::light, -6, 11, 3), TreeBlock(BlockID::light, -3, 12, 3), TreeBlock(BlockID::light, -4, 12, 3),
-        TreeBlock(BlockID::light, -5, 12, 3), TreeBlock(BlockID::light, -6, 12, 3), TreeBlock(BlockID::light, -4, 13, 3), TreeBlock(BlockID::light, -5, 13, 3),
-        TreeBlock(BlockID::light, -4, 11, 2), TreeBlock(BlockID::light, -5, 11, 2), TreeBlock(BlockID::light, -4, 12, 2), TreeBlock(BlockID::light, -5, 12, 2),
-        TreeBlock(BlockID::light, -4, 11, 4), TreeBlock(BlockID::light, -5, 11, 4), TreeBlock(BlockID::light, -5, 12, 4)
-    },
-    {
-        TreeBlock(BlockID::moon_wood, 4, 0, 0), // max extent
-
-        TreeBlock(BlockID::moon_wood, -1, 1, 1), TreeBlock(BlockID::moon_wood, 0, 1, 1), TreeBlock(BlockID::moon_wood, -1, 1, 0), TreeBlock(BlockID::moon_wood, 0, 1, 0),
-        TreeBlock(BlockID::moon_wood, 0, 2, 0), TreeBlock(BlockID::moon_wood, 1, 1, 0), TreeBlock(BlockID::moon_wood, 1, 2, 0), TreeBlock(BlockID::moon_wood, 1, 3, 0),
-        TreeBlock(BlockID::moon_wood, 1, 2, -1), TreeBlock(BlockID::moon_wood, 1, 3, -1), TreeBlock(BlockID::moon_wood, 0, 1, -1), TreeBlock(BlockID::moon_wood, 0, 2, -1),
-        TreeBlock(BlockID::moon_wood, 0, 3, -1), TreeBlock(BlockID::moon_wood, 0, 3, -2), TreeBlock(BlockID::moon_wood, 0, 4, -2), TreeBlock(BlockID::moon_wood, -1, 4, -2),
-        TreeBlock(BlockID::moon_wood, -1, 3, -1), TreeBlock(BlockID::moon_wood, -1, 4, -1), TreeBlock(BlockID::moon_wood, -1, 5, -2), TreeBlock(BlockID::moon_wood, -1, 5, -3),
-        TreeBlock(BlockID::moon_wood, -1, 6, -3), TreeBlock(BlockID::moon_wood, -1, 7, -3), TreeBlock(BlockID::moon_wood, -2, 6, -3), TreeBlock(BlockID::moon_wood, -2, 7, -3),
-        TreeBlock(BlockID::moon_wood, -2, 8, -3), TreeBlock(BlockID::moon_wood, -2, 9, -3), TreeBlock(BlockID::moon_wood, -1, 7, -4), TreeBlock(BlockID::moon_wood, -1, 8, -4),
-        TreeBlock(BlockID::moon_wood, -1, 9, -4),  TreeBlock(BlockID::moon_wood, -1, 10, -4), TreeBlock(BlockID::moon_wood, -1, 10, -3), TreeBlock(BlockID::moon_wood, -1, 11, -3),
-        TreeBlock(BlockID::moon_wood, -1, 11, -2), TreeBlock(BlockID::moon_wood, -1, 12, -2), TreeBlock(BlockID::moon_wood, 0, 11, -3), TreeBlock(BlockID::moon_wood, 0, 12, -3),
-        TreeBlock(BlockID::moon_wood, 1, 13, -2), TreeBlock(BlockID::moon_wood, 0, 13, -2), TreeBlock(BlockID::moon_wood, 0, 13, -1), TreeBlock(BlockID::moon_wood, 1, 12, -2),
-        TreeBlock(BlockID::moon_wood, 0, 12, -2), TreeBlock(BlockID::moon_wood, 0, 12, -1), TreeBlock(BlockID::moon_wood, 1, 14, -1), TreeBlock(BlockID::moon_wood, 1, 14, 0),
-        TreeBlock(BlockID::moon_wood, 1, 15, 0),
-
-        TreeBlock(BlockID::light, 1, 13, 1), TreeBlock(BlockID::light, 2, 13, 1), TreeBlock(BlockID::light, 1, 14, 1), TreeBlock(BlockID::light, 2, 14, 1),
-        TreeBlock(BlockID::light, 1, 13, 0), TreeBlock(BlockID::light, 1, 13, -1), TreeBlock(BlockID::light, 2, 12, 0), TreeBlock(BlockID::light, 2, 13, 0),
-        TreeBlock(BlockID::light, 2, 14, 0), TreeBlock(BlockID::light, 2, 15, 0), TreeBlock(BlockID::light, 1, 15, -1), TreeBlock(BlockID::light, 2, 13, -1),
-        TreeBlock(BlockID::light, 2, 14, -1), TreeBlock(BlockID::light, 3, 13, 0), TreeBlock(BlockID::light, 3, 14, 0)
-    },
-    {
-        TreeBlock(BlockID::moon_wood, 4, 0, 0), // max extent
-
-        TreeBlock(BlockID::moon_wood, -1, 1, 1), TreeBlock(BlockID::moon_wood, 0, 1, 1), TreeBlock(BlockID::moon_wood, 0, 1, 0), TreeBlock(BlockID::moon_wood, 1, 1, 0),
-        TreeBlock(BlockID::moon_wood, -1, 1, -1), TreeBlock(BlockID::moon_wood, 0, 2, 2), TreeBlock(BlockID::moon_wood, -1, 2, 2), TreeBlock(BlockID::moon_wood, -1, 3, 2),
-        TreeBlock(BlockID::moon_wood, -2, 3, 2), TreeBlock(BlockID::moon_wood, -2, 4, 2), TreeBlock(BlockID::moon_wood, -2, 4, 1), TreeBlock(BlockID::moon_wood, -2, 5, 1),
-        TreeBlock(BlockID::moon_wood, -3, 5, 1), TreeBlock(BlockID::moon_wood, -3, 6, 1), TreeBlock(BlockID::moon_wood, 0, 2, -1), TreeBlock(BlockID::moon_wood, 0, 3, -2),
-        TreeBlock(BlockID::moon_wood, 0, 4, -2), TreeBlock(BlockID::moon_wood, -1, 4, -2), TreeBlock(BlockID::moon_wood, -1, 5, -2), TreeBlock(BlockID::moon_wood, -2, 5, -2),
-        TreeBlock(BlockID::moon_wood, -2, 6, -1), TreeBlock(BlockID::moon_wood, -2, 7, 0), TreeBlock(BlockID::moon_wood, -2, 8, 0), TreeBlock(BlockID::moon_wood, -3, 8, 0),
-        TreeBlock(BlockID::moon_wood, -2, 8, 1), TreeBlock(BlockID::moon_wood, -2, 9, 1), TreeBlock(BlockID::moon_wood, -1, 9, 1), TreeBlock(BlockID::moon_wood, -1, 10, 0),
-        TreeBlock(BlockID::moon_wood, -2, 10, 0), TreeBlock(BlockID::moon_wood, -1, 11, 0), TreeBlock(BlockID::moon_wood, 0, 11, 0), TreeBlock(BlockID::moon_wood, -2, 11, -1),
-        TreeBlock(BlockID::moon_wood, -2, 11, -2), TreeBlock(BlockID::moon_wood, 0, 12, 1), TreeBlock(BlockID::moon_wood, -1, 12, 1), TreeBlock(BlockID::moon_wood, -1, 12, 2),
-        TreeBlock(BlockID::moon_wood, -1, 13, 2), TreeBlock(BlockID::moon_wood, -2, 13, 2), TreeBlock(BlockID::moon_wood, -2, 13, 1), TreeBlock(BlockID::moon_wood, -2, 14, 1),
-        TreeBlock(BlockID::moon_wood, -3, 14, 1), TreeBlock(BlockID::moon_wood, -2, 14, 0),
-
-        TreeBlock(BlockID::light, -3, 6, 0), TreeBlock(BlockID::light, -3, 7, 0), TreeBlock(BlockID::light, -4, 6, 0), TreeBlock(BlockID::light, -4, 7, 0),
-        TreeBlock(BlockID::light, -3, 6, -1), TreeBlock(BlockID::light, -3, 7, -1), TreeBlock(BlockID::light, -4, 6, -1), TreeBlock(BlockID::light, -1, 11, -2),
-        TreeBlock(BlockID::light, -1, 12, -2), TreeBlock(BlockID::light, -2, 11, -3), TreeBlock(BlockID::light, -2, 12, -3), TreeBlock(BlockID::light, -2, 12, -2),
-        TreeBlock(BlockID::light, -1, 12, -3), TreeBlock(BlockID::light, -1, 15, 0), TreeBlock(BlockID::light, -1, 15, -1), TreeBlock(BlockID::light, -2, 15, 0),
-        TreeBlock(BlockID::light, -2, 15, -1), TreeBlock(BlockID::light, -1, 16, 0), TreeBlock(BlockID::light, -1, 16, -1), TreeBlock(BlockID::light, -2, 16, 0),
-        TreeBlock(BlockID::light, -2, 16, -1)
-    },
-    {
-        TreeBlock(BlockID::moon_wood, 6, 0, 0), // max extent
-
-        TreeBlock(BlockID::moon_wood, 0, 1, 0), TreeBlock(BlockID::moon_wood, 1, 1, 0), TreeBlock(BlockID::moon_wood, -1, 1, 0), TreeBlock(BlockID::moon_wood, 0, 1, 1),
-        TreeBlock(BlockID::moon_wood, 1, 1, 1), TreeBlock(BlockID::moon_wood, 1, 1, 2), TreeBlock(BlockID::moon_wood, 2, 1, 1), TreeBlock(BlockID::moon_wood, 2, 1, 2),
-        TreeBlock(BlockID::moon_wood, 2, 2, 1), TreeBlock(BlockID::moon_wood, 2, 2, 2), TreeBlock(BlockID::moon_wood, 3, 2, 2), TreeBlock(BlockID::moon_wood, 3, 3, 2),
-        TreeBlock(BlockID::moon_wood, 4, 3, 2), TreeBlock(BlockID::moon_wood, 4, 4, 2), TreeBlock(BlockID::moon_wood, 5, 5, 2), TreeBlock(BlockID::moon_wood, 6, 6, 2),
-        TreeBlock(BlockID::moon_wood, 6, 6, 3), TreeBlock(BlockID::moon_wood, 6, 6, 4), TreeBlock(BlockID::moon_wood, 6, 7, 4), TreeBlock(BlockID::moon_wood, 5, 7, 4),
-        TreeBlock(BlockID::moon_wood, 0, 2, -1), TreeBlock(BlockID::moon_wood, -1, 2, -1), TreeBlock(BlockID::moon_wood, -1, 3, -2), TreeBlock(BlockID::moon_wood, -1, 4, -2),
-        TreeBlock(BlockID::moon_wood, -2, 3, -2), TreeBlock(BlockID::moon_wood, 0, 4, -2), TreeBlock(BlockID::moon_wood, 0, 5, -2), TreeBlock(BlockID::moon_wood, 1, 5, -2),
-        TreeBlock(BlockID::moon_wood, 1, 6, -3), TreeBlock(BlockID::moon_wood, 2, 6, -3), TreeBlock(BlockID::moon_wood, 1, 7, -2), TreeBlock(BlockID::moon_wood, 2, 7, -2),
-        TreeBlock(BlockID::moon_wood, 1, 8, -2), TreeBlock(BlockID::moon_wood, 0, 8, -2), TreeBlock(BlockID::moon_wood, 0, 9, -2), TreeBlock(BlockID::moon_wood, -1, 9, -2),
-        TreeBlock(BlockID::moon_wood, -1, 10, -2), TreeBlock(BlockID::moon_wood, -1, 10, -3), TreeBlock(BlockID::moon_wood, -1, 11, -3), TreeBlock(BlockID::moon_wood, -1, 11, -4),
-        TreeBlock(BlockID::moon_wood, 0, 11, -3), TreeBlock(BlockID::moon_wood, 0, 11, -4), TreeBlock(BlockID::moon_wood, 0, 12, -3), TreeBlock(BlockID::moon_wood, 0, 12, -2),
-        TreeBlock(BlockID::moon_wood, 0, 13, -2), TreeBlock(BlockID::moon_wood, 1, 13, -2), TreeBlock(BlockID::moon_wood, 1, 14, -2), TreeBlock(BlockID::moon_wood, 1, 15, -2),
-        TreeBlock(BlockID::moon_wood, 1, 16, -2), TreeBlock(BlockID::moon_wood, 1, 16, -3), TreeBlock(BlockID::moon_wood, 2, 14, -2), TreeBlock(BlockID::moon_wood, 2, 15, -2),
-        TreeBlock(BlockID::moon_wood, 2, 14, -1), TreeBlock(BlockID::moon_wood, 1, 14, -1),
-
-        TreeBlock(BlockID::light, 4, 8, 5), TreeBlock(BlockID::light, 5, 8, 5), TreeBlock(BlockID::light, 4, 8, 4), TreeBlock(BlockID::light, 5, 8, 4),
-        TreeBlock(BlockID::light, 4, 9, 5), TreeBlock(BlockID::light, 5, 9, 5), TreeBlock(BlockID::light, 4, 9, 4), TreeBlock(BlockID::light, 5, 9, 4),
-        TreeBlock(BlockID::light, 0, 16, -3), TreeBlock(BlockID::light, 0, 16, -2), TreeBlock(BlockID::light, 0, 17, -3), TreeBlock(BlockID::light, 0, 17, -2),
-        TreeBlock(BlockID::light, -1, 17, -3), TreeBlock(BlockID::light, -1, 17, -2)
-    }
-};
-
-uint32_t GetStructureSeed(uint64_t world_seed, int chunk_x, int chunk_z)
-{
-    uint64_t x = (uint64_t)((uint32_t)chunk_x);
-    uint64_t z = (uint64_t)((uint32_t)chunk_z);
-
-    uint64_t hash = world_seed;
-    hash ^= x * 0x517CC1B727220A95UL;
-    hash ^= z * 0x9E3779B97F4A7C15UL;
-    hash ^= (hash >> 33);
-    hash *= 0xFF51AFD7ED558CCDUL;
-    hash ^= (hash >> 33);
-    hash *= 0xC4CEB9FE1A85EC53UL;
-    hash ^= (hash >> 33);
-
-    return (int)(hash & 0x7FFFFFFF);
-}
+static void GenerateCrystal(BlockID *, RNG &, float, int, int, int, int, BlockID, int, int);
+static void GenerateGreenTreeBranch(BlockID *, RNG &, float, int, int, int);
+static void GenerateSpiralTreeBranch(BlockID *, RNG &, float, int, int, int);
+static void GenerateColorTreeBranch(BlockID *, RNG &, float, int, int, int);
 
 void GenerateHeightMap(uint8_t *height_map, int chunk_x, int chunk_z, uint64_t seed, float amplitude, float frequency, float persistence, int octaves, float roughness)
 {
@@ -1000,7 +105,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, MoonSettings settin
                 }
 
                 float h = (&height_maps[DIRT_OFFSET])[z + x * CHUNK_SIZE];
-                h += (outer_radius * t) / 3.0f;
+                h += (outer_radius * t) / 3.5f;
 
                 (&height_maps[DIRT_OFFSET])[z + x * CHUNK_SIZE] = (uint8_t)glm::min(h, 126.0f);
             }
@@ -1166,75 +271,71 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, MoonSettings settin
     // Trees
     //
 
-    // These calculations were reverse-engineered from the latest version of the original game (v2.01).
-    // Charlie's chunks were much bigger than mine, so I did my best to make the densities match.
-    int green_tree_count = settings.tree_cover * (rng.Range(0.0f, 1.0f) * rng.Range(0.0f, 1.0f) - 0.1f) * 9;
-    int wood_tree_count = settings.tree_cover * (rng.Range(0.0f, 1.0f) * rng.Range(0.0f, 1.0f) - 0.2f) * 7;
-    int color_tree_count = settings.tree_cover * (rng.Range(0.0f, 1.0f) * rng.Range(0.0f, 1.0f) - 0.4f) * 4;
-    for (int i = 0; i < 3; i++)
+    // Green trees
+    int green_tree_count = settings.tree_cover * (rng.Range(0.0f, 1.0f) * rng.Range(0.0f, 1.0f) - 0.1f) * 140.0f; // max: 126, avg: 63 (my avg: 3.9375)
+    green_tree_count *= (float)(CHUNK_SIZE * CHUNK_SIZE) / (float)(128 * 128);
+    for (int i = 0; i < green_tree_count; i++)
     {
-        int tree_count;
-        if (i == 0)
-            tree_count = green_tree_count;
-        else if (i == 1)
-            tree_count = wood_tree_count;
-        else
-            tree_count = color_tree_count;
+        int x = rng.Range(4, (CHUNK_SIZE - 1) - 4);
+        int z = rng.Range(4, (CHUNK_SIZE - 1) - 4);
+        int y = WORLD_HEIGHT_LIMIT - 1;
+        while (chunk[GetChunkIndex(x, y, z)] == BlockID::air)
+            y--;
 
-        for (int j = 0; j < tree_count; j++)
+        if (chunk[GetChunkIndex(x, y, z)] == BlockID::topsoil)
         {
-            std::vector<TreeBlock> tree_data;
-            if (i == 0)
-                tree_data = GREEN_LIGHT_TREE_SHAPES[rng.Range(0, GREEN_LIGHT_TREE_SHAPES.size() - 1)];
-            else if (i == 1)
-                tree_data = SPIRAL_LIGHT_TREE_SHAPES[rng.Range(0, SPIRAL_LIGHT_TREE_SHAPES.size() - 1)];
-            else
-                tree_data = COLOR_WOOD_TREE_SHAPES[rng.Range(0, COLOR_WOOD_TREE_SHAPES.size() - 1)];
-
-            int tree_orientation = rng.Range(1, 4);
-            int padding_needed = tree_data[0].local_x;
-            int base_block_x = rng.Range(padding_needed, (CHUNK_SIZE - 1) - padding_needed);
-            int base_block_z = rng.Range(padding_needed, (CHUNK_SIZE - 1) - padding_needed);
-            int base_block_y;
-            for (int y = 63; y < WORLD_HEIGHT_LIMIT; y++)
+            int num_branches = rng.Range(2, 4);
+            float angle = rng.Range(0.0f, 6.2831855f);
+            for (int j = 0; j < num_branches; j++)
             {
-                chunk_index = GetChunkIndex(base_block_x, y, base_block_z);
-                if (chunk[chunk_index + 1] == BlockID::air)
-                {
-                    if (chunk[chunk_index] == BlockID::topsoil)
-                    {
-                        base_block_y = y;
-                        for (int j = 1; j < tree_data.size(); j++)
-                        {
-                            TreeBlock tree_block = tree_data[j];
-                            if (tree_orientation == 2) // 90 degrees
-                            {
-                                int temp = tree_block.local_x;
-                                tree_block.local_x = -tree_block.local_z;
-                                tree_block.local_z = temp;
-                            }
-                            else if (tree_orientation == 3) // 180 degrees
-                            {
-                                tree_block.local_x *= -1;
-                                tree_block.local_z *= -1;
-                            }
-                            else if (tree_orientation == 4) // 270 degrees
-                            {
-                                int temp = tree_block.local_x;
-                                tree_block.local_x = tree_block.local_z;
-                                tree_block.local_z = -temp;
-                            }
+                angle += 6.2831855f / (float)num_branches;
+                GenerateGreenTreeBranch(chunk, rng, angle, x, y - 1, z);
+            }
+        }
+    }
 
-                            chunk_index = GetChunkIndex(base_block_x + tree_block.local_x, base_block_y + tree_block.local_y, base_block_z + tree_block.local_z);
-                            chunk[chunk_index] = tree_block.block;
+    // Spiral trees
+    int spiral_tree_count = settings.tree_cover * (rng.Range(0.0f, 1.0f) * rng.Range(0.0f, 1.0f) - 0.2f) * 100.0f; // max: 80, avg: 40 (my avg: 2.5)
+    spiral_tree_count *= (float)(CHUNK_SIZE * CHUNK_SIZE) / (float)(128 * 128);
+    for (int i = 0; i < spiral_tree_count; i++)
+    {
+        int x = rng.Range(4, (CHUNK_SIZE - 1) - 4);
+        int z = rng.Range(4, (CHUNK_SIZE - 1) - 4);
+        int y = WORLD_HEIGHT_LIMIT - 1;
+        while (chunk[GetChunkIndex(x, y, z)] == BlockID::air)
+            y--;
 
-                            // Partial fix for overhanging trees when placed on an edge
-                            if (tree_block.local_y == 1 && chunk[chunk_index - 1] == BlockID::air && chunk[chunk_index - 2] != BlockID::air)
-                                chunk[chunk_index - 1] = tree_block.block;
-                        }
-                    }
-                    break;
-                }
+        if (chunk[GetChunkIndex(x, y, z)] == BlockID::topsoil)
+        {
+            int num_branches = rng.Range(2, 4);
+            float angle = rng.Range(0.0f, 6.2831855f);
+            for (int j = 0; j < num_branches; j++)
+            {
+                angle += 6.2831855f / (float)num_branches;
+                GenerateSpiralTreeBranch(chunk, rng, angle, x, y, z);
+            }
+        }
+    }
+
+    // Color trees
+    int color_tree_count = settings.tree_cover * (rng.Range(0.0f, 1.0f) * rng.Range(0.0f, 1.0f) - 0.4f) * 80.0f; // max: 48, avg: 24 (my avg: 1.5)
+    color_tree_count *= (float)(CHUNK_SIZE * CHUNK_SIZE) / (float)(128 * 128);
+    for (int i = 0; i < color_tree_count; i++)
+    {
+        int x = rng.Range(4, (CHUNK_SIZE - 1) - 4);
+        int z = rng.Range(4, (CHUNK_SIZE - 1) - 4);
+        int y = WORLD_HEIGHT_LIMIT - 1;
+        while (chunk[GetChunkIndex(x, y, z)] == BlockID::air)
+            y--;
+
+        if (chunk[GetChunkIndex(x, y, z)] == BlockID::topsoil)
+        {
+            int num_branches = rng.Range(2, 4);
+            float angle = rng.Range(0.0f, 6.2831855f);
+            for (int j = 0; j < num_branches; j++)
+            {
+                angle += 6.2831855f / (float)num_branches;
+                GenerateColorTreeBranch(chunk, rng, angle, x, y, z);
             }
         }
     }
@@ -1927,7 +1028,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, MoonSettings settin
 //
 // This was reverse-engineered from Lunacraft v2.01
 //
-void GenerateCrystal(BlockID *chunk, RNG &rng, float radius, int base_x, int base_z, int base_y, int segment_length, BlockID crystal_type, int recursion_depth, int direction)
+static void GenerateCrystal(BlockID *chunk, RNG &rng, float radius, int base_x, int base_z, int base_y, int segment_length, BlockID crystal_type, int recursion_depth, int direction)
 {
     constexpr int directions[] = {
     //  x   z   y
@@ -1994,6 +1095,263 @@ void GenerateCrystal(BlockID *chunk, RNG &rng, float radius, int base_x, int bas
                 recursion_depth - 1,
                 next_direction
             );
+        }
+    }
+}
+
+static void GenerateGreenTreeBranch(BlockID *chunk, RNG &rng, float angle, int base_x, int base_y, int base_z)
+{
+    float x = (float)base_x;
+    float z = (float)base_z;
+    float y = (float)base_y;
+    float fVar13 = 0.5f * glm::cos(angle);
+    float fVar7 = 0.5f * glm::sin(angle);
+    float fVar9 = 2.5f * rng.Range(0.8f, 1.2f) * glm::sin(rng.Range(-0.2f, 0.2f) + 2.0943952f);
+    float fVar8 = (float)rng.Range(12, 17);
+    float dir_x, dir_y, dir_z;
+    float x_step, y_step, z_step;
+
+    do
+    {
+        bool bVar2 = true;
+        do
+        {
+            if (fVar8 <= 0.0f)
+                return;
+
+            float length = glm::sqrt(fVar13 * fVar13 + fVar7 * fVar7 + fVar9 * fVar9);
+            if (length == 0.0f)
+            {
+                dir_x = 1.0f;
+                dir_y = 0.0f;
+                dir_z = 0.0f;
+            }
+            else
+            {
+                dir_x = fVar13 / length; // Normalization
+                dir_z = fVar7 / length;  //
+                dir_y = fVar9 / length;  //
+            }
+
+            x += dir_x * 0.5f;
+            z += dir_z * 0.5f;
+            y += dir_y * 0.5f;
+            fVar8 -= 0.5f;
+
+            if (y < 126.0f && !glm::isnan(y))
+                bVar2 = y < 2.0f;
+                
+        } while (bVar2);
+
+        fVar9 -= 0.125f;
+        dir_z = fVar8 < 0.4f ? 1.2f : 0.8f;
+        dir_y = (float)(int)(-dir_z - 2.0f);
+        dir_x = (float)(int)(dir_z + 2.0f);
+        if (dir_y < dir_x)
+        {
+            BlockID block_to_place = fVar8 < 0.4f ? BlockID::light : BlockID::moon_leaf;
+            x_step = dir_y;
+            do
+            {
+                int voxel_x = (int)(x + x_step);
+                z_step = dir_y;
+                do
+                {
+                    int voxel_z = (int)(z + z_step);
+                    y_step = dir_y;
+                    do
+                    {
+                        int voxel_y = (int)(y + y_step);
+
+                        float a = (float)voxel_x - x;
+                        float b = (float)voxel_z - z;
+                        float c = (float)voxel_y - y;
+
+                        if (a*a + b*b + c*c <= dir_z * dir_z && BlockIsInChunk(voxel_x, voxel_y, voxel_z))
+                        {
+                            chunk[GetChunkIndex(voxel_x, voxel_y, voxel_z)] = block_to_place;
+                        }
+
+                        y_step += 1.0f;
+                    } while (y_step < dir_x);
+
+                    z_step += 1.0f;
+                } while (z_step < dir_x);
+
+                x_step += 1.0f;
+            } while (x_step < dir_x);
+        }
+    } while (true);
+}
+
+//
+// This code was reverse-engineered from Lunacraft v2.01
+//
+static void GenerateSpiralTreeBranch(BlockID *chunk, RNG &rng, float angle, int base_x, int base_y, int base_z)
+{
+    constexpr float radii[2] = {0.8f, 1.2f}; // {branch_radius, bulb_radius}
+
+    float x = (float)base_x;
+    float z = (float)base_z;
+    float y = (float)base_y;
+
+    float lateral = 0.5f * glm::sin(rng.Range(-0.2f, 0.2f) + 2.0943952f);
+    float steps_remaining = rng.Range(10.0f, 25.0f);
+    float delta_angle = rng.Range(0.1f, 0.6f);
+
+    while (steps_remaining > 0.0f)
+    {
+        steps_remaining -= 0.5f;
+
+        float spiral = glm::sin(angle) * 0.5f;
+        float vertical = glm::cos(angle) * 0.5f;
+        angle += delta_angle;
+
+        float len = glm::sqrt(lateral*lateral + vertical*vertical + spiral*spiral);
+
+        float dx, dy, dz;
+        if (len == 0.0f)
+        {
+            dx = 1.0f;
+            dy = 0.0f;
+            dz = 0.0f;
+        }
+        else
+        {
+            dx = vertical / len;
+            dy = lateral  / len;
+            dz = spiral   / len;
+        }
+
+        x += dx * 0.5f;
+        z += dz * 0.5f;
+        y += dy * 0.5f;
+
+        bool is_tip = steps_remaining < 0.1f;
+        float radius = radii[is_tip ? 1 : 0];
+        BlockID block = is_tip ? BlockID::light : BlockID::moon_wood;
+
+        int min_offset = (int)(-radius - 2.0f);
+        int max_offset = (int)( radius + 2.0f);
+        for (int dxi = min_offset; dxi < max_offset; dxi++)
+        {
+            int xi = (int)x + dxi;
+
+            for (int dzi = min_offset; dzi < max_offset; dzi++)
+            {
+                int zi = (int)z + dzi;
+
+                for (int dyi = min_offset; dyi < max_offset; dyi++)
+                {
+                    int yi = (int)y + dyi;
+
+                    float ddx = xi - x;
+                    float ddz = zi - z;
+                    float ddy = yi - y;
+
+                    if (ddx*ddx + ddz*ddz + ddy*ddy <= radius*radius && BlockIsInChunk(xi, yi, zi))
+                    {
+                        chunk[GetChunkIndex(xi, yi, zi)] = block;
+                    }
+                }
+            }
+        }
+    }
+}
+
+//
+// This code was reverse-engineered from Lunacraft v2.01
+//
+static void GenerateColorTreeBranch(BlockID *chunk, RNG &rng, float angle, int base_x, int base_y, int base_z)
+{
+    constexpr BlockID BULB_BLOCKS[3] = {BlockID::sulphur_ore, BlockID::feldspar, BlockID::chalchanthite};
+
+    BlockID bulb_block = BULB_BLOCKS[rng.Range(0, 2)];
+
+    float x = (float)base_x;
+    float z = (float)base_z;
+    float y = (float)base_y;
+
+    float steps_remaining = rng.Range(18.0f, 25.0f);
+    float lateral = rng.Range(0.25f, 0.75f) * glm::sin(rng.Range(-0.2f, 0.2f) + 2.0943952f);
+    float delta_lateral = rng.Range(0.03f, 0.09f);
+    float delta_angle = rng.Range(-0.125f, 0.125f);
+
+    while (true)
+    {
+        do
+        {
+            if (steps_remaining <= 0.0f)
+                return;
+
+            angle += delta_angle;
+
+            float forward = glm::sin(angle) * 0.5f;
+            float vertical = glm::cos(angle) * 0.5f;
+
+            float len = glm::sqrt(lateral*lateral + vertical*vertical + forward*forward);
+
+            float dx, dy, dz;
+            if (len == 0.0f)
+            {
+                dx = 1.0f;
+                dy = 0.0f;
+                dz = 0.0f;
+            }
+            else
+            {
+                dx = vertical / len;
+                dy = lateral  / len;
+                dz = forward  / len;
+            }
+
+            x += dx * 0.5f;
+            z += dz * 0.5f;
+            y += dy * 0.5f;
+
+            steps_remaining -= 0.5f;
+
+        } while (y < 2.0f || y >= 126.0f || glm::isnan(y));
+
+        float radius = 0.75f;
+        if (steps_remaining <= 0.0f) // At the end (bulb)
+            radius = rng.Range(1.5f, 2.25f);
+
+        lateral += delta_lateral;
+
+        int min_offset = (int)(-radius - 2);
+        int max_offset = (int)( radius + 2);
+
+        for (int dxi = min_offset; dxi < max_offset; ++dxi)
+        {
+            int xi = (int)x + dxi;
+
+            for (int dzi = min_offset; dzi < max_offset; ++dzi)
+            {
+                int zi = (int)z + dzi;
+
+                for (int dyi = min_offset; dyi < max_offset; ++dyi)
+                {
+                    int yi = (int)y + dyi;
+
+                    float ddx = xi - x;
+                    float ddz = zi - z;
+                    float ddy = yi - y;
+
+                    if (ddx*ddx + ddz*ddz + ddy*ddy <= radius * radius && BlockIsInChunk(xi, yi, zi))
+                    {
+                        if (steps_remaining > 0.0f)
+                        {
+                            chunk[GetChunkIndex(xi, yi, zi)] = BlockID::moon_bark;
+                        }
+                        else
+                        {
+                            BlockID block = (dyi == 0) ? BlockID::light : bulb_block;
+                            chunk[GetChunkIndex(xi, yi, zi)] = block;
+                        }
+                    }
+                }
+            }
         }
     }
 }
