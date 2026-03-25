@@ -12,6 +12,12 @@
 #include "chunk_generation.h"
 #include "moon.h"
 
+//
+// Helpers
+//
+
+void GenerateCrystal(BlockID *, RNG &, float, int, int, int, int, BlockID, int, int);
+
 struct TreeBlock
 {
     BlockID block;
@@ -20,64 +26,6 @@ struct TreeBlock
     int local_z;
 
     TreeBlock(BlockID block, int local_x, int local_y, int local_z) : block(block), local_x(local_x), local_y(local_y), local_z(local_z) {}
-};
-
-std::vector<std::vector<glm::vec3>> CRYSTAL_PLANT_SHAPES = {
-    {
-        glm::vec3(2, 0, 0), // max extent
-
-        glm::vec3(0, 1, 0), glm::vec3(0, 2, 0), glm::vec3(0, 3, 0), glm::vec3(-1, 2, 0), glm::vec3(1, 2, 0), glm::vec3(0, 2, -1),
-        glm::vec3(0, 3, 1), glm::vec3(0, 3, 2), glm::vec3(0, 2, 2), glm::vec3(0, 4, 2), glm::vec3(-1, 3, 2)
-    },
-    {
-        glm::vec3(3, 0, 0), // max extent
-
-        glm::vec3(0, 1, 0), glm::vec3(0, 2, 0), glm::vec3(0, 3, 0), glm::vec3(0, 3, 1), glm::vec3(0, 3, 2), glm::vec3(0, 3, 3),
-        glm::vec3(0, 2, 3), glm::vec3(0, 4, 3), glm::vec3(1, 3, 2), glm::vec3(2, 3, 2)
-    },
-    {
-        glm::vec3(2, 0, 0), // max extent
-
-        glm::vec3(0, 1, 0), glm::vec3(0, 2, 0), glm::vec3(0, 3, 0), glm::vec3(1, 3, 0), glm::vec3(2, 3, 0), glm::vec3(0, 2, -1),
-        glm::vec3(0, 2, -2), glm::vec3(0, 2, 1), glm::vec3(0, 2, 2), glm::vec3(0, 1, 2), glm::vec3(0, 3, 2), glm::vec3(-1, 2, 2), glm::vec3(-2, 2, 2)
-    },
-    {
-        glm::vec3(3, 0, 0), // max extent
-
-        glm::vec3(0, 1, 0), glm::vec3(0, 2, 0), glm::vec3(0, 3, 0), glm::vec3(0, 4, 0), glm::vec3(-1, 4, 0), glm::vec3(-2, 4, 0),
-        glm::vec3(-3, 4, 0), glm::vec3(1, 4, 0), glm::vec3(2, 4, 0), glm::vec3(3, 4, 0), glm::vec3(0, 4, 1), glm::vec3(0, 4, 2), glm::vec3(0, 4, 3)
-    },
-    {
-        glm::vec3(3, 0, 0), // max extent
-
-        glm::vec3(0, 1, 0), glm::vec3(0, 2, 0), glm::vec3(0, 3, 0), glm::vec3(0, 4, 0), glm::vec3(-1, 4, 0), glm::vec3(-2, 4, 0),
-        glm::vec3(-3, 4, 0), glm::vec3(-3, 5, 0), glm::vec3(-3, 6, 0), glm::vec3(-3, 4, 1), glm::vec3(-3, 4, 2), glm::vec3(1, 4, 0), glm::vec3(2, 4, 0),
-        glm::vec3(2, 4, 1), glm::vec3(2, 4, 2), glm::vec3(2, 4, -1), glm::vec3(2, 4, -2), glm::vec3(2, 5, 0), glm::vec3(2, 6, 0), glm::vec3(2, 3, 0), glm::vec3(2, 2, 0)
-    },
-    {
-        glm::vec3(3, 0, 0), // max extent
-
-        glm::vec3(0, 1, 0), glm::vec3(0, 2, 0), glm::vec3(-1, 2, 0), glm::vec3(-2, 2, 0), glm::vec3(-2, 1, 0), glm::vec3(-2, 2, 1),
-        glm::vec3(-2, 2, -1), glm::vec3(1, 2, 0), glm::vec3(2, 2, 0), glm::vec3(2, 2, 1), glm::vec3(2, 2, -1), glm::vec3(2, 3, 0),
-        glm::vec3(2, 1, 0), glm::vec3(0, 2, 1), glm::vec3(0, 2, 2), glm::vec3(0, 2, 3), glm::vec3(1, 2, 3), glm::vec3(0, 1, 3), glm::vec3(0, 3, 3)
-    },
-    {
-        glm::vec3(3, 0, 0), // max extent
-
-        glm::vec3(0, 1, 0), glm::vec3(0, 2, 0), glm::vec3(0, 3, 0), glm::vec3(-1, 3, 0), glm::vec3(-2, 3, 0), glm::vec3(-3, 3, 0),
-        glm::vec3(-3, 4, 0), glm::vec3(-3, 5, 0), glm::vec3(-3, 2, 0), glm::vec3(-3, 1, 0), glm::vec3(1, 3, 0), glm::vec3(2, 3, 0),
-        glm::vec3(3, 3, 0), glm::vec3(3, 3, 1), glm::vec3(3, 3, 2), glm::vec3(3, 3, -1), glm::vec3(3, 3, -2), glm::vec3(0, 3, 1),
-        glm::vec3(0, 3, 2), glm::vec3(0, 3, 3), glm::vec3(-1, 3, 3), glm::vec3(-2, 3, 3), glm::vec3(1, 3, 3), glm::vec3(2, 3, 3), glm::vec3(0, 4, 3),
-        glm::vec3(0, 5, 3), glm::vec3(0, 2, 3), glm::vec3(0, 1, 3)
-    },
-    {
-        glm::vec3(3, 0, 0), // max extent
-
-        glm::vec3(0, 1, 0), glm::vec3(0, 2, 0), glm::vec3(0, 3, 0), glm::vec3(-1, 3, 0), glm::vec3(-2, 3, 0), glm::vec3(-2, 4, 0),
-        glm::vec3(-2, 5, 0), glm::vec3(-2, 2, 0), glm::vec3(-2, 1, 0), glm::vec3(1, 3, 0), glm::vec3(1, 4, 0), glm::vec3(2, 3, 0),
-        glm::vec3(2, 2, 0), glm::vec3(0, 3, 1), glm::vec3(0, 3, 2), glm::vec3(0, 3, 3), glm::vec3(1, 3, 3), glm::vec3(0, 4, 3),
-        glm::vec3(-1, 3, 3), glm::vec3(-2, 3, 3)
-    }
 };
 
 std::vector<std::vector<TreeBlock>> GREEN_LIGHT_TREE_SHAPES = {
@@ -995,10 +943,14 @@ void GenerateHeightMap(uint8_t *height_map, int chunk_x, int chunk_z, uint64_t s
 
 void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, MoonSettings settings)
 {
+    // Seed RNG so structure placement is deterministic
+    uint64_t structure_seed = settings.seed ^ ((uint64_t)chunk_x * 73856093ull) ^ ((uint64_t)chunk_z * 19349663ull);
+    RNG rng{structure_seed};
+
     thread_local uint8_t height_maps[CHUNK_SIZE * CHUNK_SIZE * 4];
 
     //
-    // Generate terrain
+    // Generate base terrain
     //
 
     const int ROCK_OFFSET   = 0;
@@ -1008,11 +960,56 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, MoonSettings settin
     GenerateHeightMap(&height_maps[ROCK_OFFSET], chunk_x, chunk_z, settings.seed, 14, 0.2, 0.4, 4, settings.terrain_roughness);
     GenerateHeightMap(&height_maps[GRAVEL_OFFSET], chunk_x, chunk_z, settings.seed, 4, 0.2, 0.6, 2, settings.terrain_roughness);
     GenerateHeightMap(&height_maps[DIRT_OFFSET], chunk_x, chunk_z, settings.seed, 3, 0.2, 0.6, 3, settings.terrain_roughness);
-    GenerateHeightMap(&height_maps[SAND_OFFSET], chunk_x, chunk_z, settings.seed, 3, 0.2, 0.8, 2, settings.terrain_roughness * 0.8f);
+    GenerateHeightMap(&height_maps[SAND_OFFSET], chunk_x, chunk_z, settings.seed, 3, 0.2, 0.8, 2, settings.terrain_roughness * 0.6f);
 
-    // For cleanup step after initial generation
-    std::vector<glm::ivec3> topsoil_coords;
-    topsoil_coords.reserve(CHUNK_SIZE * CHUNK_SIZE);
+    //
+    // Crater
+    //
+
+    bool spawn_crater = RNG{}.Range(0.0f, 1.0f) < 0.22f; // 22% chance (to match original average crater density)
+    if (spawn_crater)
+    {
+        int radius = RNG{}.Range(7, 14); // was [8, 15]
+
+        float outer_radius = (float)radius;
+        float inner_radius = outer_radius * 0.75f;
+
+        int center_x = RNG{}.Range(radius, CHUNK_SIZE - 1 - radius);
+        int center_z = RNG{}.Range(radius, CHUNK_SIZE - 1 - radius);
+
+        for (int x = center_x - radius; x <= center_x + radius; x++)
+        {
+            for (int z = center_z - radius; z <= center_z + radius; z++)
+            {
+                int dx = x - center_x;
+                int dz = z - center_z;
+
+                float dist = glm::sqrt((float)(dx*dx + dz*dz));
+
+                if (dist > outer_radius) continue;
+
+                float t;
+                if (dist < inner_radius)
+                {
+                    float u = dist / inner_radius;
+                    t = u * u;  // inner bowl
+                }
+                else
+                {
+                    t = 1.0f - (dist - inner_radius) / (outer_radius - inner_radius); // rim falloff
+                }
+
+                float h = (&height_maps[DIRT_OFFSET])[z + x * CHUNK_SIZE];
+                h += (outer_radius * t) / 3.0f;
+
+                (&height_maps[DIRT_OFFSET])[z + x * CHUNK_SIZE] = (uint8_t)glm::min(h, 126.0f);
+            }
+        }
+    }
+
+    //
+    // Layer determination
+    //
 
     // Initial generation
     int chunk_index = 0;
@@ -1065,7 +1062,6 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, MoonSettings settin
             else // Above ground level; finish terrain by placing topsoil
             {
                 chunk[chunk_index++] = BlockID::topsoil;
-                topsoil_coords.emplace_back(x, y, z);
                 y++;
             }
 
@@ -1077,46 +1073,10 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, MoonSettings settin
         }
     }
 
-    // Flatten out the topsoil so the terrain better resembles the original game
-    const int NEIGHBORS_NEEDED = 3;
-    for (auto &coord : topsoil_coords)
-    {
-        glm::ivec3 neighbors[] = {
-            {coord.x - 1, coord.y, coord.z},
-            {coord.x + 1, coord.y, coord.z},
-            {coord.x,     coord.y, coord.z - 1},
-            {coord.x,     coord.y, coord.z + 1},
-            {coord.x - 1, coord.y, coord.z - 1},
-            {coord.x - 1, coord.y, coord.z + 1},
-            {coord.x + 1, coord.y, coord.z - 1},
-            {coord.x + 1, coord.y, coord.z + 1},
-        };
-
-        int neighbor_count = 0;
-
-        for (auto &neighbor : neighbors)
-        {
-            if (!BlockIsInChunk(neighbor))
-                continue;
-
-            if (chunk[GetChunkIndex(neighbor.x, neighbor.y, neighbor.z)] != BlockID::air)
-                neighbor_count++;
-        }
-
-        if (neighbor_count < NEIGHBORS_NEEDED)
-        {
-            chunk[GetChunkIndex(coord.x, coord.y, coord.z)] = BlockID::air;
-            chunk[GetChunkIndex(coord.x, coord.y - 1, coord.z)] = coord.y == GROUND_LEVEL ? BlockID::sand : BlockID::topsoil;
-        }
-    }
-
-    // Seed RNG so structure placement is deterministic
-    uint64_t structure_seed = settings.seed ^ ((uint64_t)chunk_x * 73856093ull) ^ ((uint64_t)chunk_z * 19349663ull);
-    RNG rng{structure_seed};
-
     //
     // Ores
     //
+
     int ore_spawn_chance = rng.Range(1, 10);
     if (ore_spawn_chance <= 4)
     {
@@ -1203,8 +1163,140 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, MoonSettings settin
     }
 
     //
+    // Trees
+    //
+
+    // These calculations were reverse-engineered from the latest version of the original game (v2.01).
+    // Charlie's chunks were much bigger than mine, so I did my best to make the densities match.
+    int green_tree_count = settings.tree_cover * (rng.Range(0.0f, 1.0f) * rng.Range(0.0f, 1.0f) - 0.1f) * 9;
+    int wood_tree_count = settings.tree_cover * (rng.Range(0.0f, 1.0f) * rng.Range(0.0f, 1.0f) - 0.2f) * 7;
+    int color_tree_count = settings.tree_cover * (rng.Range(0.0f, 1.0f) * rng.Range(0.0f, 1.0f) - 0.4f) * 4;
+    for (int i = 0; i < 3; i++)
+    {
+        int tree_count;
+        if (i == 0)
+            tree_count = green_tree_count;
+        else if (i == 1)
+            tree_count = wood_tree_count;
+        else
+            tree_count = color_tree_count;
+
+        for (int j = 0; j < tree_count; j++)
+        {
+            std::vector<TreeBlock> tree_data;
+            if (i == 0)
+                tree_data = GREEN_LIGHT_TREE_SHAPES[rng.Range(0, GREEN_LIGHT_TREE_SHAPES.size() - 1)];
+            else if (i == 1)
+                tree_data = SPIRAL_LIGHT_TREE_SHAPES[rng.Range(0, SPIRAL_LIGHT_TREE_SHAPES.size() - 1)];
+            else
+                tree_data = COLOR_WOOD_TREE_SHAPES[rng.Range(0, COLOR_WOOD_TREE_SHAPES.size() - 1)];
+
+            int tree_orientation = rng.Range(1, 4);
+            int padding_needed = tree_data[0].local_x;
+            int base_block_x = rng.Range(padding_needed, (CHUNK_SIZE - 1) - padding_needed);
+            int base_block_z = rng.Range(padding_needed, (CHUNK_SIZE - 1) - padding_needed);
+            int base_block_y;
+            for (int y = 63; y < WORLD_HEIGHT_LIMIT; y++)
+            {
+                chunk_index = GetChunkIndex(base_block_x, y, base_block_z);
+                if (chunk[chunk_index + 1] == BlockID::air)
+                {
+                    if (chunk[chunk_index] == BlockID::topsoil)
+                    {
+                        base_block_y = y;
+                        for (int j = 1; j < tree_data.size(); j++)
+                        {
+                            TreeBlock tree_block = tree_data[j];
+                            if (tree_orientation == 2) // 90 degrees
+                            {
+                                int temp = tree_block.local_x;
+                                tree_block.local_x = -tree_block.local_z;
+                                tree_block.local_z = temp;
+                            }
+                            else if (tree_orientation == 3) // 180 degrees
+                            {
+                                tree_block.local_x *= -1;
+                                tree_block.local_z *= -1;
+                            }
+                            else if (tree_orientation == 4) // 270 degrees
+                            {
+                                int temp = tree_block.local_x;
+                                tree_block.local_x = tree_block.local_z;
+                                tree_block.local_z = -temp;
+                            }
+
+                            chunk_index = GetChunkIndex(base_block_x + tree_block.local_x, base_block_y + tree_block.local_y, base_block_z + tree_block.local_z);
+                            chunk[chunk_index] = tree_block.block;
+
+                            // Partial fix for overhanging trees when placed on an edge
+                            if (tree_block.local_y == 1 && chunk[chunk_index - 1] == BlockID::air && chunk[chunk_index - 2] != BlockID::air)
+                                chunk[chunk_index - 1] = tree_block.block;
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    //
+    // Crystal plants
+    //
+
+    constexpr int CRYSTAL_WEIGHTS[] = {65, 30, 5};
+    constexpr int TOTAL_CRYSTAL_WEIGHT = 100;
+    constexpr BlockID CRYSTALS[] = {BlockID::sulphur_crystal, BlockID::boron_crystal, BlockID::blue_crystal};
+
+    bool spawn_crystal = rng.Range(0.0f, 1.0f) < 0.05f;
+    if (spawn_crystal)
+    {
+        int rand_weight = rng.Range(0, TOTAL_CRYSTAL_WEIGHT - 1);
+        int remaining_weight = TOTAL_CRYSTAL_WEIGHT;
+
+        int index = 0;
+        while (remaining_weight > rand_weight)
+        {
+            remaining_weight -= CRYSTAL_WEIGHTS[index];
+            if (remaining_weight > rand_weight)
+                index++;
+        }
+
+        int x = rng.Range(4, (CHUNK_SIZE - 1) - 4);
+        int z = rng.Range(4, (CHUNK_SIZE - 1) - 4);
+
+        // The total height isn't determined by a single heightmap, so I have to do this...
+        int y = -1;
+        for (int j = 50; j < WORLD_HEIGHT_LIMIT - 1; j++) // j=50 to skip section guaranteed to be solid
+        {
+            if (chunk[GetChunkIndex(x, j + 1, z)] == BlockID::air)
+            {
+                y = j;
+                break;
+            }
+        }
+
+        if (y != -1)
+        {
+            float w = rng.Range(2.0, 4.0);
+            GenerateCrystal(
+                chunk,
+                rng,
+                w,
+                x,
+                z,
+                y,
+                rng.Range(2, 4),
+                CRYSTALS[index],
+                (int)w,
+                4
+            );
+        }
+    }
+
+    //
     // Astronaut lairs
     //
+
     bool spawn_astronaut_lair = rng.Range(1, 100) == 69; // 1% chance, each chunk
     const int lair_depth = 31;
     if (spawn_astronaut_lair)
@@ -1830,142 +1922,78 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, MoonSettings settin
             }
         }
     }
+}
 
-    //
-    // Crystal plants
-    //
-    int spawn_crystal_plant = rng.Range(1, 40);
-    if (spawn_crystal_plant == 1)
+//
+// This was reverse-engineered from Lunacraft v2.01
+//
+void GenerateCrystal(BlockID *chunk, RNG &rng, float radius, int base_x, int base_z, int base_y, int segment_length, BlockID crystal_type, int recursion_depth, int direction)
+{
+    constexpr int directions[] = {
+    //  x   z   y
+        0, -1,  0,
+        1,  0,  0,
+        0,  1,  0,
+       -1,  0,  0,
+        0,  0,  1,
+        0,  0, -1,
+    };
+
+    constexpr int direction_map[6][4] = { // Allowed next directions for each direction
+        {1, 3, 4, 5},
+        {0, 2, 4, 5},
+        {1, 3, 4, 5},
+        {0, 2, 4, 5},
+        {0, 1, 2, 3},
+        {0, 1, 2, 3},
+    };
+
+    if (segment_length <= 0 || radius < 0.1f || recursion_depth <= 0)
+        return;
+
+    int voxel_x = base_x;
+    int voxel_z = base_z;
+    int voxel_y = base_y;
+
+    int dx = directions[direction * 3];
+    int dz = directions[direction * 3 + 1];
+    int dy = directions[direction * 3 + 2];
+
+    for (int i = 0; i < segment_length; i++)
     {
-        int crystal_plant_type = rng.Range(1, 5);
-        BlockID crystal;
-        if (crystal_plant_type == 1)
-            crystal = BlockID::blue_crystal; // 20% chance
-        else if (crystal_plant_type < 4)
-            crystal = BlockID::sulphur_crystal; // 40% chance
-        else
-            crystal = BlockID::boron_crystal; // 40% chance
+        voxel_x += dx;
+        voxel_z += dz;
+        voxel_y += dy;
 
-        int crystal_plant_orientation = rng.Range(1, 4);
-        int crystal_plant_shape = rng.Range(0, CRYSTAL_PLANT_SHAPES.size() - 1);
-        auto shape_offsets = CRYSTAL_PLANT_SHAPES[crystal_plant_shape];
-
-        int padding_needed = shape_offsets[0].x;
-        int base_block_x = rng.Range(padding_needed, (CHUNK_SIZE - 1) - padding_needed);
-        int base_block_z = rng.Range(padding_needed, (CHUNK_SIZE - 1) - padding_needed);
-        int base_block_y;
-        for (int y = 63; y < WORLD_HEIGHT_LIMIT; y++)
+        if (BlockIsInChunk(voxel_x, voxel_y, voxel_z))
         {
-            chunk_index = GetChunkIndex(base_block_x, y, base_block_z);
-            if (chunk[chunk_index + 1] == BlockID::air)
-            {
-                if (chunk[chunk_index] == BlockID::topsoil || chunk[chunk_index] == BlockID::sand)
-                {
-                    base_block_y = y;
-                    for (int i = 1; i < shape_offsets.size(); i++)
-                    {
-                        glm::vec3 offset = shape_offsets[i];
-                        if (crystal_plant_orientation == 2) // 90 degrees
-                        {
-                            int temp = offset.x;
-                            offset.x = -offset.z;
-                            offset.z = temp;
-                        }
-                        else if (crystal_plant_orientation == 3) // 180 degrees
-                        {
-                            offset.x *= -1;
-                            offset.z *= -1;
-                        }
-                        else if (crystal_plant_orientation == 4) // 270 degrees
-                        {
-                            int temp = offset.x;
-                            offset.x = offset.z;
-                            offset.z = -temp;
-                        }
-
-                        chunk_index = GetChunkIndex(base_block_x + offset.x, base_block_y + offset.y, base_block_z + offset.z);
-                        chunk[chunk_index] = crystal;
-                    }
-                }
-                break;
-            }
+            BlockID &current_block = chunk[GetChunkIndex(voxel_x, voxel_y, voxel_z)];
+            if (current_block == BlockID::air)
+                current_block = crystal_type;
         }
     }
 
-    //
-    // Trees
-    //
-
-    // These calculations were reverse-engineered from the latest version of the original game (v2.01).
-    // Charlie's chunks were much bigger than mine, so I did my best to make the densities match.
-    int green_tree_count = settings.tree_cover * (rng.Range(0.0f, 1.0f) * rng.Range(0.0f, 1.0f) - 0.1f) * 9;
-    int wood_tree_count = settings.tree_cover * (rng.Range(0.0f, 1.0f) * rng.Range(0.0f, 1.0f) - 0.2f) * 7;
-    int color_tree_count = settings.tree_cover * (rng.Range(0.0f, 1.0f) * rng.Range(0.0f, 1.0f) - 0.4f) * 4;
-    for (int i = 0; i < 3; i++)
+    if (radius > 0.0f)
     {
-        int tree_count;
-        if (i == 0)
-            tree_count = green_tree_count;
-        else if (i == 1)
-            tree_count = wood_tree_count;
-        else
-            tree_count = color_tree_count;
+        int branches = static_cast<int>(radius);
 
-        for (int j = 0; j < tree_count; j++)
+        for (int i = 1; i < branches; i++)
         {
-            std::vector<TreeBlock> tree_data;
-            if (i == 0)
-                tree_data = GREEN_LIGHT_TREE_SHAPES[rng.Range(0, GREEN_LIGHT_TREE_SHAPES.size() - 1)];
-            else if (i == 1)
-                tree_data = SPIRAL_LIGHT_TREE_SHAPES[rng.Range(0, SPIRAL_LIGHT_TREE_SHAPES.size() - 1)];
-            else
-                tree_data = COLOR_WOOD_TREE_SHAPES[rng.Range(0, COLOR_WOOD_TREE_SHAPES.size() - 1)];
+            int index = (i + rng.Range(0, 3)) % 4;
+            int next_direction = direction_map[direction][index];
 
-            int tree_orientation = rng.Range(1, 4);
-            int padding_needed = tree_data[0].local_x;
-            int base_block_x = rng.Range(padding_needed, (CHUNK_SIZE - 1) - padding_needed);
-            int base_block_z = rng.Range(padding_needed, (CHUNK_SIZE - 1) - padding_needed);
-            int base_block_y;
-            for (int y = 63; y < WORLD_HEIGHT_LIMIT; y++)
-            {
-                chunk_index = GetChunkIndex(base_block_x, y, base_block_z);
-                if (chunk[chunk_index + 1] == BlockID::air)
-                {
-                    if (chunk[chunk_index] == BlockID::topsoil)
-                    {
-                        base_block_y = y;
-                        for (int j = 1; j < tree_data.size(); j++)
-                        {
-                            TreeBlock tree_block = tree_data[j];
-                            if (tree_orientation == 2) // 90 degrees
-                            {
-                                int temp = tree_block.local_x;
-                                tree_block.local_x = -tree_block.local_z;
-                                tree_block.local_z = temp;
-                            }
-                            else if (tree_orientation == 3) // 180 degrees
-                            {
-                                tree_block.local_x *= -1;
-                                tree_block.local_z *= -1;
-                            }
-                            else if (tree_orientation == 4) // 270 degrees
-                            {
-                                int temp = tree_block.local_x;
-                                tree_block.local_x = tree_block.local_z;
-                                tree_block.local_z = -temp;
-                            }
-
-                            chunk_index = GetChunkIndex(base_block_x + tree_block.local_x, base_block_y + tree_block.local_y, base_block_z + tree_block.local_z);
-                            chunk[chunk_index] = tree_block.block;
-
-                            // Partial fix for overhanging trees when placed on an edge
-                            if (tree_block.local_y == 1 && chunk[chunk_index - 1] == BlockID::air && chunk[chunk_index - 2] != BlockID::air)
-                                chunk[chunk_index - 1] = tree_block.block;
-                        }
-                    }
-                    break;
-                }
-            }
+            GenerateCrystal(
+                chunk,
+                rng,
+                radius * 0.8f,
+                voxel_x,
+                voxel_z,
+                voxel_y,
+                segment_length - 1,
+                crystal_type,
+                recursion_depth - 1,
+                next_direction
+            );
         }
     }
 }
