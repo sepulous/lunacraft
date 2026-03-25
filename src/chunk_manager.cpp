@@ -250,8 +250,8 @@ void ChunkManager::HandleBrownMobExplosion(glm::ivec3 explosion_center)
             for (int dy = -3; dy <= 3; dy++)
             {
                 glm::ivec3 voxel = explosion_center + glm::ivec3{dx, dy, dz};
-                float distance_from_center = glm::length(glm::vec3{voxel} - glm::vec3{explosion_center});
-                if (distance_from_center <= 3.0f || RNG{}.Range(1, 10) <= 8)
+                float distance_from_center = glm::distance(glm::vec3{voxel}, glm::vec3{explosion_center});
+                if (distance_from_center <= 2.5f || RNG{}.Range(1, 10) <= 6)
                     to_destroy.push_back(voxel);
             }
         }
