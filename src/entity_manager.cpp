@@ -134,6 +134,9 @@ void EntityManager::Integrate(Entity *entity)
         float min_z = glm::round(box.center.z - box.extents.z);
         float max_z = glm::round(box.center.z + box.extents.z);
 
+        if (max_y >= (float)WORLD_HEIGHT_LIMIT)
+            return false;
+
         for (int x = min_x; x <= max_x; x++)
         {
             for (int z = min_z; z <= max_z; z++)
