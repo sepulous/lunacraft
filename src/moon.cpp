@@ -466,22 +466,26 @@ void Moon::UpdateSelectionBlock(float delta_time)
     selection_block_.SetActive(false);
     while (distance < PLAYER_REACH)
     {
-        if (voxel.y >= WORLD_HEIGHT_LIMIT)
+        if (voxel.y < 0 || voxel.y >= WORLD_HEIGHT_LIMIT)
         {
             selection_block_.SetActive(false);
             break;
         }
 
-        BlockID block = chunk_manager_.GetChunk(VoxelToChunk(voxel))->GetBlocks()[GetChunkIndex(GlobalToLocalVoxel(voxel))];
-        if (block != BlockID::air)
+        auto chunk = chunk_manager_.GetChunk(VoxelToChunk(voxel));
+        if (chunk)
         {
-            if (selection_block_.GetPosition() != voxel) // If selected block changes, reset mining
-                selection_block_.SetMineProgress(0);
+            BlockID block = chunk->GetBlocks()[GetChunkIndex(GlobalToLocalVoxel(voxel))];
+            if (block != BlockID::air)
+            {
+                if (selection_block_.GetPosition() != voxel) // If selected block changes, reset mining
+                    selection_block_.SetMineProgress(0);
 
-            selection_block_.SetPosition(voxel);
-            selection_block_.SetAdjacentPosition(last_voxel);
-            selection_block_.SetActive(true);
-            break;
+                selection_block_.SetPosition(voxel);
+                selection_block_.SetAdjacentPosition(last_voxel);
+                selection_block_.SetActive(true);
+                break;
+            }
         }
 
         int min_comp_idx = (t_max.x < t_max.y && t_max.x < t_max.z) ? 0
