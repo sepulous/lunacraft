@@ -177,6 +177,9 @@ void ChunkManager::UploadReadyChunks()
 
 void ChunkManager::HandlePlayerModification(glm::ivec3 voxel, BlockID block_placed)
 {
+    if (voxel.y <= 0 || voxel.y >= WORLD_HEIGHT_LIMIT)
+        return;
+
     // Get chunk
     auto chunk_coords = VoxelToChunk(voxel);
     auto chunk = chunks_.at(ChunkCoordsToID(chunk_coords));
@@ -251,7 +254,7 @@ void ChunkManager::HandleBrownMobExplosion(glm::ivec3 explosion_center)
             {
                 glm::ivec3 voxel = explosion_center + glm::ivec3{dx, dy, dz};
                 float distance_from_center = glm::distance(glm::vec3{voxel}, glm::vec3{explosion_center});
-                if (voxel.y > 0 && (distance_from_center <= 2.5f || RNG{}.Range(1, 10) <= 6))
+                if (voxel.y > 0 && voxel.y < WORLD_HEIGHT_LIMIT && (distance_from_center <= 2.5f || RNG{}.Range(1, 10) <= 6))
                     to_destroy.push_back(voxel);
             }
         }

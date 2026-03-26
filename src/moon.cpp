@@ -263,7 +263,7 @@ void Moon::Update(double delta_time)
             SoundSystem::PlayAt(SoundSystem::Sound::BLOCK_BREAK, selection_position);
             selection_block_.SetMineProgress(0);
         }
-        else if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT))
+        else if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT) && selection_position.y < WORLD_HEIGHT_LIMIT)
         {
             auto &inventory = player_->GetInventory();
             auto &selected = inventory.inventory[0][inventory.selected_hotbar_slot];
@@ -457,6 +457,12 @@ void Moon::UpdateSelectionBlock(float delta_time)
     selection_block_.SetActive(false);
     while (distance < PLAYER_REACH)
     {
+        if (voxel.y >= WORLD_HEIGHT_LIMIT)
+        {
+            selection_block_.SetActive(false);
+            break;
+        }
+
         BlockID block = chunk_manager_.GetChunk(VoxelToChunk(voxel))->GetBlocks()[GetChunkIndex(GlobalToLocalVoxel(voxel))];
         if (block != BlockID::air)
         {
