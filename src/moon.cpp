@@ -486,7 +486,7 @@ void Moon::UpdateSelectionBlock(float delta_time)
     auto player_item = player_->GetInventory().GetSelectedItem();
     bool is_mining = Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_LEFT) && !ItemIsPistol(player_item);
     float mine_progress = selection_block_.GetMineProgress();
-    if (is_mining)
+    if (is_mining && selection_block_.GetPosition().y > 0)
     {
         // blocks/sec
         float f = player_item == ItemID::drill_t1 ? 0.7f
