@@ -161,6 +161,9 @@ void EntityManager::Integrate(Entity *entity)
 
     auto TestSlugWorld = [&chunk_manager](const glm::vec3 &position) {
         auto voxel = GetNearestVoxel(position);
+        
+        if (voxel.y >= WORLD_HEIGHT_LIMIT) return false;
+
         auto chunk_coords = VoxelToChunk(voxel);
         auto chunk = chunk_manager.GetChunk(chunk_coords);
         if (chunk)
@@ -168,10 +171,8 @@ void EntityManager::Integrate(Entity *entity)
             auto block = chunk->GetBlocks()[GetChunkIndex(GlobalToLocalVoxel(voxel))];
             return block != BlockID::air && block != BlockID::minilight;
         }
-        else
-        {
-            return true;
-        }
+        
+        return false;
     };
 
     if (entity->GetType() == EntityType::MINILIGHT)
