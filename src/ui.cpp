@@ -1300,10 +1300,9 @@ void UIGame::Render()
         alert_.Render();
 
     if (OptionsManager::GetOptions().show_gui)
-    {
         crosshair_.Render();
-        inventory_.Render();
-    }
+        
+    inventory_.Render();
 
     if (debug_menu_.IsActive())
         debug_menu_.Render();
@@ -1920,27 +1919,37 @@ void UIInventory::Render()
     image_shader.Use();
     image_shader.SetFloat("u_darkness", 0);
 
-    hotbar_base_.Render();
-    suit_status_text_.Render();
-    suit_status_bar_.Render();
-    health_text_.Render();
-    health_bar_.Render();
-    hotbar_select_.Render();
+    //
+    // Hotbar
+    //
 
-    // Jetpack
-    jetpack_icon_.Render();
-    jetpack_bar_bg_.Render();
-    jetpack_bar_.Render();
-    
-    // Hotbar slots
-    for (int col = 0; col < 10; col++)
+    if (OptionsManager::GetOptions().show_gui || active_)
     {
-        auto &[slot_image, slot_amount] = inventory_slots_[0][col];
-        slot_image.Render();
-        slot_amount.Render();
+        hotbar_base_.Render();
+        suit_status_text_.Render();
+        suit_status_bar_.Render();
+        health_text_.Render();
+        health_bar_.Render();
+        hotbar_select_.Render();
+
+        // Jetpack
+        jetpack_icon_.Render();
+        jetpack_bar_bg_.Render();
+        jetpack_bar_.Render();
+        
+        // Hotbar slots
+        for (int col = 0; col < 10; col++)
+        {
+            auto &[slot_image, slot_amount] = inventory_slots_[0][col];
+            slot_image.Render();
+            slot_amount.Render();
+        }
     }
 
+    //
     // Rest of the inventory
+    //
+
     if (active_)
     {
         inventory_base_.Render();
