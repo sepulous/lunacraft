@@ -263,7 +263,7 @@ void Moon::Update(double delta_time)
             SoundSystem::PlayAt(SoundSystem::Sound::BLOCK_BREAK, selection_position);
             selection_block_.SetMineProgress(0);
         }
-        else if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT) && selection_position.y < WORLD_HEIGHT_LIMIT)
+        else if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT) && selection_position.y < WORLD_HEIGHT_LIMIT - 1)
         {
             auto &inventory = player_->GetInventory();
             auto &selected = inventory.inventory[0][inventory.selected_hotbar_slot];
