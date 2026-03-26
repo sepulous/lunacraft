@@ -265,6 +265,15 @@ void Moon::Update(double delta_time)
         }
         else if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT) && selection_position.y < WORLD_HEIGHT_LIMIT - 1)
         {
+            auto player_aabb = player_->GetAABB();
+            auto player_pos = player_->GetPosition();
+            auto player_displacement = glm::vec3{selection_adjacent_position} - player_pos;
+
+            if (glm::abs(player_displacement.x) <= (player_aabb.extents.x + 0.5f)
+             && glm::abs(player_displacement.z) <= (player_aabb.extents.z + 0.5f)
+             && glm::abs(player_displacement.y) <= (player_aabb.extents.y + 0.5f))
+                return;
+
             auto &inventory = player_->GetInventory();
             auto &selected = inventory.inventory[0][inventory.selected_hotbar_slot];
             if (ItemIsBlock(selected.item))
