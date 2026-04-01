@@ -346,8 +346,8 @@ void ChunkManager::RenderChunks(Plane frustum[6])
     glBindTexture(GL_TEXTURE_2D, texture_atlas_);
     glDepthFunc(GL_LESS);
 
-    std::vector<Chunk *> visiblechunks_;
-    visiblechunks_.reserve(32);
+    std::vector<Chunk *> visible_chunks;
+    visible_chunks.reserve(32);
 
     // Render opaque blocks
     for (auto it = chunks_.begin(); it != chunks_.end(); ++it)
@@ -361,13 +361,13 @@ void ChunkManager::RenderChunks(Plane frustum[6])
             if (ChunkInFrustum(frustum, x0, z0))
             {
                 chunk->RenderOpaques();
-                visiblechunks_.push_back(chunk);
+                visible_chunks.push_back(chunk);
             }
         }
     }
 
     // Render transparent blocks
-    for (Chunk *chunk : visiblechunks_)
+    for (Chunk *chunk : visible_chunks)
     {
         chunk->RenderTransparents();
     }
