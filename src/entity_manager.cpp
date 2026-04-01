@@ -296,18 +296,22 @@ void EntityManager::Integrate(Entity *entity)
         }
         else
         {
-            // Decide whether on ice
             auto entity_voxel_g = GetNearestVoxel(current_next_position);
-            auto entity_voxel_l = GlobalToLocalVoxel(entity_voxel_g);
-            auto entity_chunk = chunk_manager.GetChunk(VoxelToChunk(entity_voxel_g));
-            BlockID foot_block = entity_chunk->GetBlocks()[GetChunkIndex(entity_voxel_l - glm::ivec3{0, 1, 0})]; // Can go out of bounds...
-            entity->SetIsOnIce(foot_block == BlockID::water);
+            if (entity_voxel_g.y > 0 && entity_voxel_g.y < WORLD_HEIGHT_LIMIT)
+            {
+                auto entity_voxel_l = GlobalToLocalVoxel(entity_voxel_g);
+                auto entity_chunk = chunk_manager.GetChunk(VoxelToChunk(entity_voxel_g));
+                BlockID foot_block = entity_chunk->GetBlocks()[GetChunkIndex(entity_voxel_l - glm::ivec3{0, 1, 0})];
 
-            // Decide whether still grounded
-            float actual_feet = current_next_position.y - aabb.extents.y;
-            float floor_feet = glm::floor(actual_feet);
-            if (glm::abs(actual_feet - (floor_feet + 0.5f)) > 0.01f || foot_block == BlockID::air)
-                entity->SetGrounded(false);
+                // Decide whether on ice
+                entity->SetIsOnIce(foot_block == BlockID::water);
+
+                // Decide whether still grounded
+                float actual_feet = current_next_position.y - aabb.extents.y;
+                float floor_feet = glm::floor(actual_feet);
+                if (glm::abs(actual_feet - (floor_feet + 0.5f)) > 0.01f || foot_block == BlockID::air)
+                    entity->SetGrounded(false);
+            }
         }
 
         entity->SetNextPosition(new_next_position);
