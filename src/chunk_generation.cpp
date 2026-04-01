@@ -17,70 +17,190 @@ static void GenerateGreenTreeBranch(BlockID *, RNG &, float, int, int, int);
 static void GenerateSpiralTreeBranch(BlockID *, RNG &, float, int, int, int);
 static void GenerateColorTreeBranch(BlockID *, RNG &, float, int, int, int);
 
-void GenerateHeightMap(uint8_t *height_map, int chunk_x, int chunk_z, uint64_t seed, float amplitude, float frequency, float persistence, int octaves, float roughness)
-{
-    float frequency0 = frequency;
-    float amplitude0 = amplitude;
-    float divFactor = 32.0f - 4.0f * roughness;
-    float height_limit;
-    double offset_x = (double)(SplitMix64(seed) & 0xFFFFFFFF);
-    double offset_z = (double)(SplitMix64(seed) & 0xFFFFFFFF);
+//
+// The is the full height map algorithm, with all parameters exposed. The optimized version based on my chosen parameters is below.
+//
+// static void GenerateHeightMap(uint8_t *height_map, int chunk_x, int chunk_z, uint64_t seed, float amplitude, float frequency, float freq_f, float persistence, int octaves)
+// {
+//     constexpr float SCALE = 1.0f / (float)CHUNK_SIZE;
+//     const float initial_frequency = frequency;
+//     const float initial_amplitude = amplitude;
+//     const double seed_offset_x = (double)(SplitMix64(seed) & 0xFFFFFFFF);
+//     const double seed_offset_z = (double)(SplitMix64(seed) & 0xFFFFFFFF);
 
+//     //
+//     // Base height map
+//     //
+
+//     float float_heights[CHUNK_SIZE * CHUNK_SIZE];
+
+//     for (int x = 0; x < CHUNK_SIZE; x++)
+//     {
+//         for (int z = 0; z < CHUNK_SIZE; z++)
+//         {
+//             frequency = initial_frequency;
+//             amplitude = initial_amplitude;
+
+//             float height = 0.0f;
+//             for (int i = 0; i < octaves; i++)
+//             {
+//                 double x_arg = (((x + chunk_x * CHUNK_SIZE) + seed_offset_x) * SCALE) * frequency;
+//                 double z_arg = (((z + chunk_z * CHUNK_SIZE) + seed_offset_z) * SCALE) * frequency;
+//                 height += (SimplexNoise(x_arg, z_arg) * 2.0f - 1.0f) * amplitude;
+//                 frequency *= freq_f;
+//                 amplitude *= persistence;
+//             }
+
+//             float_heights[z + CHUNK_SIZE * x] = height;
+//         }
+//     }
+
+//     //
+//     // Normalize
+//     //
+
+//     float max_amplitude = 0.0f;
+//     for (int i = 0; i < octaves; i++)
+//         max_amplitude += glm::pow(persistence, i);
+//     max_amplitude *= initial_amplitude;
+
+//     for (float &height : float_heights)
+//         height = (height + max_amplitude) / (2*max_amplitude);
+
+//     //
+//     // Scale
+//     //
+
+//     int index = 0;
+//     for (float height : float_heights)
+//     {
+//         float final_height = height * 36.0f + 49.0f;
+//         //float final_height = rng.Range(62.0f, 72.0f) + rng.Range(0.5f, 0.9f) * (height - 0.5f) * 52.0f;
+//         height_map[index++] = (uint8_t)final_height;
+//     }
+// }
+
+static void GenerateHeightMap(uint8_t *height_map, int chunk_x, int chunk_z, uint64_t seed)
+{
+    constexpr float SCALE = 1.0f / (float)CHUNK_SIZE;
+    constexpr int OCTAVES = 4;
+    constexpr float FREQUENCIES[OCTAVES] = {0.3f, 0.75f, 1.875f, 4.6875f}; // f_0 = 0.3, freq_factor = 2.5
+    constexpr float AMPLITUDES[OCTAVES] = {1.0f, 0.7f, 0.49f, 0.343f}; // A_0 = 1.0, persistence = 0.7
+    constexpr float MAX_AMPLITUDE = 2.533f; // sum of amplitudes, since max of simplex is 1
+
+    const double SEED_OFFSET_X = (double)(SplitMix64(seed) & 0xFFFFFFFF);
+    const double SEED_OFFSET_Z = (double)(SplitMix64(seed) & 0xFFFFFFFF);
+
+    // Base height map
+    float float_heights[CHUNK_SIZE * CHUNK_SIZE];
     for (int x = 0; x < CHUNK_SIZE; x++)
     {
         for (int z = 0; z < CHUNK_SIZE; z++)
         {
-            frequency = frequency0;
-            amplitude = amplitude0;
-            height_limit = 0.0f;
-            for (int i = 0; i < octaves; i++)
+            float height = 0.0f;
+            for (int i = 0; i < OCTAVES; i++)
             {
-                double xArg = (((x + chunk_x * CHUNK_SIZE) + offset_x) / divFactor) * frequency;
-                double zArg = (((z + chunk_z * CHUNK_SIZE) + offset_z) / divFactor) * frequency;
-                height_limit += SimplexNoise(xArg, zArg) * amplitude;
-                frequency *= 3.0f;
-                amplitude *= persistence;
+                double x_arg = (((x + chunk_x * CHUNK_SIZE) + SEED_OFFSET_X) * SCALE) * FREQUENCIES[i];
+                double z_arg = (((z + chunk_z * CHUNK_SIZE) + SEED_OFFSET_Z) * SCALE) * FREQUENCIES[i];
+                height += (SimplexNoise(x_arg, z_arg) * 2.0f - 1.0f) * AMPLITUDES[i];
             }
-            height_map[z + CHUNK_SIZE * x] = (uint8_t)height_limit;
+
+            float_heights[z + CHUNK_SIZE * x] = height;
+        }
+    }
+
+    // Normalize
+    for (float &height : float_heights)
+        height = (height + MAX_AMPLITUDE) / (2*MAX_AMPLITUDE);
+
+    // Scale
+    int index = 0;
+    for (float height : float_heights)
+    {
+        float final_height = height * 36.0f + 49.0f;
+        height_map[index++] = (uint8_t)final_height;
+    }
+}
+
+static void ErodeByteTerrain(uint8_t *height_map, float alpha)
+{
+    // Left to right
+    for (int z = 0; z < CHUNK_SIZE; z++)
+    {
+        float filtered = height_map[z];
+        for (int x = 1; x < CHUNK_SIZE; x++)
+        {
+            uint8_t &height = height_map[z + CHUNK_SIZE * x];
+            filtered = alpha * filtered + (1 - alpha) * (float)height;
+            height = (uint8_t)filtered;
+        }
+    }
+
+    // Right to left
+    for (int z = 0; z < CHUNK_SIZE; z++)
+    {
+        float filtered = height_map[z + CHUNK_SIZE * (CHUNK_SIZE - 1)];
+        for (int x = CHUNK_SIZE - 2; x >= 0; x--)
+        {
+            uint8_t &height = height_map[z + CHUNK_SIZE * x];
+            filtered = alpha * filtered + (1 - alpha) * (float)height;
+            height = (uint8_t)filtered;
+        }
+    }
+
+    // Top to bottom
+    for (int x = 0; x < CHUNK_SIZE; x++)
+    {
+        float filtered = height_map[(CHUNK_SIZE - 1) + CHUNK_SIZE * x];
+        for (int z = CHUNK_SIZE - 2; z >= 0; z--)
+        {
+            uint8_t &height = height_map[z + CHUNK_SIZE * x];
+            filtered = alpha * filtered + (1 - alpha) * (float)height;
+            height = (uint8_t)filtered;
+        }
+    }
+
+    // Bottom to top
+    for (int x = 0; x < CHUNK_SIZE; x++)
+    {
+        float filtered = height_map[0 + CHUNK_SIZE * x];
+        for (int z = 1; z < CHUNK_SIZE; z++)
+        {
+            uint8_t &height = height_map[z + CHUNK_SIZE * x];
+            filtered = alpha * filtered + (1 - alpha) * (float)height;
+            height = (uint8_t)filtered;
         }
     }
 }
 
 void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, MoonSettings settings)
 {
-    // Seed RNG so structure placement is deterministic
+    // Seed RNG from chunk coords so structure placement is deterministic
     uint64_t structure_seed = settings.seed ^ ((uint64_t)chunk_x * 73856093ull) ^ ((uint64_t)chunk_z * 19349663ull);
     RNG rng{structure_seed};
-
-    thread_local uint8_t height_maps[CHUNK_SIZE * CHUNK_SIZE * 4];
 
     //
     // Generate base terrain
     //
 
-    const int ROCK_OFFSET   = 0;
-    const int GRAVEL_OFFSET = 1 * CHUNK_SIZE * CHUNK_SIZE;
-    const int DIRT_OFFSET   = 2 * CHUNK_SIZE * CHUNK_SIZE;
-    const int SAND_OFFSET   = 3 * CHUNK_SIZE * CHUNK_SIZE;
-    GenerateHeightMap(&height_maps[ROCK_OFFSET], chunk_x, chunk_z, settings.seed, 14, 0.2, 0.4, 4, settings.terrain_roughness);
-    GenerateHeightMap(&height_maps[GRAVEL_OFFSET], chunk_x, chunk_z, settings.seed, 4, 0.2, 0.6, 2, settings.terrain_roughness);
-    GenerateHeightMap(&height_maps[DIRT_OFFSET], chunk_x, chunk_z, settings.seed, 3, 0.2, 0.6, 3, settings.terrain_roughness);
-    GenerateHeightMap(&height_maps[SAND_OFFSET], chunk_x, chunk_z, settings.seed, 3, 0.2, 0.8, 2, settings.terrain_roughness * 0.6f);
+    uint8_t height_map[CHUNK_SIZE * CHUNK_SIZE];
+    GenerateHeightMap(height_map, chunk_x, chunk_z, settings.seed);
+    ErodeByteTerrain(height_map, glm::mix(0.6f, 0.02f, settings.terrain_roughness));
 
     //
-    // Crater
+    // Crater(?)
     //
 
-    bool spawn_crater = RNG{}.Range(0.0f, 1.0f) < 0.22f; // 22% chance (to match original average crater density)
+    bool spawn_crater = rng.Range(0.0f, 1.0f) < 0.18f; // 18% chance (to match original average crater density)
     if (spawn_crater)
     {
-        int radius = RNG{}.Range(7, 14); // was [8, 15]
+        int radius = rng.Range(8, 15);
 
         float outer_radius = (float)radius;
         float inner_radius = outer_radius * 0.75f;
 
-        int center_x = RNG{}.Range(radius, CHUNK_SIZE - 1 - radius);
-        int center_z = RNG{}.Range(radius, CHUNK_SIZE - 1 - radius);
+        int center_x = rng.Range(radius, (CHUNK_SIZE - 1) - radius);
+        int center_z = rng.Range(radius, (CHUNK_SIZE - 1) - radius);
 
         for (int x = center_x - radius; x <= center_x + radius; x++)
         {
@@ -97,17 +217,17 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, MoonSettings settin
                 if (dist < inner_radius)
                 {
                     float u = dist / inner_radius;
-                    t = u * u;  // inner bowl
+                    t = u * u;
                 }
                 else
                 {
-                    t = 1.0f - (dist - inner_radius) / (outer_radius - inner_radius); // rim falloff
+                    t = 1.0f - (dist - inner_radius) / (outer_radius - inner_radius);
                 }
 
-                float h = (&height_maps[DIRT_OFFSET])[z + x * CHUNK_SIZE];
-                h += (outer_radius * t) / 3.5f;
+                float h = height_map[z + CHUNK_SIZE * x];
+                h += (outer_radius * t) / 4.0f;
 
-                (&height_maps[DIRT_OFFSET])[z + x * CHUNK_SIZE] = (uint8_t)glm::min(h, 126.0f);
+                height_map[z + CHUNK_SIZE * x] = (uint8_t)glm::min(h, 126.0f);
             }
         }
     }
@@ -116,64 +236,42 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, MoonSettings settin
     // Layer determination
     //
 
-    // Initial generation
     int chunk_index = 0;
     for (int x = 0; x < CHUNK_SIZE; x++)
     {
         for (int z = 0; z < CHUNK_SIZE; z++)
         {
-            int rock_height   = height_maps[ROCK_OFFSET   + z + CHUNK_SIZE * x];
-            int gravel_height = height_maps[GRAVEL_OFFSET + z + CHUNK_SIZE * x];
-            int dirt_height   = height_maps[DIRT_OFFSET   + z + CHUNK_SIZE * x];
-            int sand_height   = height_maps[SAND_OFFSET   + z + CHUNK_SIZE * x];
-            int y = 0;
-
-            // Base rock
-            while (y < 50 + rock_height)
+            int height = height_map[z + CHUNK_SIZE * x];
+            
+            for (int y = 0; y < WORLD_HEIGHT_LIMIT; y++, chunk_index++)
             {
-                chunk[chunk_index++] = BlockID::rock;
-                y++;
-            }
-
-            // Base gravel
-            while (y < 50 + rock_height + gravel_height)
-            {
-                chunk[chunk_index++] = BlockID::gravel;
-                y++;
-            }
-
-            // Base dirt
-            while (y < 50 + rock_height + gravel_height + dirt_height)
-            {
-                chunk[chunk_index++] = BlockID::dirt;
-                y++;
-            }
-
-            if (50 + rock_height + gravel_height + dirt_height < GROUND_LEVEL) // Below ground level; fill rest in with sand/water
-            {
-                int sand_limit = glm::min(GROUND_LEVEL, 50 + rock_height + gravel_height + dirt_height + sand_height);
-                while (y < sand_limit)
+                if (y < height - 8)
                 {
-                    chunk[chunk_index++] = BlockID::sand;
-                    y++;
+                    chunk[chunk_index] = BlockID::rock;
                 }
-
-                while (y < GROUND_LEVEL)
+                else if (y < height - 3) // 5 gravel layers
                 {
-                    chunk[chunk_index++] = BlockID::water;
-                    y++;
+                    chunk[chunk_index] = BlockID::gravel;
                 }
-            }
-            else // Above ground level; finish terrain by placing topsoil
-            {
-                chunk[chunk_index++] = BlockID::topsoil;
-                y++;
-            }
-
-            while (y < WORLD_HEIGHT_LIMIT)
-            {
-                chunk[chunk_index++] = BlockID::air;
-                y++;
+                else if (y < height) // 3 dirt layers
+                {
+                    chunk[chunk_index] = BlockID::dirt;
+                }
+                else if (y < GROUND_LEVEL && y < height + 3)
+                {
+                    chunk[chunk_index] = BlockID::sand;
+                }
+                else if (y >= GROUND_LEVEL || y < height + 3)
+                {
+                    if (y == height)
+                        chunk[chunk_index] = BlockID::topsoil;
+                    else if (y > height)
+                        chunk[chunk_index] = BlockID::air;
+                }
+                else
+                {
+                    chunk[chunk_index] = BlockID::water;
+                }
             }
         }
     }

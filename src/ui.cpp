@@ -445,11 +445,10 @@ UIMoonSettingsMenu::UIMoonSettingsMenu()
     roughness_.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
 
     // Terrain roughness slider
-    roughness_slider_.SetDiscrete(true);
     roughness_slider_.SetPosition({bg_pos_x + setting_text_align_x + 20, 640});
     roughness_slider_.SetSize({460, 20});
-    roughness_slider_.SetBounds({0.0f, 4.0f});
-    roughness_slider_.SetValue(2.0f);
+    roughness_slider_.SetBounds({0.0f, 1.0f});
+    roughness_slider_.SetValue(0.5f);
 
     // Wildlife level
     float wildlife_text_width = UIText::GetTextSizeInPixels("Wildlife Level:", setting_font_size).x;
@@ -528,7 +527,7 @@ UIMoonSettingsMenu::UIMoonSettingsMenu()
     });
     launch_button_.SetClickAction([this]() {
         moon_settings_.tree_cover = tree_cover_slider_.GetValue();
-        moon_settings_.terrain_roughness = (uint8_t)roughness_slider_.GetValue();
+        moon_settings_.terrain_roughness = roughness_slider_.GetValue();
         moon_settings_.wildlife_level = (uint8_t)wildlife_slider_.GetValue();
         moon_settings_.is_creative = creative_button_.IsToggled();
 
@@ -599,7 +598,7 @@ void UIMoonSettingsMenu::Reset()
 {
     // Reset sliders and seed textbox
     tree_cover_slider_.SetValue(0.5f);
-    roughness_slider_.SetValue(2.0f);
+    roughness_slider_.SetValue(0.5f);
     wildlife_slider_.SetValue(2.0f);
     seed_textbox_.SetText("");
     
