@@ -115,5 +115,5 @@ double SimplexNoise(double x, double y)
         n2 = t2 * t2 * Grad(_perm[ii + 1 + _perm[jj + 1]], x2, y2);
     }
 
-    return 20.0 * (n0 + n1 + n2) + 0.5; // in [0, 1]
+    return 40.0 * (n0 + n1 + n2); // in [-1, 1]
 }

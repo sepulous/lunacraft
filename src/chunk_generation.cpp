@@ -17,82 +17,48 @@ static void GenerateGreenTreeBranch(BlockID *, RNG &, float, int, int, int);
 static void GenerateSpiralTreeBranch(BlockID *, RNG &, float, int, int, int);
 static void GenerateColorTreeBranch(BlockID *, RNG &, float, int, int, int);
 
-//
-// The is the full height map algorithm, with all parameters exposed. The optimized version based on my chosen parameters is below.
-//
-// static void GenerateHeightMap(uint8_t *height_map, int chunk_x, int chunk_z, uint64_t seed, float amplitude, float frequency, float freq_f, float persistence, int octaves)
-// {
-//     constexpr float SCALE = 1.0f / (float)CHUNK_SIZE;
-//     const float initial_frequency = frequency;
-//     const float initial_amplitude = amplitude;
-//     const double seed_offset_x = (double)(SplitMix64(seed) & 0xFFFFFFFF);
-//     const double seed_offset_z = (double)(SplitMix64(seed) & 0xFFFFFFFF);
-
-//     //
-//     // Base height map
-//     //
-
-//     float float_heights[CHUNK_SIZE * CHUNK_SIZE];
-
-//     for (int x = 0; x < CHUNK_SIZE; x++)
-//     {
-//         for (int z = 0; z < CHUNK_SIZE; z++)
-//         {
-//             frequency = initial_frequency;
-//             amplitude = initial_amplitude;
-
-//             float height = 0.0f;
-//             for (int i = 0; i < octaves; i++)
-//             {
-//                 double x_arg = (((x + chunk_x * CHUNK_SIZE) + seed_offset_x) * SCALE) * frequency;
-//                 double z_arg = (((z + chunk_z * CHUNK_SIZE) + seed_offset_z) * SCALE) * frequency;
-//                 height += (SimplexNoise(x_arg, z_arg) * 2.0f - 1.0f) * amplitude;
-//                 frequency *= freq_f;
-//                 amplitude *= persistence;
-//             }
-
-//             float_heights[z + CHUNK_SIZE * x] = height;
-//         }
-//     }
-
-//     //
-//     // Normalize
-//     //
-
-//     float max_amplitude = 0.0f;
-//     for (int i = 0; i < octaves; i++)
-//         max_amplitude += glm::pow(persistence, i);
-//     max_amplitude *= initial_amplitude;
-
-//     for (float &height : float_heights)
-//         height = (height + max_amplitude) / (2*max_amplitude);
-
-//     //
-//     // Scale
-//     //
-
-//     int index = 0;
-//     for (float height : float_heights)
-//     {
-//         float final_height = height * 36.0f + 49.0f;
-//         //float final_height = rng.Range(62.0f, 72.0f) + rng.Range(0.5f, 0.9f) * (height - 0.5f) * 52.0f;
-//         height_map[index++] = (uint8_t)final_height;
-//     }
-// }
-
 static void GenerateHeightMap(uint8_t *height_map, int chunk_x, int chunk_z, uint64_t seed)
 {
+    //
+    // Parameters
+    //
     constexpr float SCALE = 1.0f / (float)CHUNK_SIZE;
     constexpr int OCTAVES = 4;
-    constexpr float FREQUENCIES[OCTAVES] = {0.3f, 0.75f, 1.875f, 4.6875f}; // f_0 = 0.3, freq_factor = 2.5
-    constexpr float AMPLITUDES[OCTAVES] = {1.0f, 0.7f, 0.49f, 0.343f}; // A_0 = 1.0, persistence = 0.7
-    constexpr float MAX_AMPLITUDE = 2.533f; // sum of amplitudes, since max of simplex is 1
+    constexpr float BASE_FREQUENCY = 0.3f;
+    constexpr float BASE_AMPLITUDE = 1.0f;
+    constexpr float PERSISTENCE = 0.7f;
+    constexpr float FREQUENCY_FACTOR = 2.5f;
 
+    //
+    // Constants
+    //
+    constexpr float FREQUENCIES[OCTAVES] = {
+        BASE_FREQUENCY,
+        BASE_FREQUENCY * FREQUENCY_FACTOR,
+        BASE_FREQUENCY * FREQUENCY_FACTOR * FREQUENCY_FACTOR,
+        BASE_FREQUENCY * FREQUENCY_FACTOR * FREQUENCY_FACTOR * FREQUENCY_FACTOR
+    };
+    constexpr float AMPLITUDES[OCTAVES] = {
+        BASE_AMPLITUDE,
+        BASE_AMPLITUDE * PERSISTENCE,
+        BASE_AMPLITUDE * PERSISTENCE * PERSISTENCE,
+        BASE_AMPLITUDE * PERSISTENCE * PERSISTENCE * PERSISTENCE
+    };
+    constexpr float MAX_AMPLITUDE = [&]() { // sum of amplitudes, since max of simplex is 1
+        float sum = 0;
+        for (int i = 0; i < OCTAVES; i++) sum += AMPLITUDES[i];
+        return sum;
+    }();
     const double SEED_OFFSET_X = (double)(SplitMix64(seed) & 0xFFFFFFFF);
     const double SEED_OFFSET_Z = (double)(SplitMix64(seed) & 0xFFFFFFFF);
 
-    // Base height map
+    //
+    // Generation
+    //
+
     float float_heights[CHUNK_SIZE * CHUNK_SIZE];
+
+    // Base height map
     for (int x = 0; x < CHUNK_SIZE; x++)
     {
         for (int z = 0; z < CHUNK_SIZE; z++)
@@ -102,7 +68,7 @@ static void GenerateHeightMap(uint8_t *height_map, int chunk_x, int chunk_z, uin
             {
                 double x_arg = (((x + chunk_x * CHUNK_SIZE) + SEED_OFFSET_X) * SCALE) * FREQUENCIES[i];
                 double z_arg = (((z + chunk_z * CHUNK_SIZE) + SEED_OFFSET_Z) * SCALE) * FREQUENCIES[i];
-                height += (SimplexNoise(x_arg, z_arg) * 2.0f - 1.0f) * AMPLITUDES[i];
+                height += SimplexNoise(x_arg, z_arg) * AMPLITUDES[i];
             }
 
             float_heights[z + CHUNK_SIZE * x] = height;
@@ -117,7 +83,7 @@ static void GenerateHeightMap(uint8_t *height_map, int chunk_x, int chunk_z, uin
     int index = 0;
     for (float height : float_heights)
     {
-        float final_height = height * 36.0f + 49.0f;
+        float final_height = height * 36.0f + 48.0f;
         height_map[index++] = (uint8_t)final_height;
     }
 }
