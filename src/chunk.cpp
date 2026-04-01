@@ -219,8 +219,8 @@ void Chunk::UploadVertices()
     {
         glBufferData(GL_ARRAY_BUFFER, opaque_vertices_.size() * sizeof(BlockVertex), opaque_vertices_.data(), GL_STATIC_DRAW);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, opaque_indices_.size() * sizeof(uint16_t), opaque_indices_.data(), GL_STATIC_DRAW);
-        opaque_index_counts_[write_idx] = opaque_indices_.size();
     }
+    opaque_index_counts_[write_idx] = opaque_indices_.size();
 
     // Transparents
     glBindBuffer(GL_ARRAY_BUFFER, transparent_vbos_[write_idx]);
@@ -234,8 +234,8 @@ void Chunk::UploadVertices()
     {
         glBufferData(GL_ARRAY_BUFFER, transparent_vertices_.size() * sizeof(BlockVertex), transparent_vertices_.data(), GL_STATIC_DRAW);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, transparent_indices_.size() * sizeof(uint16_t), transparent_indices_.data(), GL_STATIC_DRAW);
-        transparent_index_counts_[write_idx] = transparent_indices_.size();
     }
+    transparent_index_counts_[write_idx] = transparent_indices_.size();
 
     // Swap buffers
     gl_index_ ^= 1;
