@@ -78,8 +78,8 @@ class Moon
         float skybox_phase_;
         bool took_screenshot_ = false;
         std::vector<glm::ivec3> brown_mob_explosions_;
-        glm::vec4 base_fog_color_; // This doesn't change for a given moon. Use GetFogColor() to get the correct color.
-        Player *player_; // Avoids destructor call so EntityManager can destroy player
+        glm::vec4 base_fog_color_; // This doesn't change for a given moon. Use GetFogColor() to get the time-corrected color.
+        Player *player_;
         SelectionBlock selection_block_;
         Skybox skybox_;
         MoonSettings settings_;

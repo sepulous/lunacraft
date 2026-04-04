@@ -6,6 +6,7 @@
 
 struct MoonSettings
 {
+    glm::vec4 base_fog_color;
     uint64_t seed = 0;
     double world_time = 0;
     float skybox_phase = LIGHT_CYCLE_OMEGA * SECONDS_PER_LIGHT_PHASE;

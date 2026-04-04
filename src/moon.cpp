@@ -26,6 +26,8 @@ Moon *Moon::current_moon_;
 
 Moon::Moon(int moon_id, MoonSettings moon_settings)
 {
+    bool moon_data_exists;
+
     // Create moon folder (if necessary)
     std::filesystem::path moon_dir = Storage::MOONS / (std::string("moon") + std::to_string(moon_id));
     if (!std::filesystem::exists(moon_dir))
@@ -33,7 +35,8 @@ Moon::Moon(int moon_id, MoonSettings moon_settings)
 
     // Use moon data from file (if it already exists)
     std::filesystem::path moon_data_path = moon_dir / "moon.dat";
-    if (std::filesystem::exists(moon_data_path))
+    moon_data_exists = std::filesystem::exists(moon_data_path);
+    if (moon_data_exists)
     {
         std::ifstream moon_data_file(moon_data_path, std::ios::binary);
         moon_data_file.read(reinterpret_cast<char *>(&moon_settings), sizeof(MoonSettings));
@@ -46,28 +49,35 @@ Moon::Moon(int moon_id, MoonSettings moon_settings)
         moon_data_file.close();
     }
 
-    // Choose random fog color. This code was reverse engineered from the
-    // latest version of the original game (v2.01).
-
-    RNG rng;
-
-    int _case = rng.Range(1, 6);
-    float _rand = rng.Range(0.0f, 1.0f);
-    float comp1 = (1.0 - _rand * 0.85) * 0.9;
-    float comp2 = (1.0 - (1.0 - _rand) * 0.85) * 0.9;
-
-    if (_case == 1)
-        base_fog_color_ = {0.9, comp2, 0.135, 1};
-    else if (_case == 2)
-        base_fog_color_ = {comp1, 0.9, 0.135, 1};
-    else if (_case == 3)
-        base_fog_color_ = {0.135, 0.9, comp2, 1};
-    else if (_case == 4)
-        base_fog_color_ = {0.135, comp1, 0.9, 1};
-    else if (_case == 5)
-        base_fog_color_ = {comp2, 0.135, 0.9, 1};
+    if (moon_data_exists)
+    {
+        base_fog_color_ = moon_settings.base_fog_color;
+    }
     else
-        base_fog_color_ = {0.9, 0.135, comp1, 1};
+    {
+        // Choose random fog color. This code was reverse engineered from the
+        // latest version of the original game (v2.01).
+
+        RNG rng;
+
+        int _case = rng.Range(1, 6);
+        float _rand = rng.Range(0.0f, 1.0f);
+        float comp1 = (1.0 - _rand * 0.85) * 0.9;
+        float comp2 = (1.0 - (1.0 - _rand) * 0.85) * 0.9;
+
+        if (_case == 1)
+            base_fog_color_ = {0.9, comp2, 0.135, 1};
+        else if (_case == 2)
+            base_fog_color_ = {comp1, 0.9, 0.135, 1};
+        else if (_case == 3)
+            base_fog_color_ = {0.135, 0.9, comp2, 1};
+        else if (_case == 4)
+            base_fog_color_ = {0.135, comp1, 0.9, 1};
+        else if (_case == 5)
+            base_fog_color_ = {comp2, 0.135, 0.9, 1};
+        else
+            base_fog_color_ = {0.9, 0.135, comp1, 1};
+    }
 
     int render_distance = OptionsManager::GetOptions().render_distance;
     initial_chunk_count_ = (2*render_distance + 1) * (2*render_distance + 1);
@@ -91,6 +101,7 @@ Moon::~Moon()
     settings_.world_time = world_time_;
     settings_.skybox_phase = skybox_phase_;
     settings_.skybox_reversed = skybox_reversed_;
+    settings_.base_fog_color = base_fog_color_;
     std::filesystem::path moon_data_path = Storage::MOONS / (std::string("moon") + std::to_string(id_)) / "moon.dat";
     std::ofstream moon_data_file(moon_data_path, std::ios::binary);
     moon_data_file.write(reinterpret_cast<char *>(&settings_), sizeof(MoonSettings));
