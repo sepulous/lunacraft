@@ -244,9 +244,37 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, MoonSettings settin
     }
 
     //
+    // Dirt/gravel blobs
+    //
+    // This was reverse-engineered from Lunacraft v2.01
+    //
+
+    int blob_count = rng.Range(0, 200);
+    blob_count *= (float)(CHUNK_SIZE * CHUNK_SIZE * WORLD_HEIGHT_LIMIT) / glm::pow(128.0f, 3.0f); // Scale to match original game's density
+    for (int i = 0; i < blob_count; i++)
+    {
+        int x = rng.Range(4, (CHUNK_SIZE - 1) - 4);
+        int z = rng.Range(4, (CHUNK_SIZE - 1) - 4);
+        int y_max = height_map[z + CHUNK_SIZE * x] - 6;
+        int y = rng.Range(5, y_max);
+        BlockID block = rng.Range(0.0, 1.0) <= 0.5 ? BlockID::gravel : BlockID::dirt;
+
+        GenerateVein(
+            chunk,
+            rng,
+            x, y, z,
+            rng.Range(1.0, 5.0), // radius
+            rng.Range(0.0, 6.2831855), // pitch
+            rng.Range(5, 26), // length
+            block,
+            3 // recursion depth
+        );
+    }
+
+    //
     // Ores
     //
-    // This system was reverse-engineered from Lunacraft v2.01
+    // This was reverse-engineered from Lunacraft v2.01
     //
 
     constexpr BlockID MINERALS[] = {BlockID::shale_gravel, BlockID::magnetite, BlockID::aluminum_ore, BlockID::titanium_ore, BlockID::gold_ore, BlockID::notchium_ore, BlockID::blue_crystal};
@@ -1393,8 +1421,8 @@ static void GenerateVein(
     BlockID *chunk,
     RNG &rng,
     float x,
-    float z,
     float y,
+    float z,
     float radius,
     float pitch,
     int length,
