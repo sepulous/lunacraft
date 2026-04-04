@@ -74,8 +74,8 @@ class Moon
         double world_time_ = 0;
         double last_patch_update_ = 0;
         double accumulator_ = 0;
-        bool skybox_reversed_ = false;
-        float skybox_phase_ = LIGHT_CYCLE_OMEGA * SECONDS_PER_LIGHT_PHASE;
+        bool skybox_reversed_;
+        float skybox_phase_;
         bool took_screenshot_ = false;
         std::vector<glm::ivec3> brown_mob_explosions_;
         glm::vec4 base_fog_color_; // This doesn't change for a given moon. Use GetFogColor() to get the correct color.

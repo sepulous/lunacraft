@@ -74,6 +74,8 @@ Moon::Moon(int moon_id, MoonSettings moon_settings)
     id_ = moon_id;
     settings_ = moon_settings;
     world_time_ = moon_settings.world_time;
+    skybox_phase_ = moon_settings.skybox_phase;
+    skybox_reversed_ = moon_settings.skybox_reversed;
     player_ = new Player;
     current_moon_ = this;
     chunk_manager_.Init(moon_id, moon_settings);
@@ -87,6 +89,8 @@ Moon::~Moon()
 
     // Save world time to file
     settings_.world_time = world_time_;
+    settings_.skybox_phase = skybox_phase_;
+    settings_.skybox_reversed = skybox_reversed_;
     std::filesystem::path moon_data_path = Storage::MOONS / (std::string("moon") + std::to_string(id_)) / "moon.dat";
     std::ofstream moon_data_file(moon_data_path, std::ios::binary);
     moon_data_file.write(reinterpret_cast<char *>(&settings_), sizeof(MoonSettings));
