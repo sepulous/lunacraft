@@ -17,6 +17,7 @@ static void GenerateGreenTreeBranch(BlockID *, RNG &, float, int, int, int);
 static void GenerateSpiralTreeBranch(BlockID *, RNG &, float, int, int, int);
 static void GenerateColorTreeBranch(BlockID *, RNG &, float, int, int, int);
 static void GenerateVein(BlockID *, RNG &, float, float, float, float, float, int, BlockID, int);
+static void GenerateLairShaft(BlockID *, RNG &, int, int, int, int, int, int, int);
 
 static void GenerateHeightMap(uint8_t *height_map, int chunk_x, int chunk_z, uint64_t seed)
 {
@@ -246,8 +247,6 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, MoonSettings settin
     //
     // Dirt/gravel blobs
     //
-    // This was reverse-engineered from Lunacraft v2.01
-    //
 
     int blob_count = rng.Range(0, 200);
     blob_count *= (float)(CHUNK_SIZE * CHUNK_SIZE * WORLD_HEIGHT_LIMIT) / glm::pow(128.0f, 3.0f); // Scale to match original game's density
@@ -273,8 +272,6 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, MoonSettings settin
 
     //
     // Ores
-    //
-    // This was reverse-engineered from Lunacraft v2.01
     //
 
     constexpr BlockID MINERALS[] = {BlockID::shale_gravel, BlockID::magnetite, BlockID::aluminum_ore, BlockID::titanium_ore, BlockID::gold_ore, BlockID::notchium_ore, BlockID::blue_crystal};
@@ -336,10 +333,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, MoonSettings settin
     {
         int x = rng.Range(4, (CHUNK_SIZE - 1) - 4);
         int z = rng.Range(4, (CHUNK_SIZE - 1) - 4);
-        int y = WORLD_HEIGHT_LIMIT - 1;
-        while (chunk[GetChunkIndex(x, y, z)] == BlockID::air)
-            y--;
-
+        int y = height_map[z + CHUNK_SIZE * x];
         if (chunk[GetChunkIndex(x, y, z)] == BlockID::topsoil)
         {
             int num_branches = rng.Range(2, 4);
@@ -359,10 +353,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, MoonSettings settin
     {
         int x = rng.Range(4, (CHUNK_SIZE - 1) - 4);
         int z = rng.Range(4, (CHUNK_SIZE - 1) - 4);
-        int y = WORLD_HEIGHT_LIMIT - 1;
-        while (chunk[GetChunkIndex(x, y, z)] == BlockID::air)
-            y--;
-
+        int y = height_map[z + CHUNK_SIZE * x];
         if (chunk[GetChunkIndex(x, y, z)] == BlockID::topsoil)
         {
             int num_branches = rng.Range(2, 4);
@@ -382,10 +373,7 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, MoonSettings settin
     {
         int x = rng.Range(4, (CHUNK_SIZE - 1) - 4);
         int z = rng.Range(4, (CHUNK_SIZE - 1) - 4);
-        int y = WORLD_HEIGHT_LIMIT - 1;
-        while (chunk[GetChunkIndex(x, y, z)] == BlockID::air)
-            y--;
-
+        int y = height_map[z + CHUNK_SIZE * x];
         if (chunk[GetChunkIndex(x, y, z)] == BlockID::topsoil)
         {
             int num_branches = rng.Range(2, 4);
@@ -422,664 +410,45 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, MoonSettings settin
 
         int x = rng.Range(4, (CHUNK_SIZE - 1) - 4);
         int z = rng.Range(4, (CHUNK_SIZE - 1) - 4);
+        int y = height_map[z + CHUNK_SIZE * x];
 
-        // The total height isn't determined by a single heightmap, so I have to do this...
-        int y = -1;
-        for (int j = 50; j < WORLD_HEIGHT_LIMIT - 1; j++) // j=50 to skip section guaranteed to be solid
-        {
-            if (chunk[GetChunkIndex(x, j + 1, z)] == BlockID::air)
-            {
-                y = j;
-                break;
-            }
-        }
-
-        if (y != -1)
-        {
-            float w = rng.Range(2.0, 4.0);
-            GenerateCrystal(
-                chunk,
-                rng,
-                w,
-                x,
-                z,
-                y,
-                rng.Range(2, 4),
-                CRYSTALS[index],
-                (int)w,
-                4
-            );
-        }
+        float w = rng.Range(2.0, 4.0);
+        GenerateCrystal(
+            chunk,
+            rng,
+            w,
+            x,
+            z,
+            y,
+            rng.Range(2, 4),
+            CRYSTALS[index],
+            (int)w,
+            4
+        );
     }
 
     //
-    // Astronaut lairs
+    // Astronaut lair(?)
     //
 
-    bool spawn_astronaut_lair = rng.Range(1, 100) == 69; // 1% chance, each chunk
-    const int lair_depth = 31;
-    if (spawn_astronaut_lair)
+    float lair_chance = rng.Range(0.0f, 1.0f);
+    bool spawn_lair = lair_chance < (0.1f *((float)CHUNK_SIZE / 128.0f));
+    if (spawn_lair)
     {
-        int center_block_x = (int)(CHUNK_SIZE / 2);
-        int center_block_z = (int)(CHUNK_SIZE / 2);
-        int center_block_y = -1;
-        for (int y = 64; y < WORLD_HEIGHT_LIMIT; y++)
-        {
-            chunk_index = GetChunkIndex(center_block_x, y + 1, center_block_z);
-            if (chunk[chunk_index] == BlockID::air)
-            {
-                center_block_y = y;
-                break;
-            }
-        }
-
-        // Place gravel block at center of bottom so I can easily check whether a chunk contains an astronaut lair
-        chunk_index = GetChunkIndex(center_block_x, 0, center_block_z);
-        chunk[chunk_index] = BlockID::gravel;
-
-        // Carve main shaft
-        for (int x_offset = -3; x_offset <= 3; x_offset++)
-        {
-            for (int z_offset = -3; z_offset <= 3; z_offset++)
-            {
-                for (int y_offset = -6; y_offset <= lair_depth; y_offset++)
-                {
-                    chunk_index = GetChunkIndex(center_block_x + x_offset, center_block_y - y_offset, center_block_z + z_offset);
-                    chunk[chunk_index] = BlockID::air;
-                }
-            }
-        }
-
-        // Decorate main shaft with polymer and light
-        bool left_side_done = false;
-        bool right_side_done = false;
-        bool front_side_done = false;
-        bool back_side_done = false;
-        for (int y = center_block_y - lair_depth; y < WORLD_HEIGHT_LIMIT; y++)
-        {
-            chunk_index = GetChunkIndex(center_block_x - 4, y, center_block_z);
-            if (chunk[chunk_index] != BlockID::air && !left_side_done)
-            {
-                chunk[chunk_index] = BlockID::polymer;
-                if ((y - (center_block_y - lair_depth)) / 8.0f == 3)
-                    chunk[chunk_index] = BlockID::light;
-            }
-            else
-            {
-                left_side_done = true;
-            }
-
-            chunk_index = GetChunkIndex(center_block_x + 4, y, center_block_z);
-            if (chunk[chunk_index] != BlockID::air && !right_side_done)
-            {
-                chunk[chunk_index] = BlockID::polymer;
-                if ((y - (center_block_y - lair_depth)) / 8.0f == 3)
-                    chunk[chunk_index] = BlockID::light;
-            }
-            else
-            {
-                right_side_done = true;
-            }
-
-            chunk_index = GetChunkIndex(center_block_x, y, center_block_z + 4);
-            if (chunk[chunk_index] != BlockID::air && !front_side_done)
-            {
-                chunk[chunk_index] = BlockID::polymer;
-                if ((y - (center_block_y - lair_depth)) / 8.0f == 3)
-                    chunk[chunk_index] = BlockID::light;
-            }
-            else
-            {
-                front_side_done = true;
-            }
-
-            chunk_index = GetChunkIndex(center_block_x, y, center_block_z - 4);
-            if (chunk[chunk_index] != BlockID::air && !back_side_done)
-            {
-                chunk[chunk_index] = BlockID::polymer;
-                if ((y - (center_block_y - lair_depth)) / 8.0f == 3)
-                    chunk[chunk_index] = BlockID::light;
-            }
-            else
-            {
-                back_side_done = true;
-            }
-
-            if (left_side_done && right_side_done && front_side_done && back_side_done)
-                break;
-        }
-
-        // Polymer at bottom center
-        chunk_index = GetChunkIndex(center_block_x, center_block_y - lair_depth - 1, center_block_z);
-        chunk[chunk_index] = BlockID::polymer;
-
-        // Extra front shaft(s)
-        if (rng.Range(1, 4) == 1)
-        {
-            for (int dz = 0; dz < 10; dz++)
-            {
-                for (int dx = -2; dx <= 2; dx++)
-                {
-                    for (int dy = -2; dy <= 2; dy++)
-                    {
-                        int shaft_x = center_block_x + dx;
-                        int shaft_y = (center_block_y - lair_depth + 3) + dy;
-                        int shaft_z = (center_block_z + 4) + dz;
-                        chunk_index = GetChunkIndex(shaft_x, shaft_y, shaft_z);
-                        chunk[chunk_index] = BlockID::air;
-
-                        if (dy == 0)
-                        {
-                            // Left polymer
-                            chunk_index = GetChunkIndex(center_block_x - 3, shaft_y, shaft_z);
-                            chunk[chunk_index] = BlockID::polymer;
-
-                            // Right polymer
-                            chunk_index = GetChunkIndex(center_block_x + 3, shaft_y, shaft_z);
-                            chunk[chunk_index] = BlockID::polymer;
-                        }
-
-                        if (dx == 0)
-                        {
-                            // Top polymer
-                            chunk_index = GetChunkIndex(shaft_x, center_block_y - lair_depth + 6, shaft_z);
-                            chunk[chunk_index] = BlockID::polymer;
-
-                            // Bottom polymer
-                            chunk_index = GetChunkIndex(shaft_x, center_block_y - lair_depth, shaft_z);
-                            chunk[chunk_index] = BlockID::polymer;
-                        }
-                    }
-                }
-            }
-
-            // Polymer on back wall
-            chunk_index = GetChunkIndex(center_block_x, center_block_y - lair_depth + 3, center_block_z + 4 + 10);
-            chunk[chunk_index] = BlockID::polymer;
-
-            // Extra vertical shaft?
-            if (rng.Range(1, 4) == 1)
-            {
-                for (int dz = -1; dz <= 1; dz++)
-                {
-                    for (int dx = -1; dx <= 1; dx++)
-                    {
-                        for (int dy = 0; dy <= 20; dy++)
-                        {
-                            // Carve
-                            chunk_index = GetChunkIndex(center_block_x + dx, center_block_y - lair_depth - dy, center_block_z + 4 + 8 + dz);
-                            chunk[chunk_index] = BlockID::air;
-
-                            // Side polymers
-                            if (dz == 0 && dx != 0)
-                            {
-                                chunk_index = GetChunkIndex(center_block_x + dx + dx, center_block_y - lair_depth - dy, center_block_z + 4 + 8);
-                                chunk[chunk_index] = BlockID::polymer;
-                            }
-                            else if (dx == 0 && dz != 0)
-                            {
-                                chunk_index = GetChunkIndex(center_block_x, center_block_y - lair_depth - dy, center_block_z + 4 + 8 + dz + dz);
-                                chunk[chunk_index] = BlockID::polymer;
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Extra horizontal shaft (left)?
-            if (rng.Range(1, 4) == 1)
-            {
-                for (int dz = -1; dz <= 1; dz++)
-                {
-                    for (int dy = -1; dy <= 1; dy++)
-                    {
-                        for (int dx = 0; dx < 7; dx++)
-                        {
-                            // Carve
-                            chunk_index = GetChunkIndex(center_block_x - 3 - dx, center_block_y - lair_depth + 3 + dy, center_block_z + 12 + dz);
-                            chunk[chunk_index] = BlockID::air;
-
-                            // Side polymers
-                            if (dy == 0 && dz == -1) // left
-                            {
-                                chunk_index = GetChunkIndex(center_block_x - 3 - dx, center_block_y - lair_depth + 3 + dy, center_block_z + 12 + dz - 1);
-                                chunk[chunk_index] = BlockID::polymer;
-                            }
-                            else if (dz == 0 && dy != 0) // top and bottom
-                            {
-                                chunk_index = GetChunkIndex(center_block_x - 3 - dx, center_block_y - lair_depth + 3 + dy + dy, center_block_z + 12 + dz);
-                                chunk[chunk_index] = BlockID::polymer;
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Extra horizontal shaft (right)?
-            if (rng.Range(1, 4) == 1)
-            {
-                for (int dz = -1; dz <= 1; dz++)
-                {
-                    for (int dy = -1; dy <= 1; dy++)
-                    {
-                        for (int dx = 0; dx < 7; dx++)
-                        {
-                            // Carve
-                            chunk_index = GetChunkIndex(center_block_x + 3 + dx, center_block_y - lair_depth + 3 + dy, center_block_z + 12 + dz);
-                            chunk[chunk_index] = BlockID::air;
-
-                            // Side polymers
-                            if (dy == 0 && dz == -1) // right
-                            {
-                                chunk_index = GetChunkIndex(center_block_x + 3 + dx, center_block_y - lair_depth + 3 + dy, center_block_z + 12 + dz - 1);
-                                chunk[chunk_index] = BlockID::polymer;
-                            }
-                            else if (dz == 0 && dy != 0) // top and bottom
-                            {
-                                chunk_index = GetChunkIndex(center_block_x + 3 + dx, center_block_y - lair_depth + 3 + dy + dy, center_block_z + 12 + dz);
-                                chunk[chunk_index] = BlockID::polymer;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Extra back shaft(s)
-        if (rng.Range(1, 4) == 1)
-        {
-            for (int dz = 0; dz < 10; dz++)
-            {
-                for (int dx = -2; dx <= 2; dx++)
-                {
-                    for (int dy = -2; dy <= 2; dy++)
-                    {
-                        int shaft_x = center_block_x + dx;
-                        int shaft_y = (center_block_y - lair_depth + 3) + dy;
-                        int shaft_z = (center_block_z - 4) - dz;
-                        chunk_index = GetChunkIndex(shaft_x, shaft_y, shaft_z);
-                        chunk[chunk_index] = BlockID::air;
-
-                        if (dy == 0)
-                        {
-                            // Left polymer
-                            chunk_index = GetChunkIndex(center_block_x - 3, shaft_y, shaft_z);
-                            chunk[chunk_index] = BlockID::polymer;
-
-                            // Right polymer
-                            chunk_index = GetChunkIndex(center_block_x + 3, shaft_y, shaft_z);
-                            chunk[chunk_index] = BlockID::polymer;
-                        }
-
-                        if (dx == 0)
-                        {
-                            // Top polymer
-                            chunk_index = GetChunkIndex(shaft_x, center_block_y - lair_depth + 6, shaft_z);
-                            chunk[chunk_index] = BlockID::polymer;
-
-                            // Bottom polymer
-                            chunk_index = GetChunkIndex(shaft_x, center_block_y - lair_depth, shaft_z);
-                            chunk[chunk_index] = BlockID::polymer;
-                        }
-                    }
-                }
-            }
-
-            // Polymer on back wall
-            chunk_index = GetChunkIndex(center_block_x, center_block_y - lair_depth + 3, center_block_z - 4 - 10);
-            chunk[chunk_index] = BlockID::polymer;
-
-            // Extra vertical shaft?
-            if (rng.Range(1, 4) == 1)
-            {
-                for (int dz = -1; dz <= 1; dz++)
-                {
-                    for (int dx = -1; dx <= 1; dx++)
-                    {
-                        for (int dy = 0; dy <= 20; dy++)
-                        {
-                            // Carve
-                            chunk_index = GetChunkIndex(center_block_x + dx, center_block_y - lair_depth - dy, center_block_z - 12 + dz);
-                            chunk[chunk_index] = BlockID::air;
-
-                            // Side polymers
-                            if (dz == 0 && dx != 0)
-                            {
-                                chunk_index = GetChunkIndex(center_block_x + dx + dx, center_block_y - lair_depth - dy, center_block_z - 12);
-                                chunk[chunk_index] = BlockID::polymer;
-                            }
-                            else if (dx == 0 && dz != 0)
-                            {
-                                chunk_index = GetChunkIndex(center_block_x, center_block_y - lair_depth - dy, center_block_z - 12 + dz + dz);
-                                chunk[chunk_index] = BlockID::polymer;
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Extra horizontal shaft (left)?
-            if (rng.Range(1, 4) == 1)
-            {
-                for (int dz = -1; dz <= 1; dz++)
-                {
-                    for (int dy = -1; dy <= 1; dy++)
-                    {
-                        for (int dx = 0; dx < 7; dx++)
-                        {
-                            // Carve
-                            chunk_index = GetChunkIndex(center_block_x - 3 - dx, center_block_y - lair_depth + 3 + dy, center_block_z - 12 + dz);
-                            chunk[chunk_index] = BlockID::air;
-
-                            // Side polymers
-                            if (dy == 0 && dz == 1) // left
-                            {
-                                chunk_index = GetChunkIndex(center_block_x - 3 - dx, center_block_y - lair_depth + 3 + dy, center_block_z - 12 + dz + 1);
-                                chunk[chunk_index] = BlockID::polymer;
-                            }
-                            else if (dz == 0 && dy != 0) // top and bottom
-                            {
-                                chunk_index = GetChunkIndex(center_block_x - 3 - dx, center_block_y - lair_depth + 3 + dy + dy, center_block_z - 12 + dz);
-                                chunk[chunk_index] = BlockID::polymer;
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Extra horizontal shaft (right)?
-            if (rng.Range(1, 4) == 1)
-            {
-                for (int dz = -1; dz <= 1; dz++)
-                {
-                    for (int dy = -1; dy <= 1; dy++)
-                    {
-                        for (int dx = 0; dx < 7; dx++)
-                        {
-                            // Carve
-                            chunk_index = GetChunkIndex(center_block_x + 3 + dx, center_block_y - lair_depth + 3 + dy, center_block_z - 12 + dz);
-                            chunk[chunk_index] = BlockID::air;
-
-                            // Side polymers
-                            if (dy == 0 && dz == 1) // right
-                            {
-                                chunk_index = GetChunkIndex(center_block_x + 3 + dx, center_block_y - lair_depth + 3 + dy, center_block_z - 12 + dz + 1);
-                                chunk[chunk_index] = BlockID::polymer;
-                            }
-                            else if (dz == 0 && dy != 0) // top and bottom
-                            {
-                                chunk_index = GetChunkIndex(center_block_x + 3 + dx, center_block_y - lair_depth + 3 + dy + dy, center_block_z - 12 + dz);
-                                chunk[chunk_index] = BlockID::polymer;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Extra right shaft(s)
-        if (rng.Range(1, 4) == 1)
-        {
-            for (int dx = 0; dx < 10; dx++)
-            {
-                for (int dz = -2; dz <= 2; dz++)
-                {
-                    for (int dy = -2; dy <= 2; dy++)
-                    {
-                        int shaft_x = (center_block_x + 4) + dx;
-                        int shaft_y = (center_block_y - lair_depth + 3) + dy;
-                        int shaft_z = center_block_z + dz;
-                        chunk_index = GetChunkIndex(shaft_x, shaft_y, shaft_z);
-                        chunk[chunk_index] = BlockID::air;
-
-                        if (dy == 0)
-                        {
-                            // Left polymer
-                            chunk_index = GetChunkIndex(shaft_x, shaft_y, center_block_z - 3);
-                            chunk[chunk_index] = BlockID::polymer;
-
-                            // Right polymer
-                            chunk_index = GetChunkIndex(shaft_x, shaft_y, center_block_z + 3);
-                            chunk[chunk_index] = BlockID::polymer;
-                        }
-
-                        if (dz == 0)
-                        {
-                            // Top polymer
-                            chunk_index = GetChunkIndex(shaft_x, center_block_y - lair_depth + 6, shaft_z);
-                            chunk[chunk_index] = BlockID::polymer;
-
-                            // Bottom polymer
-                            chunk_index = GetChunkIndex(shaft_x, center_block_y - lair_depth, shaft_z);
-                            chunk[chunk_index] = BlockID::polymer;
-                        }
-                    }
-                }
-            }
-
-            // Polymer on back wall
-            chunk_index = GetChunkIndex(center_block_x + 4 + 10, center_block_y - lair_depth + 3, center_block_z);
-            chunk[chunk_index] = BlockID::polymer;
-
-            // Extra vertical shaft?
-            if (rng.Range(1, 4) == 1)
-            {
-                for (int dz = -1; dz <= 1; dz++)
-                {
-                    for (int dx = -1; dx <= 1; dx++)
-                    {
-                        for (int dy = 0; dy <= 20; dy++)
-                        {
-                            // Carve
-                            chunk_index = GetChunkIndex(center_block_x + 4 + 8 + dx, center_block_y - lair_depth - dy, center_block_z + dz);
-                            chunk[chunk_index] = BlockID::air;
-
-                            // Side polymers
-                            if (dz == 0 && dx != 0)
-                            {
-                                chunk_index = GetChunkIndex(center_block_x + 4 + 8 + dx + dx, center_block_y - lair_depth - dy, center_block_z);
-                                chunk[chunk_index] = BlockID::polymer;
-                            }
-                            else if (dx == 0 && dz != 0)
-                            {
-                                chunk_index = GetChunkIndex(center_block_x + 4 + 8, center_block_y - lair_depth - dy, center_block_z + dz + dz);
-                                chunk[chunk_index] = BlockID::polymer;
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Extra horizontal shaft (left)?
-            if (rng.Range(1, 4) == 1)
-            {
-                for (int dx = -1; dx <= 1; dx++)
-                {
-                    for (int dy = -1; dy <= 1; dy++)
-                    {
-                        for (int dz = 0; dz < 7; dz++)
-                        {
-                            // Carve
-                            chunk_index = GetChunkIndex(center_block_x + 12 + dx, center_block_y - lair_depth + 3 + dy, center_block_z + 3 + dz);
-                            chunk[chunk_index] = BlockID::air;
-
-                            // Side polymers
-                            if (dy == 0 && dx == -1)
-                            {
-                                chunk_index = GetChunkIndex(center_block_x + 12 + dx - 1, center_block_y - lair_depth + 3 + dy, center_block_z + 3 + dz);
-                                chunk[chunk_index] = BlockID::polymer;
-                            }
-                            else if (dx == 0 && dy != 0)
-                            {
-                                chunk_index = GetChunkIndex(center_block_x + 12 + dx, center_block_y - lair_depth + 3 + dy + dy, center_block_z + 3 + dz);
-                                chunk[chunk_index] = BlockID::polymer;
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Extra horizontal shaft (right)?
-            if (rng.Range(1, 4) == 1)
-            {
-                for (int dx = -1; dx <= 1; dx++)
-                {
-                    for (int dy = -1; dy <= 1; dy++)
-                    {
-                        for (int dz = 0; dz < 7; dz++)
-                        {
-                            // Carve
-                            chunk_index = GetChunkIndex(center_block_x + 12 + dx, center_block_y - lair_depth + 3 + dy, center_block_z - 3 - dz);
-                            chunk[chunk_index] = BlockID::air;
-
-                            // Side polymers
-                            if (dy == 0 && dx == -1)
-                            {
-                                chunk_index = GetChunkIndex(center_block_x + 12 + dx - 1, center_block_y - lair_depth + 3 + dy, center_block_z - 3 - dz);
-                                chunk[chunk_index] = BlockID::polymer;
-                            }
-                            else if (dx == 0 && dy != 0)
-                            {
-                                chunk_index = GetChunkIndex(center_block_x + 12 + dx, center_block_y - lair_depth + 3 + dy + dy, center_block_z - 3 - dz);
-                                chunk[chunk_index] = BlockID::polymer;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Extra left shaft(s)
-        if (rng.Range(1, 4) == 1)
-        {
-            for (int dx = 0; dx < 10; dx++)
-            {
-                for (int dz = -2; dz <= 2; dz++)
-                {
-                    for (int dy = -2; dy <= 2; dy++)
-                    {
-                        int shaft_x = (center_block_x - 4) - dx;
-                        int shaft_y = (center_block_y - lair_depth + 3) + dy;
-                        int shaft_z = center_block_z + dz;
-                        chunk_index = GetChunkIndex(shaft_x, shaft_y, shaft_z);
-                        chunk[chunk_index] = BlockID::air;
-
-                        if (dy == 0)
-                        {
-                            // Left polymer
-                            chunk_index = GetChunkIndex(shaft_x, shaft_y, center_block_z - 3);
-                            chunk[chunk_index] = BlockID::polymer;
-
-                            // Right polymer
-                            chunk_index = GetChunkIndex(shaft_x, shaft_y, center_block_z + 3);
-                            chunk[chunk_index] = BlockID::polymer;
-                        }
-
-                        if (dz == 0)
-                        {
-                            // Top polymer
-                            chunk_index = GetChunkIndex(shaft_x, center_block_y - lair_depth + 6, shaft_z);
-                            chunk[chunk_index] = BlockID::polymer;
-
-                            // Bottom polymer
-                            chunk_index = GetChunkIndex(shaft_x, center_block_y - lair_depth, shaft_z);
-                            chunk[chunk_index] = BlockID::polymer;
-                        }
-                    }
-                }
-            }
-
-            // Polymer on back wall
-            chunk_index = GetChunkIndex(center_block_x - 4 - 10, center_block_y - lair_depth + 3, center_block_z);
-            chunk[chunk_index] = BlockID::polymer;
-
-            // Extra vertical shaft?
-            if (rng.Range(1, 4) == 1)
-            {
-                for (int dz = -1; dz <= 1; dz++)
-                {
-                    for (int dx = -1; dx <= 1; dx++)
-                    {
-                        for (int dy = 0; dy <= 20; dy++)
-                        {
-                            // Carve
-                            chunk_index = GetChunkIndex(center_block_x - 4 - 8 + dx, center_block_y - lair_depth - dy, center_block_z + dz);
-                            chunk[chunk_index] = BlockID::air;
-
-                            // Side polymers
-                            if (dz == 0 && dx != 0)
-                            {
-                                chunk_index = GetChunkIndex(center_block_x - 4 - 8 + dx + dx, center_block_y - lair_depth - dy, center_block_z);
-                                chunk[chunk_index] = BlockID::polymer;
-                            }
-                            else if (dx == 0 && dz != 0)
-                            {
-                                chunk_index = GetChunkIndex(center_block_x - 4 - 8, center_block_y - lair_depth - dy, center_block_z + dz + dz);
-                                chunk[chunk_index] = BlockID::polymer;
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Extra horizontal shaft (left)?
-            if (rng.Range(1, 4) == 1)
-            {
-                for (int dx = -1; dx <= 1; dx++)
-                {
-                    for (int dy = -1; dy <= 1; dy++)
-                    {
-                        for (int dz = 0; dz < 7; dz++)
-                        {
-                            // Carve
-                            chunk_index = GetChunkIndex(center_block_x - 12 + dx, center_block_y - lair_depth + 3 + dy, center_block_z + 3 + dz);
-                            chunk[chunk_index] = BlockID::air;
-
-                            // Side polymers
-                            if (dy == 0 && dx == 1)
-                            {
-                                chunk_index = GetChunkIndex(center_block_x - 12 + dx + 1, center_block_y - lair_depth + 3 + dy, center_block_z + 3 + dz);
-                                chunk[chunk_index] = BlockID::polymer;
-                            }
-                            else if (dx == 0 && dy != 0)
-                            {
-                                chunk_index = GetChunkIndex(center_block_x - 12 + dx, center_block_y - lair_depth + 3 + dy + dy, center_block_z + 3 + dz);
-                                chunk[chunk_index] = BlockID::polymer;
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Extra horizontal shaft (right)?
-            if (rng.Range(1, 4) == 1)
-            {
-                for (int dx = -1; dx <= 1; dx++)
-                {
-                    for (int dy = -1; dy <= 1; dy++)
-                    {
-                        for (int dz = 0; dz < 7; dz++)
-                        {
-                            // Carve
-                            chunk_index = GetChunkIndex(center_block_x - 12 + dx, center_block_y - lair_depth + 3 + dy, center_block_z - 3 - dz);
-                            chunk[chunk_index] = BlockID::air;
-
-                            // Side polymers
-                            if (dy == 0 && dx == 1)
-                            {
-                                chunk_index = GetChunkIndex(center_block_x - 12 + dx + 1, center_block_y - lair_depth + 3 + dy, center_block_z - 3 - dz);
-                                chunk[chunk_index] = BlockID::polymer;
-                            }
-                            else if (dx == 0 && dy != 0)
-                            {
-                                chunk_index = GetChunkIndex(center_block_x - 12 + dx, center_block_y - lair_depth + 3 + dy + dy, center_block_z - 3 - dz);
-                                chunk[chunk_index] = BlockID::polymer;
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        int x = CHUNK_SIZE / 2;
+        int z = CHUNK_SIZE / 2;
+        int y = height_map[z + CHUNK_SIZE * x] + 1;
+        GenerateLairShaft(
+            chunk,
+            rng,
+            3,
+            x,
+            z,
+            y,
+            15,
+            3,
+            5
+        );
     }
 }
 
@@ -1157,6 +526,9 @@ static void GenerateCrystal(BlockID *chunk, RNG &rng, float radius, int base_x, 
     }
 }
 
+//
+// This code was reverse-engineered from Lunacraft v2.01
+//
 static void GenerateGreenTreeBranch(BlockID *chunk, RNG &rng, float angle, int base_x, int base_y, int base_z)
 {
     float x = (float)base_x;
@@ -1523,5 +895,118 @@ static void GenerateVein(
         radius *= 0.8f;
         length = static_cast<int>(length * 0.45f);
         recursion_depth--;
+    }
+}
+
+static void GenerateLairShaft(BlockID *chunk, RNG &rng, int radius, int base_x, int base_z, int base_y, int length, int recursion_depth, int direction)
+{
+    constexpr int directions[] = {
+    //  x   z   y
+        0, -1,  0,
+        1,  0,  0,
+        0,  1,  0,
+       -1,  0,  0,
+        0,  0,  1,
+        0,  0, -1,
+    };
+
+    constexpr int direction_map[6][4] = { // Allowed next directions for each direction
+        {1, 3, 4, 5},
+        {0, 2, 4, 5},
+        {1, 3, 4, 5},
+        {0, 2, 4, 5},
+        {0, 1, 2, 3},
+        {0, 1, 2, 3},
+    };
+
+    if (length <= 0 || radius <= 0 || recursion_depth <= 0)
+        return;
+
+    int middle_x = base_x;
+    int middle_z = base_z;
+    int middle_y = base_y;
+
+    int dx = directions[direction * 3];     // Shaft axis
+    int dz = directions[direction * 3 + 1]; //
+    int dy = directions[direction * 3 + 2]; //
+
+    int adjusted_length = direction <= 3 ? length : 2*length; // Vertical shafts are doubled
+
+    // Generate shaft
+    for (int i = 0; i < adjusted_length; i++)
+    {
+        for (int h_step = -radius - 1; h_step <= radius + 1; h_step++)
+        {
+            for (int v_step = -radius - 1; v_step <= radius + 1; v_step++)
+            {
+                int x = middle_x;
+                int z = middle_z;
+                int y = middle_y;
+
+                // Offset based on shaft axis
+                if (dy != 0)
+                {
+                    x += h_step;
+                    z += v_step;
+                }
+                else if (dx != 0)
+                {
+                    y += v_step;
+                    z += h_step;
+                }
+                else
+                {
+                    y += v_step;
+                    x += h_step;
+                }
+
+                if (BlockIsInChunk(x, y ,z))
+                {
+                    bool on_h_edge = glm::abs(h_step) == radius + 1;
+                    bool on_v_edge = glm::abs(v_step) == radius + 1;
+                    BlockID &current_block = chunk[GetChunkIndex(x, y, z)];
+                    if (!(on_h_edge || on_v_edge)) // Carve inside
+                    {
+                        current_block = BlockID::air;
+                    }
+                    else if ((h_step == 0 && on_v_edge) || (v_step == 0 && on_h_edge)) // Decorate sides
+                    {
+                        if (current_block != BlockID::air)
+                        {
+                            BlockID decoration_block = rng.Range(0.0f, 1.0f) > 0.01f ? BlockID::polymer : BlockID::light; // 99% polymer, 1% light
+                            current_block = decoration_block;
+                        }
+                    }
+                }
+            }
+        }
+
+        middle_x += dx;
+        middle_z += dz;
+        middle_y += dy;
+    }
+
+    // Decorate end
+    if (BlockIsInChunk(middle_x, middle_y, middle_z))
+    {
+        BlockID decoration_block = rng.Range(0.0f, 1.0f) > 0.01f ? BlockID::polymer : BlockID::light; // 99% polymer, 1% light
+        chunk[GetChunkIndex(middle_x, middle_y, middle_z)] = decoration_block;
+    }
+
+    // Possibly spawn branching shafts
+    for (int i = 0; i < radius; i++)
+    {
+        int middle_offset = radius + 1;
+        GenerateLairShaft(
+            chunk,
+            rng,
+            radius - 1,
+            middle_x - middle_offset * dx,
+            middle_z - middle_offset * dz,
+            middle_y - middle_offset * dy,
+            adjusted_length - 1,
+            recursion_depth - 1,
+            direction_map[direction][(i + rng.Range(0, 3)) % 4]
+        );
     }
 }
