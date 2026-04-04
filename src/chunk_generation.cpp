@@ -16,6 +16,7 @@ static void GenerateCrystal(BlockID *, RNG &, float, int, int, int, int, BlockID
 static void GenerateGreenTreeBranch(BlockID *, RNG &, float, int, int, int);
 static void GenerateSpiralTreeBranch(BlockID *, RNG &, float, int, int, int);
 static void GenerateColorTreeBranch(BlockID *, RNG &, float, int, int, int);
+static void GenerateVein(BlockID *, RNG &, float, float, float, float, float, int, BlockID, int);
 
 static void GenerateHeightMap(uint8_t *height_map, int chunk_x, int chunk_z, uint64_t seed)
 {
@@ -245,90 +246,55 @@ void GenerateChunk(BlockID *chunk, int chunk_x, int chunk_z, MoonSettings settin
     //
     // Ores
     //
+    // This system was reverse-engineered from Lunacraft v2.01
+    //
 
-    int ore_spawn_chance = rng.Range(1, 10);
-    if (ore_spawn_chance <= 4)
+    constexpr BlockID MINERALS[] = {BlockID::shale_gravel, BlockID::magnetite, BlockID::aluminum_ore, BlockID::titanium_ore, BlockID::gold_ore, BlockID::notchium_ore, BlockID::blue_crystal};
+    constexpr int WEIGHTS[] = {160, 120, 100, 90, 60, 40, 10};
+    constexpr int TOTAL_WEIGHT = [&WEIGHTS]()
     {
-        int seed_block_x = rng.Range(5, CHUNK_SIZE - 7);
-        int seed_block_z = rng.Range(5, CHUNK_SIZE - 7);
-        int seed_block_y = -1;
-        for (int y = 63; y < WORLD_HEIGHT_LIMIT; y++)
-        {
-            chunk_index = GetChunkIndex(seed_block_x, y + 1, seed_block_z);
-            if (chunk[chunk_index] == BlockID::air)
-            {
-                seed_block_y = y;
-                break;
-            }
-        }
+        int total_weight = 0;
+        for (int i = 0; i <= 6; i++) total_weight += WEIGHTS[i];
+        return total_weight;
+    }();
 
-        int ore = rng.Range(1, 100);
-        int vein_size;
-        BlockID ore_id;
-        if (ore <= 36) // 36%
+    int vein_count = rng.Range(0.0f, 1.0f) * rng.Range(0.0f, 1.0f) * 900 + 100;
+    vein_count *= (float)(CHUNK_SIZE * CHUNK_SIZE * WORLD_HEIGHT_LIMIT) / glm::pow(128.0f, 3.0f); // Scale to match original game's density
+    for (int i = 0; i < vein_count; i++)
+    {
+        // For the loop right below, weight_cutoff < total_weight, so there's at least
+        // one iteration. This ensures that the index is never less than 1, so shale
+        // gravel can't spawn. Either this is a bug, or the point is just to add a null
+        // contribution to shift the total weight, and thus control the ore distribution.
+        int weight_cutoff = rng.Range(0, TOTAL_WEIGHT - 1);
+        int remaining = TOTAL_WEIGHT;
+        int index = 0;
+        for (int j = 0; j < 7 && remaining >= weight_cutoff; j++)
         {
-            ore_id = BlockID::magnetite;
-            vein_size = rng.Range(2, 6);
+            remaining -= WEIGHTS[j];
+            index++;
         }
-        else if (ore <= 60) // 24%
-        {
-            ore_id = BlockID::aluminum_ore;
-            vein_size = rng.Range(2, 6);
-        }
-        else if (ore <= 78) // 18%
-        {
-            ore_id = BlockID::titanium_ore;
-            vein_size = rng.Range(2, 6);
-        }
-        else if (ore <= 91) // 13%
-        {
-            ore_id = BlockID::gold_ore;
-            vein_size = rng.Range(1, 4);
-        }
-        else if (ore <= 98) // 7%
-        {
-            ore_id = BlockID::notchium_ore;
-            vein_size = rng.Range(1, 4);
-        }
-        else // 2%
-        {
-            ore_id = BlockID::blue_crystal;
-            vein_size = rng.Range(1, 4);
-        }
+        index = glm::min(index, 6);
 
-        int current_block_x = seed_block_x;
-        int current_block_y = seed_block_y;
-        int current_block_z = seed_block_z;
-        chunk_index = GetChunkIndex(seed_block_x, seed_block_y, seed_block_z);
-        chunk[chunk_index] = ore_id;
-        for (int count = 0; count < vein_size; count++)
-        {
-            int next_direction = rng.Range(1, 5);
-            if (next_direction == 1) // Forward
-            {
-                current_block_z++;
-            }
-            else if (next_direction == 2) // Backward
-            {
-                current_block_z--;
-            }
-            else if (next_direction == 3) // Right
-            {
-                current_block_x++;
-            }
-            else if (next_direction == 4) // Left
-            {
-                current_block_x--;
-            }
-            else // Down
-            {
-                current_block_y--;
-            }
+        int weight = WEIGHTS[index];
+        BlockID mineral = MINERALS[index];
+        int mineral_count = weight * 0.125f * rng.Range(0.0f, 1.0f) + 3.0f;
 
-            chunk_index = GetChunkIndex(current_block_x, current_block_y, current_block_z);
-            if (chunk[chunk_index] != BlockID::air)
-                chunk[chunk_index] = ore_id;
-        }
+        int x = rng.Range(4, (CHUNK_SIZE - 1) - 4);
+        int z = rng.Range(4, (CHUNK_SIZE - 1) - 4);
+        uint8_t surface = height_map[z + CHUNK_SIZE * x];
+        int y = rng.Range(5, surface + 5);
+
+        GenerateVein(
+            chunk,
+            rng,
+            x, y, z,
+            0.5f, // radius
+            rng.Range(0.0f, 6.2831855f), // pitch
+            mineral_count,
+            mineral,
+            3 // recursion depth
+        );
     }
 
     //
@@ -1417,5 +1383,117 @@ static void GenerateColorTreeBranch(BlockID *chunk, RNG &rng, float angle, int b
                 }
             }
         }
+    }
+}
+
+//
+// This code was reverse-engineered from Lunacraft v2.01
+//
+static void GenerateVein(
+    BlockID *chunk,
+    RNG &rng,
+    float x,
+    float z,
+    float y,
+    float radius,
+    float pitch,
+    int length,
+    BlockID block,
+    int recursion_depth
+)
+{
+    if (radius < 0.1f || recursion_depth <= 0)
+        return;
+
+    // Random initial horizontal angle
+    float angle = rng.Range(0.0f, 2.0f * 3.1415926f);
+
+    while (radius >= 0.1f && recursion_depth > 0)
+    {
+        if (length > 0)
+        {
+            float local_pitch = pitch;
+
+            while (length > 0)
+            {
+                // Smooth random drift
+                local_pitch += rng.Range(-0.05f, 0.05f);
+                angle      += rng.Range(-0.05f, 0.05f);
+
+                // Move forward
+                float step = radius * 0.5f;
+
+                x += glm::cos(angle) * step;
+                z += glm::sin(angle) * step;
+                y += glm::sin(local_pitch) * step;
+
+                length -= glm::max(1, static_cast<int>(radius));
+
+                // Stay within vertical bounds
+                if (y < 2.0f || y >= 126.0f || glm::isnan(y))
+                    continue;
+
+                // Occasionally branch
+                if (rng.Range(0.0f, 1.0f) < 0.035f)
+                {
+                    GenerateVein(
+                        chunk,
+                        rng,
+                        x, y, z,
+                        radius * 0.8f,
+                        local_pitch,
+                        static_cast<int>(length * 0.45f),
+                        block,
+                        recursion_depth - 1
+                    );
+                }
+
+                // Carve / paint
+                if (radius <= 1.0f)
+                {
+                    int xi = static_cast<int>(x);
+                    int zi = static_cast<int>(z);
+                    int yi = static_cast<int>(y);
+
+                    if (BlockIsInChunk(xi, yi, zi))
+                    {
+                        BlockID &current = chunk[GetChunkIndex(xi, yi, zi)];
+
+                        if (current != BlockID::air)
+                            current = block;
+                    }
+                }
+                else
+                {
+                    float r = radius + rng.Range(0.0f, 1.0f);
+                    int rInt = static_cast<int>(r);
+
+                    for (int dx = -rInt; dx <= rInt; ++dx)
+                    for (int dz = -rInt; dz <= rInt; ++dz)
+                    for (int dy =  0;    dy <= rInt; ++dy)
+                    {
+                        if (dx*dx + dz*dz + dy*dy > r*r)
+                            continue;
+
+                        int xi = static_cast<int>(x + dx);
+                        int zi = static_cast<int>(z + dz);
+                        int yi = static_cast<int>(y + dy);
+
+                        if (!BlockIsInChunk(xi, yi, zi))
+                            continue;
+
+                        BlockID &current = chunk[GetChunkIndex(xi, yi, zi)];
+
+                        if (current != BlockID::air)
+                            current = block;
+                    }
+                }
+            }
+        }
+
+        // Shrink and repeat
+        radius *= 0.8f;
+        length = static_cast<int>(length * 0.45f);
+        recursion_depth--;
     }
 }
