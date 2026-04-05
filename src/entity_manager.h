@@ -29,7 +29,7 @@ class EntityManager
         void FixedUpdate();
         void Update(float delta_time);
         void RunPhysics(double &accumulator);
-        void RenderEntities(const glm::mat4 &vp_matrix);
+        void RenderEntities(const glm::mat4 &view, const glm::mat4 &proj);
         void DestroyMinilightAt(glm::ivec3 voxel);
         void LoadInitialEntities();
         void LoadChunkEntities(glm::ivec3 chunk_coords);

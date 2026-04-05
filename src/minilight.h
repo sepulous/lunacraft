@@ -15,7 +15,7 @@ class Minilight : public Entity
         Minilight(glm::ivec3 voxel, glm::vec3 normal);
         void Update(float delta_time) override;
         void FixedUpdate() override;
-        void Render(const glm::mat4 &vp_matrix) override;
+        void Render(const glm::mat4 &view, const glm::mat4 &proj) override;
 
         glm::ivec3 GetVoxel();
         MinilightData GetMinilightData();

@@ -104,10 +104,11 @@ Minilight::Minilight(glm::ivec3 voxel, glm::vec3 normal)
     mesh_.SetVertexData(vertices.data(), 30, GL_STATIC_DRAW);
 }
 
-void Minilight::Render(const glm::mat4 &vp_matrix)
+void Minilight::Render(const glm::mat4 &view, const glm::mat4 &proj)
 {
-    mesh_.Render([&vp_matrix](Shader *shader) {
-        shader->SetMat4("u_mvp_matrix", vp_matrix); // We've already applied the model matrix
+    mesh_.Render([&](Shader *shader) {
+        shader->SetMat4("u_view", view);
+        shader->SetMat4("u_proj", proj);
     });
 }
 

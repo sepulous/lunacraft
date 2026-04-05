@@ -15,7 +15,7 @@ class GreenMob : public Entity
         GreenMob(GreenMobData data);
         void Update(float delta_time) override;
         void FixedUpdate() override;
-        void Render(const glm::mat4 &vp_matrix) override;
+        void Render(const glm::mat4 &view, const glm::mat4 &proj) override;
 
         GreenMobData GetGreenMobData();
 

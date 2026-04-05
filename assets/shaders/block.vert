@@ -7,15 +7,17 @@ layout (location = 3) in vec2 in_light;
 
 out vec2 v_tex;
 out vec2 v_tile_origin;
-out vec3 v_ws_position;
 out vec2 v_light;
+out float v_view_dist;
 
-uniform mat4 u_view_projection;
+uniform mat4 u_view;
+uniform mat4 u_proj;
 
 void main()
 {
-    v_ws_position = in_position;
-    gl_Position = u_view_projection * vec4(in_position, 1.0);
+    vec4 view_pos = u_view * vec4(in_position, 1.0);
+    gl_Position = u_proj * view_pos;
+    v_view_dist = -view_pos.z;
     v_tex = in_uv.xy;
     v_tile_origin = in_uv.zw;
     v_light = in_light;

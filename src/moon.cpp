@@ -368,22 +368,25 @@ void Moon::Render(const glm::mat4 &projection)
     // Render chunks
     Shader &block_shader = ShaderManager::BLOCK_SHADER;
     block_shader.Use();
-    block_shader.SetMat4("u_view_projection", view_projection);
-    block_shader.SetVec3("u_ws_camera_position", player_camera.position);
+
     glm::vec4 fog_color = GetFogColor();
-    if (!options.show_fog)
-        fog_color.a = 0;
+    fog_color.a = options.show_fog ? 1 : 0;
     block_shader.SetVec4("u_fog_color", fog_color);
-    block_shader.SetFloat("u_fog_distance", options.render_distance * (CHUNK_SIZE / 1.5f));
+
+    block_shader.SetMat4("u_view", view);
+    block_shader.SetMat4("u_proj", projection);
+    block_shader.SetFloat("u_fog_start", (float)options.render_distance * 0.33f * 32.0f);
+    block_shader.SetFloat("u_fog_end", (float)options.render_distance * 0.85f * 32.0f);
+
     Plane frustum[6];
     GetFrustumPlanes(view_projection, frustum);
     chunk_manager_.RenderChunks(frustum);
 
     // Render entities
-    entity_manager_.RenderEntities(view_projection);
+    entity_manager_.RenderEntities(view, projection);
 
     // Render selection overlay
-    selection_block_.Render(view_projection);
+    selection_block_.Render(view, projection);
 
     //
     // Render skybox
@@ -649,13 +652,14 @@ bool SelectionBlock::IsActive()
     return active_;
 }
 
-void SelectionBlock::Render(const glm::mat4 &view_projection)
+void SelectionBlock::Render(const glm::mat4 &view, const glm::mat4 &proj)
 {
     if (active_)
     {
-        auto mvp_matrix = glm::translate(view_projection, glm::vec3{position_});
         overlay_.Render([&](Shader *shader) {
-            shader->SetMat4("u_mvp_matrix", mvp_matrix);
+            shader->SetMat4("u_model", glm::translate(glm::mat4{1.0f}, glm::vec3{position_}));
+            shader->SetMat4("u_view", view);
+            shader->SetMat4("u_proj", proj);
         });
     }
 }

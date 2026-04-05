@@ -19,7 +19,7 @@ class Slug : public Entity
         Slug(SlugData slug_data);
         void Update(float delta_time) override;
         void FixedUpdate() override;
-        void Render(const glm::mat4 &vp_matrix) override;
+        void Render(const glm::mat4 &view, const glm::mat4 &proj) override;
 
         SlugData GetSlugData();
         void SetIsFlying(bool value);

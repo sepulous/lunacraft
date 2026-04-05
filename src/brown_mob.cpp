@@ -108,7 +108,7 @@ void BrownMob::Update(float delta_time)
                     auto yaw_rotation = glm::mat3{glm::rotate(glm::mat4{1.0f}, glm::radians(yaw_), {0, 1, 0})};
                     glm::vec3 forward = yaw_rotation * glm::vec3{0.0f, 0.0f, 1.0f};
                     jump_vector_ = RNG{}.Range(2.0f, 8.0f) * forward
-                                + RNG{}.Range(6.0f, 16.0f) * glm::vec3{0, 1, 0};
+                                 + RNG{}.Range(6.0f, 16.0f) * glm::vec3{0, 1, 0};
                 }
             }
             else
@@ -136,9 +136,11 @@ void BrownMob::FixedUpdate()
     }
     else if (aggressive_)
     {
-        Entity *target = Moon::GetCurrentMoon()->GetEntityManager().GetEntityByID(attacker_id_);
-        if (target != nullptr)
+        Entity *target = Moon::GetCurrentMoon()->GetEntityManager().GetEntityByID(target_id_);
+        if (target)
         {
+            time_chasing_ += FIXED_DELTA_TIME;
+
             auto displacement = target->GetPosition() - position_;
             auto horizontal_displacement = glm::vec3{displacement.x, 0, displacement.z};
             float horizontal_distance = glm::length(horizontal_displacement);
@@ -154,35 +156,23 @@ void BrownMob::FixedUpdate()
             yaw_ = glm::degrees(glm::acos(glm::normalize(horizontal_displacement).z));
             if (horizontal_displacement.x < 0)
                 yaw_ *= -1;
-               
-            if (horizontal_distance > 0.1f && !has_inertia_)
-            {
-                time_chasing_ += FIXED_DELTA_TIME;
-                float t = time_chasing_ / 3.0f;
-                float chaseSpeed = glm::clamp(glm::mix(0.0f, 12.0f, t), 0.0f, 12.0f);
-                chase_speed_before_inertia_ = chaseSpeed;
-                float tangent = 0.2f * glm::sin(0.5f * time_chasing_) * glm::clamp(horizontal_distance, 0.0f, 6.0f);
-                glm::vec3 rightVector = glm::normalize(glm::cross(horizontal_displacement, {0, 1, 0}));
-                glm::vec3 chase_velocity = glm::normalize(horizontal_displacement - tangent * rightVector) * chaseSpeed;
-                velocity_.x = chase_velocity.x;
-                velocity_.z = chase_velocity.z;
-            }
-            else if (time_chasing_ > 0 && glm::length(velocity_) > 0.5f) // Inertia
-            {
-                time_chasing_ -= FIXED_DELTA_TIME;
-                float t = time_chasing_ / 3.0f;
-                float chaseSpeed = glm::clamp(glm::mix(0.0f, chase_speed_before_inertia_, t), 0.0f, chase_speed_before_inertia_);
-                velocity_.x = glm::normalize(velocity_).x * chaseSpeed;
-                velocity_.z = glm::normalize(velocity_).z * chaseSpeed;
 
-                has_inertia_ = chaseSpeed > 0.5f;
-                if (!has_inertia_)
-                    time_chasing_ = 0;
-            }
-            else
+            if (time_chasing_ < 1.0f)
             {
-                has_inertia_ = false;
+                auto right = glm::normalize(glm::cross(horizontal_displacement, {0, 1, 0}));
+                velocity_ -= (8.0f * glm::normalize(horizontal_displacement) + 6.0f * glm::sin(1.0f * time_chasing_) * right) * FIXED_DELTA_TIME;
             }
+            else if (horizontal_distance > 1.0f)
+            {
+                velocity_ += 8.0f * glm::normalize(horizontal_displacement) * FIXED_DELTA_TIME;
+                
+                float y = velocity_.y;
+                velocity_ = glm::dot(glm::vec3{velocity_.x, 0, velocity_.z}, glm::normalize(horizontal_displacement)) * glm::normalize(horizontal_displacement);
+                velocity_.y = y;
+            }
+
+            velocity_.x = glm::clamp(velocity_.x, -8.0f, 8.0f);
+            velocity_.z = glm::clamp(velocity_.z, -8.0f, 8.0f);
         }
         else
         {
@@ -226,11 +216,10 @@ void BrownMob::FixedUpdate()
     }
 }
 
-void BrownMob::Render(const glm::mat4 &vp_matrix)
+void BrownMob::Render(const glm::mat4 &view, const glm::mat4 &proj)
 {
-    glm::vec3 camera_pos = Moon::GetCurrentMoon()->GetPlayer()->GetCamera().position;
     glm::vec4 fog_color = Moon::GetCurrentMoon()->GetFogColor();
-    float fog_distance = OptionsManager::GetOptions().render_distance * (CHUNK_SIZE / 1.5f);
+    float render_distance = OptionsManager::GetOptions().render_distance;
 
     glm::mat4 model{1.0f};
     model = glm::translate(model, position_);
@@ -238,11 +227,12 @@ void BrownMob::Render(const glm::mat4 &vp_matrix)
     model = glm::scale(model, glm::vec3{0.5f, 0.25f, 0.5f});
 
     mesh_.Render([&](Shader *shader) {
-        shader->SetMat4("u_vp_matrix", vp_matrix);
-        shader->SetMat4("u_model_matrix", model);
-        shader->SetVec3("u_ws_camera_position", camera_pos);
+        shader->SetMat4("u_model", model);
+        shader->SetMat4("u_view", view);
+        shader->SetMat4("u_proj", proj);
         shader->SetVec4("u_fog_color", fog_color);
-        shader->SetFloat("u_fog_distance", fog_distance);
+        shader->SetFloat("u_fog_start", (float)render_distance * 0.33f * 32.0f);
+        shader->SetFloat("u_fog_end", (float)render_distance * 0.85f * 32.0f);
         shader->SetVec4("u_color", {1.0f, 0.0f, 0.0f, pain_time_});
     });
 }
@@ -260,7 +250,7 @@ void BrownMob::NotifyOfAttacker(size_t id)
 {
     if (!aggressive_)
     {
-        attacker_id_ = id;
+        target_id_ = id;
         aggressive_ = true;
     }
 }

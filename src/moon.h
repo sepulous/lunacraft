@@ -29,7 +29,7 @@ class SelectionBlock
         void SetActive(bool active);
         bool IsActive();
 
-        void Render(const glm::mat4 &mvp_matrix);
+        void Render(const glm::mat4 &view, const glm::mat4 &proj);
 
     private:
         Mesh overlay_;

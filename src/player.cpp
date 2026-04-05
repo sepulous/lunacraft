@@ -402,19 +402,22 @@ void Player::Update(float delta_time)
     }
 
     // Deplete/regen jetpack energy
-    if (is_flying_ && time_since_last_jetpack_update_ > 0.055f)
+    if (!Moon::GetCurrentMoon()->GetSettings().is_creative)
     {
-        jetpack_energy_ = glm::clamp(jetpack_energy_ - 1, 0, GetMaxJetpackEnergy());
-        time_since_last_jetpack_update_ = 0;
-    }
-    else if (!is_flying_ && time_since_last_jetpack_update_ > 1.0f)
-    {
-        jetpack_energy_ = glm::clamp(jetpack_energy_ + 1, 0, GetMaxJetpackEnergy());
-        time_since_last_jetpack_update_ = 0;
-    }
-    else
-    {
-        time_since_last_jetpack_update_ += delta_time;
+        if (is_flying_ && time_since_last_jetpack_update_ > 0.055f)
+        {
+            jetpack_energy_ = glm::clamp(jetpack_energy_ - 1, 0, GetMaxJetpackEnergy());
+            time_since_last_jetpack_update_ = 0;
+        }
+        else if (!is_flying_ && time_since_last_jetpack_update_ > 1.0f)
+        {
+            jetpack_energy_ = glm::clamp(jetpack_energy_ + 1, 0, GetMaxJetpackEnergy());
+            time_since_last_jetpack_update_ = 0;
+        }
+        else
+        {
+            time_since_last_jetpack_update_ += delta_time;
+        }
     }
 
     // Walking (bob animations)
@@ -647,27 +650,26 @@ void Player::SetHealth(int health) noexcept
     }
 }
 
-void Player::Render(const glm::mat4 &vp_matrix)
+void Player::Render(const glm::mat4 &view, const glm::mat4 &proj)
 {
     if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT) && inventory_.GetSelectedItem() == ItemID::camera)
         return;
 
-    auto inv_view = glm::inverse(camera_.GetViewMatrix()); // To do this in camera space
+    float render_distance = OptionsManager::GetOptions().render_distance;
 
     Shader &shader = ShaderManager::MOB_SHADER;
     shader.Use();
-    shader.SetMat4("u_vp_matrix", vp_matrix * inv_view);
-    shader.SetVec3("u_ws_camera_position", camera_.position);
+    shader.SetMat4("u_view", glm::mat4{1.0f});
+    shader.SetMat4("u_proj", proj);
     shader.SetVec4("u_color", {1.0f, 0.0f, 0.0f, pain_time_});
     shader.SetVec4("u_fog_color", glm::vec4{0.0f});
-    shader.SetFloat("u_fog_distance", 0);
 
     // Arm
     auto arm_model_matrix = glm::mat4(1.0);
     arm_model_matrix = glm::translate(arm_model_matrix, {0.48f + arm_shake_, -0.35f + arm_bob_, -0.35f - arm_extent_});
     arm_model_matrix = glm::scale(arm_model_matrix, {-0.45f, 0.45f, -0.45f});
     arm_mesh_.Render([&](Shader *shader) {
-        shader->SetMat4("u_model_matrix", arm_model_matrix);
+        shader->SetMat4("u_model", arm_model_matrix);
     });
 
     ItemID selected_item = inventory_.GetSelectedItem();
@@ -680,7 +682,7 @@ void Player::Render(const glm::mat4 &vp_matrix)
             pistol_base_model_matrix = glm::translate(pistol_base_model_matrix, {0.46f, -0.15f + arm_bob_, -1.2f + pistol_base_disp_});
             pistol_base_model_matrix = glm::scale(pistol_base_model_matrix, {0.08f, 0.08f, -0.08f});
             pistol_base_mesh_.Render([&](Shader *shader) {
-                shader->SetMat4("u_model_matrix", pistol_base_model_matrix);
+                shader->SetMat4("u_model", pistol_base_model_matrix);
             });
 
             // Pistol slide
@@ -688,7 +690,7 @@ void Player::Render(const glm::mat4 &vp_matrix)
             pistol_slide_model_matrix = glm::translate(pistol_slide_model_matrix, {0.44f, -0.06f + arm_bob_, -1.35f + pistol_base_disp_ + pistol_slide_disp_});
             pistol_slide_model_matrix = glm::scale(pistol_slide_model_matrix, {0.03f, 0.02f, -0.02f});
             pistol_slide_mesh_.Render([&](Shader *shader) {
-                shader->SetMat4("u_model_matrix", pistol_slide_model_matrix);
+                shader->SetMat4("u_model", pistol_slide_model_matrix);
             });
         }
         else if (selected_item == ItemID::drill_t1 || selected_item == ItemID::drill_t2 || selected_item == ItemID::drill_t3)
@@ -698,7 +700,7 @@ void Player::Render(const glm::mat4 &vp_matrix)
             drill_base_model_matrix = glm::translate(drill_base_model_matrix, {0.5f + arm_shake_, -0.35f + arm_bob_, -1.0f - arm_extent_});
             drill_base_model_matrix = glm::scale(drill_base_model_matrix, {0.15f, 0.15f, -0.15f});
             drill_base_mesh_.Render([&](Shader *shader) {
-                shader->SetMat4("u_model_matrix", drill_base_model_matrix);
+                shader->SetMat4("u_model", drill_base_model_matrix);
             });
 
             // Drill bit
@@ -707,7 +709,7 @@ void Player::Render(const glm::mat4 &vp_matrix)
             drill_bit_model_matrix = glm::rotate(drill_bit_model_matrix, drill_bit_rotation_, {0, 0, 1});
             drill_bit_model_matrix = glm::scale(drill_bit_model_matrix, {0.05f, 0.05f, -0.05f});
             drill_bit_mesh_.Render([&](Shader *shader) {
-                shader->SetMat4("u_model_matrix", drill_bit_model_matrix);
+                shader->SetMat4("u_model", drill_bit_model_matrix);
             });
         }
         else if (ItemIsSprite(selected_item) || selected_item == ItemID::minilight)
@@ -722,7 +724,7 @@ void Player::Render(const glm::mat4 &vp_matrix)
                 last_held_sprite_ = selected_item;
             }
             sprite_mesh_.Render([&](Shader *shader) {
-                shader->SetMat4("u_model_matrix", sprite_model_matrix);
+                shader->SetMat4("u_model", sprite_model_matrix);
             });
         }
         else
@@ -766,7 +768,7 @@ void Player::Render(const glm::mat4 &vp_matrix)
                 last_held_block_ = selected_item;
             }
             block_mesh_.Render([&](Shader *shader) {
-                shader->SetMat4("u_model_matrix", block_model_matrix);
+                shader->SetMat4("u_model", block_model_matrix);
             });
         }
     }

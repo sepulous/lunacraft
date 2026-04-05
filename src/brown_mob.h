@@ -15,7 +15,7 @@ class BrownMob : public Entity
         BrownMob(BrownMobData data);
         void Update(float delta_time) override;
         void FixedUpdate() override;
-        void Render(const glm::mat4 &vp_matrix) override;
+        void Render(const glm::mat4 &view, const glm::mat4 &proj) override;
 
         BrownMobData GetBrownMobData();
         void NotifyOfAttacker(size_t id);
@@ -28,7 +28,7 @@ class BrownMob : public Entity
         float next_action_time_ = 0;
         BrownMobAction action_ = BrownMobAction::NONE;
         glm::vec3 jump_vector_;
-        size_t attacker_id_;
+        size_t target_id_;
         float time_since_death_ = 0;
         float time_chasing_ = 0;
         float chase_speed_before_inertia_ = 0;

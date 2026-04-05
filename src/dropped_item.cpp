@@ -138,14 +138,8 @@ void DroppedItem::FixedUpdate()
     }
 }
 
-void DroppedItem::Render(const glm::mat4 &vp_matrix)
+void DroppedItem::Render(const glm::mat4 &view, const glm::mat4 &proj)
 {
-    // Sprites rotate to face the player, while blocks just rotate around.
-    // Both bob up and down when not moving towards player.
-
-    // These will just have an AABB around them, but they won't collide with the world
-    // along X or Z axes.
-
     float bob_offset = 0.08f * glm::sin(2.0f * bob_time_);
 
     glm::mat4 model{1.0f};
@@ -177,7 +171,9 @@ void DroppedItem::Render(const glm::mat4 &vp_matrix)
     model = glm::scale(model, glm::vec3{ItemIsSprite(item_) ? 0.2f : 0.15f});
 
     mesh_.Render([&](Shader *shader) {
-        shader->SetMat4("u_mvp_matrix", vp_matrix * model);
+        shader->SetMat4("u_model", model);
+        shader->SetMat4("u_view", view);
+        shader->SetMat4("u_proj", proj);
     });
 }
 

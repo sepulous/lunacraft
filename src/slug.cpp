@@ -97,7 +97,7 @@ void Slug::FixedUpdate()
     }
 }
 
-void Slug::Render(const glm::mat4 &vp_matrix)
+void Slug::Render(const glm::mat4 &view, const glm::mat4 &proj)
 {
     glm::vec3 forward = glm::normalize(velocity_);
     glm::vec3 right = glm::normalize(glm::cross(glm::vec3(0, 1, 0), forward));
@@ -112,8 +112,10 @@ void Slug::Render(const glm::mat4 &vp_matrix)
     glm::mat4 model = glm::translate(glm::mat4{1.0f}, position_) * rotation;
     model = glm::scale(model, glm::vec3{0.05f});
 
-    mesh_.Render([&model, &vp_matrix](Shader *shader) {
-        shader->SetMat4("u_mvp_matrix", vp_matrix * model);
+    mesh_.Render([&](Shader *shader) {
+        shader->SetMat4("u_model", model);
+        shader->SetMat4("u_view", view);
+        shader->SetMat4("u_proj", proj);
     });
 }
 

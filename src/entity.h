@@ -22,7 +22,7 @@ class Entity
         virtual ~Entity() = default;
         virtual void Update(float delta_time) = 0;
         virtual void FixedUpdate() = 0;
-        virtual void Render(const glm::mat4 &vp_matrix) = 0;
+        virtual void Render(const glm::mat4 &view, const glm::mat4 &proj) = 0;
 
         EntityType GetType() noexcept;
 

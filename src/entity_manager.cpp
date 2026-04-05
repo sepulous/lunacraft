@@ -116,10 +116,10 @@ void EntityManager::Update(float delta_time)
         entity->Update(delta_time);
 }
 
-void EntityManager::RenderEntities(const glm::mat4 &vp_matrix)
+void EntityManager::RenderEntities(const glm::mat4 &view, const glm::mat4 &proj)
 {
     for (auto [entity_id, entity] : entities_)
-        entity->Render(vp_matrix);
+        entity->Render(view, proj);
 }
 
 void EntityManager::Integrate(Entity *entity)

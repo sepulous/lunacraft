@@ -185,11 +185,10 @@ void GreenMob::FixedUpdate()
     }
 }
 
-void GreenMob::Render(const glm::mat4 &vp_matrix)
+void GreenMob::Render(const glm::mat4 &view, const glm::mat4 &proj)
 {
-    glm::vec3 camera_pos = Moon::GetCurrentMoon()->GetPlayer()->GetCamera().position;
     glm::vec4 fog_color = Moon::GetCurrentMoon()->GetFogColor();
-    float fog_distance = OptionsManager::GetOptions().render_distance * (CHUNK_SIZE / 1.5f);
+    float render_distance = OptionsManager::GetOptions().render_distance;
 
     glm::mat4 model{1.0f};
     model = glm::translate(model, position_);
@@ -198,11 +197,12 @@ void GreenMob::Render(const glm::mat4 &vp_matrix)
     model = glm::scale(model, glm::vec3{0.5f});
 
     mesh_.Render([&](Shader *shader) {
-        shader->SetMat4("u_vp_matrix", vp_matrix);
-        shader->SetMat4("u_model_matrix", model);
-        shader->SetVec3("u_ws_camera_position", camera_pos);
+        shader->SetMat4("u_model", model);
+        shader->SetMat4("u_view", view);
+        shader->SetMat4("u_proj", proj);
         shader->SetVec4("u_fog_color", fog_color);
-        shader->SetFloat("u_fog_distance", fog_distance);
+        shader->SetFloat("u_fog_start", (float)render_distance * 0.33f * 32.0f);
+        shader->SetFloat("u_fog_end", (float)render_distance * 0.85f * 32.0f);
         shader->SetVec4("u_color", {1.0f, 0.0f, 0.0f, pain_time_});
     });
 }
