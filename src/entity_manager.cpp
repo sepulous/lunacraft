@@ -181,12 +181,13 @@ void EntityManager::Integrate(Entity *entity)
     if (entity->GetType() == EntityType::SLUG)
     {
         Slug *slug = dynamic_cast<Slug *>(entity);
+        SlugData slug_data = slug->GetSlugData();
         if (slug->IsFlying())
         {
             Entity *hit_entity = nullptr;
             for (auto [_, other] : entities_)
             {
-                if (other->CanBeDamaged())
+                if (other->CanBeDamaged() && slug_data.source_id != other->GetID())
                 {
                     auto slug_offset = 0.2f * glm::normalize(slug->GetVelocity());
                     auto slug_pos = slug->GetPosition() + slug_offset;
@@ -203,13 +204,13 @@ void EntityManager::Integrate(Entity *entity)
 
             if (hit_entity != nullptr)
             {
-                int new_health = hit_entity->GetHealth() - slug->GetSlugData().damage;
+                int new_health = hit_entity->GetHealth() - slug_data.damage;
                 hit_entity->SetHealth(new_health);
-                
+
                 slug->SetIsDead(true);
 
                 if (hit_entity->GetType() == EntityType::BROWN_MOB)
-                    dynamic_cast<BrownMob *>(hit_entity)->NotifyOfAttacker(slug->GetSlugData().source_id);
+                    dynamic_cast<BrownMob *>(hit_entity)->NotifyOfAttacker(slug_data.source_id);
             }
             else
             {

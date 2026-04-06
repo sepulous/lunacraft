@@ -16,6 +16,7 @@ Slug::Slug(SlugData slug_data)
     damage_ = slug_data.damage;
     is_flying_ = slug_data.is_flying;
     time_stuck_ = slug_data.time_stuck;
+    source_id_ = slug_data.source_id;
     can_be_damaged_ = false;
     death_animation_done_ = true;
 
