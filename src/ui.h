@@ -24,6 +24,9 @@ class UIGame;
 class UILoadMoonMenu;
 class UIResetMoonMenu;
 class UIOptionsMenu;
+class UIInventory;
+class UIDebugMenu;
+class UIDeathScreen;
 
 // UI elements
 class UITextBox;
@@ -451,6 +454,24 @@ class UIInventory
         void RebuildUI(Player *player, bool force);
 };
 
+class UIDeathScreen
+{
+    public:
+        UIDeathScreen();
+        void Update();
+        void Render();
+        bool IsActive();
+        void SetActive(bool active);
+        bool ClickedOk();
+
+    private:
+        UIImage background_;
+        UIText text_;
+        UIButton ok_button_;
+        bool clicked_ok_ = false;
+        bool active_ = false;
+};
+
 class UIGame
 {
     public:
@@ -458,6 +479,7 @@ class UIGame
         UIPauseMenu &GetPauseMenu();
         UIDebugMenu &GetDebugMenu();
         UIInventory &GetInventoryUI();
+        UIDeathScreen &GetDeathScreen();
         void SetAlert(std::string str);
         void Update(float delta_time);
         void Render();
@@ -466,6 +488,7 @@ class UIGame
         UIPauseMenu pause_menu_;
         UIDebugMenu debug_menu_;
         UIInventory inventory_;
+        UIDeathScreen death_screen_;
         UIImage crosshair_;
         UIText alert_;
         bool alert_active_ = false;

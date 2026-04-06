@@ -227,6 +227,7 @@ int main()
             UIPauseMenu &ui_pause_menu = ui_game.GetPauseMenu();
             UIDebugMenu &ui_debug_menu = ui_game.GetDebugMenu();
             UIInventory &ui_inventory = ui_game.GetInventoryUI();
+            UIDeathScreen &ui_death_screen = ui_game.GetDeathScreen();
 
             //
             // Input
@@ -283,6 +284,43 @@ int main()
 
             auto player = moon->GetPlayer();
 
+            // Player death
+            if (player->GetHealth() <= 0)
+            {
+                if (player->IsInControl())
+                {
+                    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+                    player->DisableControl();
+                    ui_death_screen.SetActive(true);
+                }
+
+                ui_death_screen.Update();
+
+                if (ui_death_screen.ClickedOk())
+                {
+                    // Reset/save player data
+                    PlayerData player_data = player->GetPlayerData();
+                    player_data.health = 100;
+                    player_data.suit_status = 100;
+                    player_data.jetpack_energy = player->GetMaxJetpackEnergy();
+                    player_data.position = {CHUNK_SIZE / 2.0f, 114.0f + 0.5f - 0.9f, CHUNK_SIZE / 2.0f};
+                    std::ofstream player_data_file(Storage::MOONS / (std::string("moon") + std::to_string(moon->GetID())) / "player.dat", std::ios::binary);
+                    player_data_file.write(reinterpret_cast<char *>(&player_data), sizeof(PlayerData));
+                    player_data_file.close();
+
+                    // Unload moon
+                    delete moon;
+                    moon = nullptr;
+
+                    // Reset to main menu
+                    ui_pause_menu.SetActive(false);
+                    ui_death_screen.SetActive(false);
+                    ui_main_menu.RefreshMoonButtonText();
+                    game_state = GameState::MAIN_MENU;
+                    continue;
+                }
+            }
+
             // Play random song periodically
             if (current_time >= next_music_time)
             {
@@ -313,7 +351,7 @@ int main()
             }
 
             // Update inventory
-            ui_inventory.Update(Moon::GetCurrentMoon()->GetPlayer());
+            ui_inventory.Update(player);
 
             // Handle quit/resume buttons
             if (ui_pause_menu.IsActive())
@@ -357,7 +395,7 @@ int main()
 
                 if (ui_inventory.IsActive())
                     player->DisableControl();
-                else
+                else if (player->GetHealth() > 0)
                     player->EnableControl();
 
                 player->SetCameraSensitivity(0.05f * OptionsManager::GetOptions().sensitivity);

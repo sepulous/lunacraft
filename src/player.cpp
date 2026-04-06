@@ -379,26 +379,29 @@ void Player::Update(float delta_time)
         }
     }
 
-    // Regen health
-    if (suit_status_ > 0 && time_since_last_health_update_ > 0.5f)
+    if (health_ > 0)
     {
-        health_ = glm::clamp(health_ + 1, 0, 100);
-        time_since_last_health_update_ = 0;
-    }
-    else
-    {
-        time_since_last_health_update_ += delta_time;
-    }
+        // Regen health
+        if (suit_status_ > 0 && time_since_last_health_update_ > 0.5f)
+        {
+            health_ = glm::clamp(health_ + 1, 0, 100);
+            time_since_last_health_update_ = 0;
+        }
+        else
+        {
+            time_since_last_health_update_ += delta_time;
+        }
 
-    // Regen suit status
-    if (CanRegenSuit() && time_since_last_suit_update_ > GetSuitRegenInterval())
-    {
-        suit_status_ = glm::clamp(suit_status_ + 1, 0, 100);
-        time_since_last_suit_update_ = 0;
-    }
-    else
-    {
-        time_since_last_suit_update_ += delta_time;
+        // Regen suit status
+        if (CanRegenSuit() && time_since_last_suit_update_ > GetSuitRegenInterval())
+        {
+            suit_status_ = glm::clamp(suit_status_ + 1, 0, 100);
+            time_since_last_suit_update_ = 0;
+        }
+        else
+        {
+            time_since_last_suit_update_ += delta_time;
+        }
     }
 
     // Deplete/regen jetpack energy

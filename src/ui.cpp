@@ -1242,6 +1242,72 @@ void UIDebugMenu::Render()
 }
 
 //
+// Death screen
+//
+
+UIDeathScreen::UIDeathScreen()
+{
+    // Background
+    background_.LoadImage(Storage::IMAGES / "ui" / "ui_menu_bg.png", GL_NEAREST);
+    float bg_width = 920;
+    float bg_height = 450;
+    float bg_pos_x = (VIRTUAL_UI_WIDTH / 2.0f) - (bg_width / 2.0f);
+    float bg_pos_y = (VIRTUAL_UI_HEIGHT / 2.0f) - (bg_height / 2.0f);
+    background_.SetSize({bg_width, bg_height});
+    background_.SetPosition({bg_pos_x, bg_pos_y});
+
+    // Text
+    glm::vec2 text_size = UIText::GetTextSizeInPixels("You have died.", 0.5f);
+    glm::vec2 text_position = {bg_pos_x + (bg_width / 2.0f) - (text_size.x / 2.0f), bg_pos_y + bg_height - 100};
+    text_.SetPosition(text_position);
+    text_.SetText("You have died.");
+    text_.SetFontSize(0.5f);
+    text_.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
+
+    // Ok button
+    glm::vec2 ok_button_size = {360, 120};
+    glm::vec2 ok_button_position = {bg_pos_x + (bg_width / 2.0f) - (ok_button_size.x / 2.0f), bg_pos_y + 100};
+    float ok_font_size = 0.5f;
+    ok_button_.SetPosition(ok_button_position);
+    ok_button_.SetSize(ok_button_size);
+    ok_button_.SetImage(Storage::IMAGES / "ui" / "ui_button_3.png");
+    ok_button_.SetText("ok", ok_font_size, {0.0f, 0.0f, 0.0f, 1.0f});
+    glm::vec2 ok_text_size = UIText::GetTextSizeInPixels("ok", ok_font_size);
+    ok_button_.GetText().SetPosition({
+        ok_button_position.x + (ok_button_size.x / 2.0f) - (ok_text_size.x / 2.0f),
+        ok_button_position.y + (ok_button_size.y / 2.0f) - (ok_text_size.y / 2.0f)
+    });
+    ok_button_.SetClickAction([this]() { clicked_ok_ = true; });
+}
+
+void UIDeathScreen::Update()
+{
+    ok_button_.Update();
+}
+
+void UIDeathScreen::Render()
+{
+    background_.Render();
+    text_.Render();
+    ok_button_.Render();
+}
+
+bool UIDeathScreen::IsActive()
+{
+    return active_;
+}
+
+void UIDeathScreen::SetActive(bool active)
+{
+    active_ = active;
+}
+
+bool UIDeathScreen::ClickedOk()
+{
+    return clicked_ok_;
+}
+
+//
 // In-game UI
 //
 
@@ -1269,6 +1335,11 @@ UIDebugMenu &UIGame::GetDebugMenu()
 UIInventory &UIGame::GetInventoryUI()
 {
     return inventory_;
+}
+
+UIDeathScreen &UIGame::GetDeathScreen()
+{
+    return death_screen_;
 }
 
 void UIGame::SetAlert(std::string str)
@@ -1308,6 +1379,9 @@ void UIGame::Render()
 
     if (pause_menu_.IsActive())
         pause_menu_.Render();
+
+    if (death_screen_.IsActive())
+        death_screen_.Render();
 }
 
 //
