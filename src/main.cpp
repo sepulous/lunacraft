@@ -285,7 +285,7 @@ int main()
             auto player = moon->GetPlayer();
 
             // Player death
-            if (player->GetHealth() <= 0)
+            if (player->IsDead())
             {
                 if (player->IsInControl())
                 {
@@ -315,6 +315,7 @@ int main()
                     // Reset to main menu
                     ui_pause_menu.SetActive(false);
                     ui_death_screen.SetActive(false);
+                    ui_death_screen.ResetClickedOk();
                     ui_main_menu.RefreshMoonButtonText();
                     game_state = GameState::MAIN_MENU;
                     continue;
@@ -395,7 +396,7 @@ int main()
 
                 if (ui_inventory.IsActive())
                     player->DisableControl();
-                else if (player->GetHealth() > 0)
+                else if (!player->IsDead())
                     player->EnableControl();
 
                 player->SetCameraSensitivity(0.05f * OptionsManager::GetOptions().sensitivity);

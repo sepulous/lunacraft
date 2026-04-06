@@ -462,6 +462,7 @@ class UIDeathScreen
         void Render();
         bool IsActive();
         void SetActive(bool active);
+        void ResetClickedOk();
         bool ClickedOk();
 
     private:

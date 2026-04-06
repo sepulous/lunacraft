@@ -204,16 +204,8 @@ void EntityManager::Integrate(Entity *entity)
             if (hit_entity != nullptr)
             {
                 int new_health = hit_entity->GetHealth() - slug->GetSlugData().damage;
-                if (new_health <= 0)
-                {
-                    hit_entity->SetHealth(0);
-                    hit_entity->SetIsDead(true);
-                }
-                else
-                {
-                    hit_entity->SetHealth(new_health);
-                }
-
+                hit_entity->SetHealth(new_health);
+                
                 slug->SetIsDead(true);
 
                 if (hit_entity->GetType() == EntityType::BROWN_MOB)

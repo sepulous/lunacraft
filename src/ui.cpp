@@ -1307,6 +1307,11 @@ bool UIDeathScreen::ClickedOk()
     return clicked_ok_;
 }
 
+void UIDeathScreen::ResetClickedOk()
+{
+    clicked_ok_ = false;
+}
+
 //
 // In-game UI
 //

@@ -195,7 +195,7 @@ void Player::Update(float delta_time)
 
     auto selected_item = inventory_.GetSelectedItem();
 
-    if (pain_time_ != 0)
+    if (pain_time_ != 0 && !IsDead())
     {
         pain_time_ -= delta_time;
         if (pain_time_ <= 0)
@@ -379,7 +379,7 @@ void Player::Update(float delta_time)
         }
     }
 
-    if (health_ > 0)
+    if (!IsDead())
     {
         // Regen health
         if (suit_status_ > 0 && time_since_last_health_update_ > 0.5f)
@@ -629,17 +629,11 @@ void Player::SetHealth(int health) noexcept
         int damage = health_ - health;
         int divided_damage = damage / 2;
 
-        if (suit_status_ < divided_damage)
-        {
-            int leftover = divided_damage - suit_status_;
-            suit_status_ = 0;
-            health_ -= divided_damage + leftover;
-        }
-        else
-        {
-            suit_status_ -= divided_damage;
-            health_ -= damage - divided_damage;
-        }
+        int suit_damage = glm::min(suit_status_, divided_damage);
+        suit_status_ -= suit_damage;
+
+        int health_damage = divided_damage + (divided_damage - suit_damage);
+        health_ -= health_damage;
 
         if (health_ <= 0)
         {
