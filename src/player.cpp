@@ -382,7 +382,7 @@ void Player::Update(float delta_time)
     if (!IsDead())
     {
         // Regen health
-        if (suit_status_ > 0 && time_since_last_health_update_ > 0.5f)
+        if (suit_status_ > 0 && time_since_last_health_update_ > 5.0f)
         {
             health_ = glm::clamp(health_ + 1, 0, 100);
             time_since_last_health_update_ = 0;
