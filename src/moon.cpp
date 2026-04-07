@@ -160,6 +160,7 @@ double Moon::GetWorldTime()
     return world_time_;
 }
 
+// In radians
 float Moon::GetSkyboxAngle()
 {
     if (skybox_reversed_)
@@ -206,10 +207,24 @@ bool Moon::TookScreenshot()
 
 void Moon::Update(double delta_time)
 {
-    float time_scale = 1.0f;
+    float time_scale;
+
     ItemID player_item = player_->GetInventory().GetSelectedItem();
-    if (player_item == ItemID::chronobooster || player_item == ItemID::chronowinder)
-        time_scale = 2.0f;
+    if (player_item == ItemID::chronobooster)
+    {
+        time_scale = 10.0f;
+    }
+    else if (player_item == ItemID::chronowinder)
+    {
+        time_scale = 3.0f;
+    }
+    else
+    {
+        if (GetLightPhase() <= 6)
+            time_scale = 1.0f; // day
+        else
+            time_scale = 2.0f; // night
+    }
 
     world_time_ += time_scale * delta_time;
     accumulator_ += delta_time;
