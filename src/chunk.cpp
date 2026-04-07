@@ -830,7 +830,7 @@ void Chunk::UpdateVertexLighting()
     // although they've been slightly adjusted to ensure all chunks agree on ambient_light, and are
     // never pitch black.
     glm::vec3 sunlight_direction = Moon::GetCurrentMoon()->GetSunlightDirection();
-    float sin_world_time = glm::sin(Moon::GetCurrentMoon()->GetSkyboxAngle());
+    float sin_world_time = glm::sin(Moon::GetCurrentMoon()->GetSkyboxAngleClamped() + glm::radians(5.0f));
     float ambient_light = 0.5f * sin_world_time;
     if (ambient_light < 0)
         ambient_light *= -0.5f;
@@ -919,7 +919,7 @@ void Chunk::BuildVertices()
     // although they've been slightly adjusted to ensure all chunks agree on ambient_light, and are
     // never pitch black.
     glm::vec3 sunlight_direction = Moon::GetCurrentMoon()->GetSunlightDirection();
-    float sin_world_time = glm::sin(Moon::GetCurrentMoon()->GetSkyboxAngle());
+    float sin_world_time = glm::sin(Moon::GetCurrentMoon()->GetSkyboxAngleClamped());
     float ambient_light = 0.5f * sin_world_time;
     if (ambient_light < 0)
         ambient_light *= -0.5f;

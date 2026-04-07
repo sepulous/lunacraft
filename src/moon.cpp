@@ -169,35 +169,26 @@ float Moon::GetSkyboxAngle()
         return skybox_phase_ + LIGHT_CYCLE_OMEGA * world_time_;
 }
 
+// In radians
+float Moon::GetSkyboxAngleClamped()
+{
+    return GetLightPhase() * ((2.0f * glm::pi<float>()) / LIGHT_PHASES);
+}
+
 int Moon::GetLightPhase()
 {
-    float skybox_angle = GetSkyboxAngle();
-    skybox_angle *= (360.0f / (2 * 3.1416f));
+    float skybox_angle = glm::degrees(GetSkyboxAngle());
     return ((int)skybox_angle % 360) / (360.0f / LIGHT_PHASES);
 }
 
 glm::vec3 Moon::GetSunlightDirection()
 {
-    int phase = GetLightPhase();
-    float main_light_angle_deg;
-    if (phase <= 6) // Day
-    {
-        main_light_angle_deg = -180.0f + 30.0f * phase;
-        return {
-            0.0f,
-            glm::sin(glm::radians(main_light_angle_deg)),
-            glm::cos(glm::radians(main_light_angle_deg))
-        };
-    }
-    else // Night
-    {
-        main_light_angle_deg = -180.0f + 60.0f * (phase - 7);
-        return {
-            0.0f,
-            glm::sin(glm::radians(main_light_angle_deg)),
-            glm::cos(glm::radians(main_light_angle_deg))
-        };
-    }
+    float angle = glm::mod(GetSkyboxAngleClamped(), glm::pi<float>()) - glm::pi<float>();
+    return {
+        0.0f,
+        glm::sin(angle),
+        glm::cos(angle)
+    };
 }
 
 bool Moon::TookScreenshot()

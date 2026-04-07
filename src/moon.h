@@ -55,6 +55,7 @@ class Moon
         double GetWorldTime();
         glm::vec3 GetSunlightDirection();
         float GetSkyboxAngle();
+        float GetSkyboxAngleClamped();
         int GetLightPhase();
         bool TookScreenshot();
         void Update(double delta_time);
