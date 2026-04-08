@@ -126,11 +126,11 @@ void DroppedItem::FixedUpdate()
     moving_toward_player_ = distance < 3.0f && player_inventory.HasSpaceForItem(item_);
 
     if (moving_toward_player_)
-        velocity_ = 4.0f * glm::normalize((camera_pos - glm::vec3{0.0f, 0.3f, 0.0f}) - position_);
+        velocity_ = 5.0f * glm::normalize((camera_pos - glm::vec3{0.0f, 0.3f, 0.0f}) - position_);
     else if (is_grounded_)
         velocity_ = glm::vec3{0, velocity_.y, 0};
 
-    if (distance < 0.8f)
+    if (distance < 1.0f)
     {
         SetIsDead(true);
         player_inventory.Add({item_, amount_});
