@@ -12,6 +12,7 @@
 #include "slug.h"
 #include "green_mob.h"
 #include "brown_mob.h"
+#include "giraffe.h"
 #include "dropped_item.h"
 
 EntityManager::~EntityManager()
@@ -64,6 +65,12 @@ void EntityManager::LoadInitialEntities()
                         GreenMobData data;
                         entity_file.read(reinterpret_cast<char *>(&data), sizeof(GreenMobData));
                         AddEntity(new GreenMob(data));
+                    }
+                    else if (type == EntityType::GIRAFFE)
+                    {
+                        GiraffeData data;
+                        entity_file.read(reinterpret_cast<char *>(&data), sizeof(GiraffeData));
+                        AddEntity(new Giraffe(data));
                     }
                 }
 
@@ -390,6 +397,12 @@ void EntityManager::LoadChunkEntities(glm::ivec3 chunk_coords)
                     entity_file.read(reinterpret_cast<char *>(&data), sizeof(GreenMobData));
                     AddEntity(new GreenMob(data));
                 }
+                else if (type == EntityType::GIRAFFE)
+                {
+                    GiraffeData data;
+                    entity_file.read(reinterpret_cast<char *>(&data), sizeof(GiraffeData));
+                    AddEntity(new Giraffe(data));
+                }
             }
 
             entity_file.close();
@@ -456,6 +469,11 @@ void EntityManager::UnloadChunkEntities(glm::ivec3 chunk_coords)
                 {
                     GreenMobData data = dynamic_cast<GreenMob *>(entity)->GetGreenMobData();
                     entity_file.write(reinterpret_cast<const char *>(&data), sizeof(GreenMobData));
+                }
+                else if (type == EntityType::GIRAFFE)
+                {
+                    GiraffeData data = dynamic_cast<Giraffe *>(entity)->GetGiraffeData();
+                    entity_file.write(reinterpret_cast<const char *>(&data), sizeof(GiraffeData));
                 }
 
                 delete entity;
@@ -528,6 +546,11 @@ void EntityManager::SaveAllEntities()
                 {
                     GreenMobData data = dynamic_cast<GreenMob *>(entity)->GetGreenMobData();
                     entity_file.write(reinterpret_cast<const char *>(&data), sizeof(GreenMobData));
+                }
+                else if (type == EntityType::GIRAFFE)
+                {
+                    GiraffeData data = dynamic_cast<Giraffe *>(entity)->GetGiraffeData();
+                    entity_file.write(reinterpret_cast<const char *>(&data), sizeof(GiraffeData));
                 }
             }
 
