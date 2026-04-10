@@ -42,12 +42,20 @@ namespace Soundlib
         STEREO16
     };
 
+    enum class Error
+    {
+        NONE,
+        SOURCE_CREATE_FAIL,
+        SOURCE_BIND_FAIL,
+        BUFFER_CREATE_FAIL,
+        BUFFER_UPLOAD_FAIL,
+        FILE_OPEN_FAIL,
+        FILE_READ_FAIL
+    };
+
     class Sound
     {
         friend class SoundSource;
-
-        private:
-            unsigned m_buffer;
 
         public:
             ~Sound();
@@ -61,71 +69,85 @@ namespace Soundlib
             Sound(Sound&&) = delete;
             Sound& operator=(Sound&&) = delete;
 
+            Error GetError() noexcept;
+
             void LoadSound(const std::string&);
             void LoadSoundRaw(const std::string&, SoundFormat, float);
+
+        private:
+            unsigned buffer_;
+            Error error_ = Error::NONE;
     };
 
     class SoundSource
     {
-        private:
-            unsigned m_source;
-
         public:
             ~SoundSource();
             SoundSource();
             SoundSource(const Sound&);
 
-            SourceState GetState();
+            SoundSource(const SoundSource&) = delete;
+            SoundSource& operator=(const SoundSource&) = delete;
 
-            void SetSound(const Sound&);
-            void Play();
-            void Pause();
-            void Stop();
+            SoundSource(SoundSource&&) = delete;
+            SoundSource& operator=(SoundSource&&) = delete;
 
-            float GetGain();
-            void SetGain(float);
+            Error GetError() noexcept;
+            SourceState GetState() noexcept;
 
-            float GetMinGain();
-            void SetMinGain(float);
+            void SetSound(const Sound&) noexcept;
+            void Play() noexcept;
+            void Pause() noexcept;
+            void Stop() noexcept;
 
-            float GetMaxGain();
-            void SetMaxGain(float);
+            float GetGain() noexcept;
+            void SetGain(float) noexcept;
 
-            float GetMaxDistance();
-            void SetMaxDistance(float);
+            float GetMinGain() noexcept;
+            void SetMinGain(float) noexcept;
 
-            float GetReferenceDistance();
-            void SetReferenceDistance(float);
+            float GetMaxGain() noexcept;
+            void SetMaxGain(float) noexcept;
 
-            float GetRolloffFactor();
-            void SetRolloffFactor(float);
+            float GetMaxDistance() noexcept;
+            void SetMaxDistance(float) noexcept;
 
-            float GetConeInnerAngle();
-            void SetConeInnerAngle(float);
+            float GetReferenceDistance() noexcept;
+            void SetReferenceDistance(float) noexcept;
 
-            float GetConeOuterAngle();
-            void SetConeOuterAngle(float);
+            float GetRolloffFactor() noexcept;
+            void SetRolloffFactor(float) noexcept;
 
-            float GetConeOuterGain();
-            void SetConeOuterGain(float);
+            float GetConeInnerAngle() noexcept;
+            void SetConeInnerAngle(float) noexcept;
 
-            float GetPitch();
-            void SetPitch(float);
+            float GetConeOuterAngle() noexcept;
+            void SetConeOuterAngle(float) noexcept;
 
-            Vector3 GetPosition();
-            void SetPosition(float, float, float);
-            void SetPosition(Vector3);
+            float GetConeOuterGain() noexcept;
+            void SetConeOuterGain(float) noexcept;
 
-            Vector3 GetVelocity();
-            void SetVelocity(float, float, float);
-            void SetVelocity(Vector3);
+            float GetPitch() noexcept;
+            void SetPitch(float) noexcept;
 
-            Vector3 GetDirection();
-            void SetDirection(float, float, float);
-            void SetDirection(Vector3);
+            Vector3 GetPosition() noexcept;
+            void SetPosition(float, float, float) noexcept;
+            void SetPosition(Vector3) noexcept;
 
-            bool IsLooping();
-            void SetLooping(bool);
+            Vector3 GetVelocity() noexcept;
+            void SetVelocity(float, float, float) noexcept;
+            void SetVelocity(Vector3) noexcept;
+
+            Vector3 GetDirection() noexcept;
+            void SetDirection(float, float, float) noexcept;
+            void SetDirection(Vector3) noexcept;
+
+            bool IsLooping() noexcept;
+            void SetLooping(bool) noexcept;
+
+        private:
+            unsigned source_;
+            Error error_ = Error::NONE;
     };
 
     bool Init();
@@ -133,28 +155,28 @@ namespace Soundlib
     void Exit();
     std::vector<std::string> GetDeviceList();
 
-    AttenuationModel GetAttenuationModel();
-    void SetAttenuationModel(AttenuationModel);
+    AttenuationModel GetAttenuationModel() noexcept;
+    void SetAttenuationModel(AttenuationModel) noexcept;
 
-    float GetDopplerFactor();
-    void SetDopplerFactor(float);
+    float GetDopplerFactor() noexcept;
+    void SetDopplerFactor(float) noexcept;
 
-    float GetSpeedOfSound();
-    void SetSpeedOfSound(float);
+    float GetSpeedOfSound() noexcept;
+    void SetSpeedOfSound(float) noexcept;
 
-    float GetListenerVolume();
-    void SetListenerVolume(float);
+    float GetListenerVolume() noexcept;
+    void SetListenerVolume(float) noexcept;
 
-    Vector3 GetListenerPosition();
-    void SetListenerPosition(float, float, float);
-    void SetListenerPosition(Vector3);
+    Vector3 GetListenerPosition() noexcept;
+    void SetListenerPosition(float, float, float) noexcept;
+    void SetListenerPosition(Vector3) noexcept;
 
-    Vector3 GetListenerVelocity();
-    void SetListenerVelocity(float, float, float);
-    void SetListenerVelocity(Vector3);
+    Vector3 GetListenerVelocity() noexcept;
+    void SetListenerVelocity(float, float, float) noexcept;
+    void SetListenerVelocity(Vector3) noexcept;
 
-    Orientation GetListenerOrientation();
-    void SetListenerOrientation(float, float, float, float, float, float);
-    void SetListenerOrientation(Vector3, Vector3);
-    void SetListenerOrientation(Orientation);
+    Orientation GetListenerOrientation() noexcept;
+    void SetListenerOrientation(float, float, float, float, float, float) noexcept;
+    void SetListenerOrientation(Vector3, Vector3) noexcept;
+    void SetListenerOrientation(Orientation) noexcept;
 }
