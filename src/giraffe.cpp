@@ -229,7 +229,6 @@ void Giraffe::Update(float delta_time)
             if (action_ == GiraffeAction::NONE)
             {
                 float chance = RNG{}.Range(0.0f, 1.0f);
-                chance = 0.8f;
                 if (chance < 0.3f) // Walk
                 {
                     // Update action and decide next action time
