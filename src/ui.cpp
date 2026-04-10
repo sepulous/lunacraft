@@ -2346,7 +2346,7 @@ UIText::UIText(std::string text, float font_size, glm::vec2 position, glm::vec4 
 
     int order[6] = { 0, 1, 2, 0, 2, 3 };
     glm::vec2 localPosition = position;
-    float vertices[text.length() * 6 * (4 + 4)];
+    std::vector<float> vertices(text.length() * 6 * (4 + 4));
     int vertices_index = 0;
     for (char ch : text)
     {
@@ -2411,10 +2411,9 @@ UIText::UIText(std::string text, float font_size, glm::vec2 position, glm::vec4 
     }
 
     // Set up VAO and VBO
-    size_t vbo_size = text.length() * 6 * (4 + 4) * sizeof(float); // (# chars) x (6 verts/char) x (3 + 4 + 2 floats/vert) x sizeof(float)
     glGenBuffers(1, &vbo_);
     glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-    glBufferData(GL_ARRAY_BUFFER, vbo_size, vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
     glGenVertexArrays(1, &vao_);
     glBindVertexArray(vao_);
     glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0); // Position and UV coords
@@ -2438,7 +2437,7 @@ void UIText::SetText(std::string text)
 {
     int order[6] = { 0, 1, 2, 0, 2, 3 };
     glm::vec2 localPosition = position_;
-    float vertices[text.length() * 6 * (4 + 4)];
+    std::vector<float> vertices(text.length() * 6 * (4 + 4));
     int vertices_index = 0;
     for (char ch : text)
     {
@@ -2502,9 +2501,8 @@ void UIText::SetText(std::string text)
         }
     }
 
-    size_t vbo_size = text.length() * 6 * (4 + 4) * sizeof(float); // (# chars) x (6 verts/char) x (3 + 4 + 2 floats/vert) x sizeof(float)
     glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-    glBufferData(GL_ARRAY_BUFFER, vbo_size, vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
 
     text_ = text;
 }
