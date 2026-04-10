@@ -265,7 +265,7 @@ void Giraffe::Update(float delta_time)
                 }
                 else
                 {
-                    // nothing...
+                    next_action_time_ = RNG{}.Range(0.0f, 3.0f);
                 }
             }
             else
