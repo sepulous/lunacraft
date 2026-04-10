@@ -71,6 +71,8 @@ struct ActiveSound
         : source(source),
           sound_id(sound),
           is_global(is_global) {}
+
+        ~ActiveSound() { delete source; }
     
     private:
         Soundlib::SoundSource *source;

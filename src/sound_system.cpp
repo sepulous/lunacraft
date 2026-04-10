@@ -43,7 +43,10 @@ void SoundSystem::Init()
 void SoundSystem::Exit()
 {
     for (auto &active_sound : active_sounds_)
+    {
         active_sound->source->Stop();
+        delete active_sound;
+    }
     active_sounds_.clear();
 
     Soundlib::Exit();
@@ -60,7 +63,7 @@ void SoundSystem::Update(Options options)
 
         if (active_sound->source->GetState() == Soundlib::SourceState::STOPPED) // Remove finished sounds
         {
-            delete active_sound->source;
+            delete active_sound;
             it = active_sounds_.erase(it);
         }
         else
