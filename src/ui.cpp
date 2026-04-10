@@ -2442,8 +2442,8 @@ void UIText::SetText(std::string text)
 {
     int order[6] = { 0, 1, 2, 0, 2, 3 };
     glm::vec2 localPosition = position_;
-    std::vector<float> vertices(text.length() * 6 * (4 + 4));
-    int vertices_index = 0;
+    std::vector<float> vertices;
+    vertices.reserve(text.length() * 6 * (4 + 4));
     for (char ch : text)
     {
         // Check if the charecter glyph is in the font atlas.
@@ -2486,15 +2486,14 @@ void UIText::SetText(std::string text)
 
             for (int i = 0; i < 6; i++)
             {
-                vertices[vertices_index] = glyphVertices[order[i]].x;
-                vertices[vertices_index + 1] = glyphVertices[order[i]].y;
-                vertices[vertices_index + 2] = glyphTextureCoords[order[i]].x;
-                vertices[vertices_index + 3] = glyphTextureCoords[order[i]].y;
-                vertices[vertices_index + 4] = color_.r;
-                vertices[vertices_index + 5] = color_.g;
-                vertices[vertices_index + 6] = color_.b;
-                vertices[vertices_index + 7] = color_.a;
-                vertices_index += 8;
+                vertices.push_back(glyphVertices[order[i]].x);
+                vertices.push_back(glyphVertices[order[i]].y);
+                vertices.push_back(glyphTextureCoords[order[i]].x);
+                vertices.push_back(glyphTextureCoords[order[i]].y);
+                vertices.push_back(color_.r);
+                vertices.push_back(color_.g);
+                vertices.push_back(color_.b);
+                vertices.push_back(color_.a);
             }
 
             localPosition.x += packedChar->xadvance * font_size_;
