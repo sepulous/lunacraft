@@ -10,6 +10,7 @@ enum class EntityType : uint8_t
     DROPPED_ITEM,
     GREEN_MOB,
     BROWN_MOB,
+    BLUE_MOB,
     GIRAFFE,
     ASTRONAUT
 };
@@ -25,6 +26,7 @@ class Entity
         virtual void Render(const glm::mat4 &view, const glm::mat4 &proj) = 0;
 
         EntityType GetType() noexcept;
+        size_t GetID() noexcept;
 
         AABB &GetAABB() noexcept;
 
@@ -77,5 +79,4 @@ class Entity
         bool is_grounded_ = false;
 
         void SetID(size_t id);
-        size_t GetID();
 };

@@ -128,7 +128,7 @@ void Entity::SetID(size_t id)
     id_ = id;
 }
 
-size_t Entity::GetID()
+size_t Entity::GetID() noexcept
 {
     return id_;
 }

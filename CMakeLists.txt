@@ -71,6 +71,7 @@ add_executable(Lunacraft
     src/slug.cpp
     src/green_mob.cpp
     src/brown_mob.cpp
+    src/blue_mob.cpp
     src/giraffe.cpp
     src/fxaa.cpp
 

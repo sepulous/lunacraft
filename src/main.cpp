@@ -405,9 +405,10 @@ int main()
                 moon->Update(delta_time);
             }
 
-            // Screenshot alert
-            if (Moon::GetCurrentMoon()->TookScreenshot())
-                ui_game.SetAlert("Saved screenshot!");
+            // Display message
+            std::string message = Moon::GetCurrentMoon()->PopPendingMessage();
+            if (!message.empty())
+                ui_game.SetAlert(message);
             
             ui_game.Update(delta_time);
 

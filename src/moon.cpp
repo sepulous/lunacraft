@@ -22,6 +22,9 @@
 #include "input.h"
 #include "fxaa.h"
 
+#include "blue_mob.h"
+#include "brown_mob.h"
+
 Moon *Moon::current_moon_;
 
 Moon::Moon(int moon_id, MoonSettings moon_settings)
@@ -191,11 +194,6 @@ glm::vec3 Moon::GetSunlightDirection()
     };
 }
 
-bool Moon::TookScreenshot()
-{
-    return took_screenshot_;
-}
-
 void Moon::Update(double delta_time)
 {
     float time_scale;
@@ -243,6 +241,13 @@ void Moon::Update(double delta_time)
     //
     // Per-frame updates
     //
+
+    if (Input::IsKeyPressed(GLFW_KEY_U))
+    {
+        entity_manager_.AddEntity(new BlueMob({
+            .position = glm::vec3{selection_block_.GetAdjacentPosition()} + glm::vec3{0.0f, 1.5f, 0.0f}
+        }));
+    }
 
     // Non-physics updates
     entity_manager_.Update(delta_time);
@@ -443,11 +448,7 @@ void Moon::Render(const glm::mat4 &projection)
         auto path = Storage::SCREENSHOTS / filename.str();
         stbi_write_png_compression_level = 4; // default is 8
         stbi_write_png(path.c_str(), dimensions.x, dimensions.y, 3, pixels, dimensions.x * 3);
-        took_screenshot_ = true;
-    }
-    else
-    {
-        took_screenshot_ = false;
+        DisplayMessage("Screenshot saved!");
     }
 }
 
@@ -544,6 +545,18 @@ void Moon::UpdateSelectionBlock(float delta_time)
     {
         selection_block_.SetMineProgress(0);
     }
+}
+
+void Moon::DisplayMessage(std::string message)
+{
+    pending_message_ = message;
+}
+
+std::string Moon::PopPendingMessage()
+{
+    std::string message = pending_message_;
+    pending_message_.clear();
+    return message;
 }
 
 //

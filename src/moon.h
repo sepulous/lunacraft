@@ -57,7 +57,8 @@ class Moon
         float GetSkyboxAngle();
         float GetSkyboxAngleClamped();
         int GetLightPhase();
-        bool TookScreenshot();
+        void DisplayMessage(std::string message);
+        std::string PopPendingMessage();
         void Update(double delta_time);
         void Render(const glm::mat4 &projection);
 
@@ -77,7 +78,7 @@ class Moon
         double accumulator_ = 0;
         bool skybox_reversed_;
         float skybox_phase_;
-        bool took_screenshot_ = false;
+        std::string pending_message_;
         std::vector<glm::ivec3> brown_mob_explosions_;
         glm::vec4 base_fog_color_; // This doesn't change for a given moon. Use GetFogColor() to get the time-corrected color.
         Player *player_;

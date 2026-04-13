@@ -12,6 +12,7 @@
 #include "slug.h"
 #include "green_mob.h"
 #include "brown_mob.h"
+#include "blue_mob.h"
 #include "giraffe.h"
 #include "dropped_item.h"
 
@@ -71,6 +72,12 @@ void EntityManager::LoadInitialEntities()
                         GiraffeData data;
                         entity_file.read(reinterpret_cast<char *>(&data), sizeof(GiraffeData));
                         AddEntity(new Giraffe(data));
+                    }
+                    else if (type == EntityType::BLUE_MOB)
+                    {
+                        BlueMobData data;
+                        entity_file.read(reinterpret_cast<char *>(&data), sizeof(BlueMobData));
+                        AddEntity(new BlueMob(data));
                     }
                 }
 
@@ -216,8 +223,11 @@ void EntityManager::Integrate(Entity *entity)
 
                 slug->SetIsDead(true);
 
-                if (hit_entity->GetType() == EntityType::BROWN_MOB)
+                auto entity_type = hit_entity->GetType();
+                if (entity_type == EntityType::BROWN_MOB)
                     dynamic_cast<BrownMob *>(hit_entity)->NotifyOfAttacker(slug_data.source_id);
+                else if (entity_type == EntityType::BLUE_MOB)
+                    dynamic_cast<BlueMob *>(hit_entity)->NotifyOfAttacker(slug_data.source_id);
             }
             else
             {
@@ -403,6 +413,12 @@ void EntityManager::LoadChunkEntities(glm::ivec3 chunk_coords)
                     entity_file.read(reinterpret_cast<char *>(&data), sizeof(GiraffeData));
                     AddEntity(new Giraffe(data));
                 }
+                else if (type == EntityType::BLUE_MOB)
+                {
+                    BlueMobData data;
+                    entity_file.read(reinterpret_cast<char *>(&data), sizeof(BlueMobData));
+                    AddEntity(new BlueMob(data));
+                }
             }
 
             entity_file.close();
@@ -474,6 +490,11 @@ void EntityManager::UnloadChunkEntities(glm::ivec3 chunk_coords)
                 {
                     GiraffeData data = dynamic_cast<Giraffe *>(entity)->GetGiraffeData();
                     entity_file.write(reinterpret_cast<const char *>(&data), sizeof(GiraffeData));
+                }
+                else if (type == EntityType::BLUE_MOB)
+                {
+                    BlueMobData data = dynamic_cast<BlueMob *>(entity)->GetBlueMobData();
+                    entity_file.write(reinterpret_cast<const char *>(&data), sizeof(BlueMobData));
                 }
 
                 delete entity;
@@ -551,6 +572,11 @@ void EntityManager::SaveAllEntities()
                 {
                     GiraffeData data = dynamic_cast<Giraffe *>(entity)->GetGiraffeData();
                     entity_file.write(reinterpret_cast<const char *>(&data), sizeof(GiraffeData));
+                }
+                else if (type == EntityType::BLUE_MOB)
+                {
+                    BlueMobData data = dynamic_cast<BlueMob *>(entity)->GetBlueMobData();
+                    entity_file.write(reinterpret_cast<const char *>(&data), sizeof(BlueMobData));
                 }
             }
 
