@@ -24,6 +24,7 @@ class SoundSystem
             SONG_3,
             SONG_4,
             SONG_5,
+            ALIEN_JUMP,
             BLOCK_BREAK,
             BLOCK_PLACE,
             CRAFT,

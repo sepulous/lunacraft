@@ -21,6 +21,7 @@ void SoundSystem::Init()
     sound_map_[Sound::SONG_3].LoadSound((Storage::SOUNDS / "theme3.mp3").string());
     sound_map_[Sound::SONG_4].LoadSound((Storage::SOUNDS / "theme4.mp3").string());
     sound_map_[Sound::SONG_5].LoadSound((Storage::SOUNDS / "theme5.mp3").string());
+    sound_map_[Sound::ALIEN_JUMP].LoadSound((Storage::SOUNDS / "alienjump.wav").string());
     sound_map_[Sound::BLOCK_BREAK].LoadSound((Storage::SOUNDS / "blockbreak.wav").string());
     sound_map_[Sound::BLOCK_PLACE].LoadSound((Storage::SOUNDS / "blockplace.wav").string());
     sound_map_[Sound::CRAFT].LoadSound((Storage::SOUNDS / "craft.wav").string());
