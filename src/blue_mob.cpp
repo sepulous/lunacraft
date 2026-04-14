@@ -312,7 +312,7 @@ void BlueMob::FixedUpdate()
 
         if (target_yaw_ > 0)
         {
-            float delta = glm::radians(50.0f) * FIXED_DELTA_TIME;
+            float delta = glm::radians(103.0f) * FIXED_DELTA_TIME;
             yaw_ += delta;
             target_yaw_ -= delta;
         }

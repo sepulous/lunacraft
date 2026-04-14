@@ -205,7 +205,7 @@ void BrownMob::FixedUpdate()
     {
         if (target_yaw_ > 0)
         {
-            float delta = 80.0f * FIXED_DELTA_TIME;
+            float delta = 103.0f * FIXED_DELTA_TIME;
             yaw_ += delta;
             target_yaw_ -= delta;
         }
