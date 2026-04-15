@@ -102,6 +102,13 @@ Entity *EntityManager::GetEntityByID(size_t id)
 
 void EntityManager::SelfUpdate()
 {
+    // Global lighting
+    float sin_world_time = glm::sin(Moon::GetCurrentMoon()->GetSkyboxAngleClamped() + glm::radians(5.0f));
+    float entity_lighting = glm::clamp(sin_world_time, 0.8f, 1.0f);
+    auto &mob_shader = ShaderManager::MOB_SHADER;
+    mob_shader.Use();
+    mob_shader.SetFloat("u_lighting", entity_lighting);
+
     // Remove old entities
     std::erase_if(entities_, [](const auto &pair) {
         const auto &[_, entity] = pair;
@@ -116,12 +123,6 @@ void EntityManager::SelfUpdate()
         next_entity_id_++;
     }
     entities_to_spawn_.clear();
-}
-
-void EntityManager::FixedUpdate()
-{
-    for (auto [entity_id, entity] : entities_)
-        entity->FixedUpdate();
 }
 
 void EntityManager::Update(float delta_time)

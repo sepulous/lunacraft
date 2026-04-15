@@ -26,7 +26,6 @@ class EntityManager
         void AddEntity(Entity *entity);
         Entity *GetEntityByID(size_t id);
         void SelfUpdate();
-        void FixedUpdate();
         void Update(float delta_time);
         void RunPhysics(double &accumulator);
         void RenderEntities(const glm::mat4 &view, const glm::mat4 &proj);
