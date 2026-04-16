@@ -106,7 +106,7 @@ Entity *EntityManager::GetEntityByID(size_t id)
     return entities_.at(id);
 }
 
-std::optional<size_t> EntityManager::GetNearestEntityID(size_t ref_entity_id, EntityType type)
+std::optional<size_t> EntityManager::GetNearestEntityID(size_t ref_entity_id, EntityType type, float max_distance)
 {
     auto ref_entity = GetEntityByID(ref_entity_id);
     if (!ref_entity)
@@ -121,7 +121,7 @@ std::optional<size_t> EntityManager::GetNearestEntityID(size_t ref_entity_id, En
     {
         auto entity_pos = entity->GetPosition();
         float distance = glm::length(entity_pos - ref_entity_pos);
-        if (entity_id != ref_entity_id && distance < nearest_distance && (type == EntityType::ANY || entity->GetType() == type))
+        if (entity_id != ref_entity_id && distance < nearest_distance && distance < max_distance && (type == EntityType::ANY || entity->GetType() == type))
         {
             nearest_entity_id = entity_id;
             nearest_distance = distance;

@@ -26,7 +26,7 @@ class EntityManager
 
         void AddEntity(Entity *entity);
         Entity *GetEntityByID(size_t id);
-        std::optional<size_t> GetNearestEntityID(size_t ref_entity_id, EntityType type = EntityType::ANY);
+        std::optional<size_t> GetNearestEntityID(size_t ref_entity_id, EntityType type = EntityType::ANY, float max_distance = 1000.0f);
         void SelfUpdate();
         void Update(float delta_time);
         void RunPhysics(double &accumulator);

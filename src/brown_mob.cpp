@@ -130,7 +130,7 @@ void BrownMob::Update(float delta_time)
                 }
                 else if (chance < 0.9f)
                 {
-                    auto nearest_astronaut = Moon::GetCurrentMoon()->GetEntityManager().GetNearestEntityID(GetID(), EntityType::ASTRONAUT);
+                    auto nearest_astronaut = Moon::GetCurrentMoon()->GetEntityManager().GetNearestEntityID(GetID(), EntityType::ASTRONAUT, 15.0f);
                     if (nearest_astronaut)
                     {
                         target_entity_id_ = nearest_astronaut.value();
