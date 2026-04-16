@@ -16,7 +16,6 @@ BlueMob::BlueMob(BlueMobData data)
     roll_ = 0;
     health_ = data.health;
     stolen_item_ = data.stolen_item;
-    chasing_player_ = data.chasing_player;
     aabb_.center = data.position;
     aabb_.extents = {0.5f, 1.5f, 0.25f};
 
@@ -149,6 +148,8 @@ BlueMob::BlueMob(BlueMobData data)
 
 void BlueMob::Update(float delta_time)
 {
+    internal_time_ += delta_time;
+
     if (pain_time_ != 0)
     {
         pain_time_ -= delta_time;
@@ -161,83 +162,56 @@ void BlueMob::Update(float delta_time)
         action_ = BlueMobAction::NONE;
         time_since_death_ += delta_time;
     }
-    else if (!chasing_player_)
+    else if (internal_time_ > next_action_time_)
     {
-        if (next_action_time_ <= 0 && is_grounded_)
+        if (action_ == BlueMobAction::NONE)
         {
-            if (action_ == BlueMobAction::NONE)
+            float chance = RNG{}.Range(0.0f, 1.0f);
+            if (chance < 0.3f)
             {
-                float chance = RNG{}.Range(0.0f, 1.0f);
-                if (chance < 0.3f) // Walk and possibly notice player
-                {
-                    // Update action and decide next action time
-                    action_ = BlueMobAction::WALK;
-                    next_action_time_ = RNG{}.Range(5.0f, 10.0f);
+                action_ = BlueMobAction::WALK;
+                next_action_time_ += RNG{}.Range(5.0f, 10.0f);
 
-                    // Move forward
-                    auto yaw_rotation = glm::mat3{glm::rotate(glm::mat4{1.0f}, yaw_, {0, 1, 0})};
-                    auto forward = yaw_rotation * glm::vec3{0.0f, 0.0f, 1.0f};
-                    velocity_ = 1.0f * forward;
+                walk_velocity_ = glm::vec3{glm::sin(yaw_), 0, glm::cos(yaw_)};
 
-                    // Notice player
-                    if (!Moon::GetCurrentMoon()->GetSettings().is_creative && stolen_item_.IsEmpty())
-                    {
-                        auto player_pos = Moon::GetCurrentMoon()->GetPlayer()->GetPosition();
-                        if (glm::length(player_pos - position_) < 25.0f)
-                        {
-                            action_ = BlueMobAction::NONE;
-                            chasing_player_ = true;
-                        }
-                    }
-                }
-                else if (chance < 0.7f) // Rotate
+                if (!Moon::GetCurrentMoon()->GetSettings().is_creative && stolen_item_.IsEmpty())
                 {
-                    // Update action and decide next action time
-                    action_ = BlueMobAction::ROTATE;
-                    next_action_time_ = RNG{}.Range(0.0f, 3.0f);
-                    
-                    // Set target rotation
-                    target_yaw_ = glm::radians(75.0f);
-                    if (RNG{}.Range(0, 1) == 0)
-                        target_yaw_ *= -1;
+                    auto player_pos = Moon::GetCurrentMoon()->GetPlayer()->GetPosition();
+                    if (glm::length(player_pos - position_) < 25.0f)
+                        action_ = BlueMobAction::CHASE;
                 }
-                else if (chance < 0.9f) // Jump and walk
-                {
-                    // Update action and decide next action time
-                    action_ = BlueMobAction::JUMP_AND_WALK;
-                    next_action_time_ = RNG{}.Range(1.0f, 6.0f);
+            }
+            else if (chance < 0.5f)
+            {
+                action_ = BlueMobAction::ROTATE_LEFT;
+                next_action_time_ += RNG{}.Range(0.0f, 3.0f);
+            }
+            else if (chance < 0.7f)
+            {
+                action_ = BlueMobAction::ROTATE_RIGHT;
+                next_action_time_ += RNG{}.Range(0.0f, 3.0f);
+            }
+            else if (chance < 0.9f)
+            {
+                action_ = BlueMobAction::WALK;
+                next_action_time_ += RNG{}.Range(1.0f, 6.0f);
 
-                    // Jump and walk
-                    auto yaw_rotation = glm::mat3{glm::rotate(glm::mat4{1.0f}, yaw_, {0, 1, 0})};
-                    auto forward = yaw_rotation * glm::vec3{0.0f, 0.0f, 1.0f};
-                    velocity_ = 1.0f * forward
-                              + 4.0f * glm::vec3{0, 1, 0};
-                }
-                else
-                {
-                    next_action_time_ = RNG{}.Range(0.0f, 3.0f);
-                }
+                walk_velocity_ = glm::vec3{glm::sin(yaw_), 0, glm::cos(yaw_)};
+                velocity_.y += 4.0f;
             }
             else
             {
-                action_ = BlueMobAction::NONE;
-                next_action_time_ = RNG{}.Range(2.0f, 13.0f);
-                time_walking_ = 0;
-                velocity_.x = 0;
-                velocity_.z = 0;
+                next_action_time_ += RNG{}.Range(0.0f, 3.0f);
             }
         }
         else
         {
-            next_action_time_ -= delta_time;
-
-            if (action_ == BlueMobAction::WALK || action_ == BlueMobAction::JUMP_AND_WALK)
-                time_walking_ += delta_time;
+            action_ = BlueMobAction::NONE;
+            next_action_time_ += RNG{}.Range(2.0f, 13.0f);
+            time_walking_ = 0;
+            velocity_.x = 0;
+            velocity_.z = 0;
         }
-    }
-    else
-    {
-        time_walking_ += delta_time;
     }
 }
 
@@ -271,51 +245,59 @@ void BlueMob::FixedUpdate()
                 death_animation_done_ = true;
         }
     }
-    else
+    else if (action_ == BlueMobAction::ROTATE_LEFT)
     {
-        if (chasing_player_)
+        yaw_ -= glm::radians(25.0f) * FIXED_DELTA_TIME;
+    }
+    else if (action_ == BlueMobAction::ROTATE_RIGHT)
+    {
+        yaw_ += glm::radians(25.0f) * FIXED_DELTA_TIME;
+    }
+    else if (action_ == BlueMobAction::WALK)
+    {
+        time_walking_ += FIXED_DELTA_TIME;
+        velocity_.x = walk_velocity_.x;
+        velocity_.z = walk_velocity_.z;
+    }
+    else if (action_ == BlueMobAction::CHASE)
+    {
+        auto player = Moon::GetCurrentMoon()->GetPlayer();
+        auto player_pos = player->GetPosition();
+        auto displacement = player_pos - position_;
+        displacement.y = 0;
+        float distance = glm::length(displacement);
+        displacement = glm::normalize(displacement);
+
+        if (distance < 0.8f)
         {
-            auto player = Moon::GetCurrentMoon()->GetPlayer();
-            auto player_pos = player->GetPosition();
-            auto displacement = player_pos - position_;
-            displacement.y = 0;
-            float distance = glm::length(displacement);
-            displacement = glm::normalize(displacement);
+            auto &player_inventory = player->GetInventory();
+            auto &item_to_steal = player_inventory.inventory[0][RNG{}.Range(0, 9)];
+            stolen_item_ = item_to_steal;
+            item_to_steal = {ItemID::none, 0};
+            action_ = BlueMobAction::NONE;
 
-            if (distance < 0.8f)
-            {
-                auto &player_inventory = player->GetInventory();
-                auto &item_to_steal = player_inventory.inventory[0][RNG{}.Range(0, 9)];
-                stolen_item_ = item_to_steal;
-                item_to_steal = {ItemID::none, 0};
-                chasing_player_ = false;
+            float tp_dir = RNG{}.Range(0.0f, 2.0f * glm::pi<float>());
+            float tp_dist = RNG{}.Range(1.5f * CHUNK_SIZE, 2.5f * CHUNK_SIZE);
+            position_ += glm::vec3{tp_dist * glm::cos(tp_dir), 40, tp_dist * glm::sin(tp_dir)};
+            prev_position_ = position_;
+            next_position_ = position_;
 
-                float tp_dir = RNG{}.Range(0.0f, 2.0f * glm::pi<float>());
-                float tp_dist = RNG{}.Range(1.5f * CHUNK_SIZE, 2.5f * CHUNK_SIZE);
-                position_ += glm::vec3{tp_dist * glm::cos(tp_dir), 40, tp_dist * glm::sin(tp_dir)};
-                prev_position_ = position_;
-                next_position_ = position_;
+            Moon::GetCurrentMoon()->DisplayMessage("An item was stolen!");
 
-                Moon::GetCurrentMoon()->DisplayMessage("An item was stolen!");
-            }
-
-            velocity_.x = 4.0f * displacement.x;
-            velocity_.z = 4.0f * displacement.z;
-            
-            target_yaw_ = 0;
-            if (displacement.x < 0)
-                displacement.z *= -1;
-            yaw_ = glm::acos(glm::dot(displacement, glm::vec3{0, 0, 1}));
-            if (displacement.x < 0)
-                yaw_ += glm::pi<float>();
+            return;
         }
 
-        if (target_yaw_ > 0)
-        {
-            float delta = glm::radians(103.0f) * FIXED_DELTA_TIME;
-            yaw_ += delta;
-            target_yaw_ -= delta;
-        }
+        velocity_.x = 4.0f * displacement.x;
+        velocity_.z = 4.0f * displacement.z;
+        
+        target_yaw_ = 0;
+        if (displacement.x < 0)
+            displacement.z *= -1;
+        yaw_ = glm::acos(glm::dot(displacement, glm::vec3{0, 0, 1}));
+        if (displacement.x < 0)
+            yaw_ += glm::pi<float>();
+
+        time_walking_ += FIXED_DELTA_TIME;
     }
 }
 
@@ -340,10 +322,10 @@ void BlueMob::Render(const glm::mat4 &view, const glm::mat4 &proj)
     shader.SetFloat("u_fog_end", (float)render_distance * 0.85f * 32.0f);
     shader.SetVec4("u_color", {1.0f, 0.0f, 0.0f, pain_time_});
 
-    if ((chasing_player_ && !IsDead()) || action_ == BlueMobAction::JUMP_AND_WALK || action_ == BlueMobAction::WALK || glm::abs(walk_spread_) > 0.02f)
+    if (action_ == BlueMobAction::CHASE || action_ == BlueMobAction::WALK || glm::abs(walk_spread_) > 0.02f)
     {
-        float speed = chasing_player_ ? 6.0f : 3.0f;
-        if ((chasing_player_ && !IsDead()) || action_ == BlueMobAction::JUMP_AND_WALK || action_ == BlueMobAction::WALK)
+        float speed = (action_ == BlueMobAction::CHASE) ? 6.0f : 3.0f;
+        if (action_ == BlueMobAction::CHASE || action_ == BlueMobAction::WALK)
             walk_spread_ = glm::radians(22.5f * glm::sin(speed * time_walking_));
         else
             walk_spread_ *= 0.99f;
@@ -402,16 +384,12 @@ BlueMobData BlueMob::GetBlueMobData()
         .position = position_,
         .stolen_item = stolen_item_,
         .yaw = yaw_,
-        .health = health_,
-        .chasing_player = chasing_player_
+        .health = health_
     };
 }
 
 void BlueMob::NotifyOfAttacker(size_t id)
 {
     if (id == Moon::GetCurrentMoon()->GetPlayer()->GetID())
-    {
-        chasing_player_ = true;
-        action_ = BlueMobAction::NONE;
-    }
+        action_ = BlueMobAction::CHASE;
 }

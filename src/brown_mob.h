@@ -21,19 +21,15 @@ class BrownMob : public Entity
         void NotifyOfAttacker(size_t id);
 
     private:
-        enum class BrownMobAction {ROTATE, JUMP, NONE};
+        enum class BrownMobAction {NONE, MOVE, ROTATE_LEFT, ROTATE_RIGHT, CHASE};
 
     private:
         Mesh mesh_;
-        float next_action_time_ = 0;
+        glm::vec3 move_velocity_;
         BrownMobAction action_ = BrownMobAction::NONE;
-        glm::vec3 jump_vector_;
-        size_t target_id_;
+        size_t target_entity_id_ = 0;
+        float internal_time_ = 0;
+        float next_action_time_ = 0;
         float time_since_death_ = 0;
-        float time_chasing_ = 0;
-        float chase_speed_before_inertia_ = 0;
-        float target_yaw_;
         float yaw_;
-        bool aggressive_ = false;
-        bool has_inertia_ = false;
 };

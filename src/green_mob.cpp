@@ -5,6 +5,7 @@
 #include "storage.h"
 #include "rng.h"
 #include "dropped_item.h"
+#include "sound_system.h"
 
 GreenMob::GreenMob(GreenMobData data)
 {
@@ -77,6 +78,8 @@ GreenMob::GreenMob(GreenMobData data)
 
 void GreenMob::Update(float delta_time)
 {
+    internal_time_ += delta_time;
+
     if (IsDead())
         time_since_death_ += delta_time;
 
@@ -87,56 +90,76 @@ void GreenMob::Update(float delta_time)
             pain_time_ = 0;
     }
 
-    if (is_grounded_)
-    {
-        if (next_action_time_ <= 0)
-        {
-            next_action_time_ = RNG{}.Range(1.0f, 4.0f);
-            if (RNG{}.Range(0, 1) == 0)
-            {
-                action_ = GreenMobAction::JUMP;
+    yaw_ = glm::mod(yaw_, 360.0f);
+    if (yaw_ < 0.0f)
+        yaw_ += 360.0f;
 
-                auto yaw_rotation = glm::mat3{glm::rotate(glm::mat4{1.0f}, glm::radians(yaw_), {0, 1, 0})};
-                glm::vec3 forward = yaw_rotation * glm::vec3{0.0f, 0.0f, 1.0f};
-                jump_vector_ = RNG{}.Range(1.0f, 6.0f) * forward
-                             + RNG{}.Range(5.0f, 11.0f) * glm::vec3{0, 1, 0};
+    if (internal_time_ > next_action_time_ && !IsDead())
+    {
+        move_velocity_ = glm::vec3{0};
+        if (action_ == GreenMobAction::NONE)
+        {
+            if (!is_grounded_)
+            {
+                next_action_time_ += 1.0;
             }
             else
             {
-                action_ = GreenMobAction::ROTATE;
+                float chance = RNG{}.Range(0.0f, 1.0f);
+                if (chance < 0.3)
+                {
+                    action_ = GreenMobAction::MOVE;
+                    next_action_time_ += RNG{}.Range(1.0f, 4.0f);
 
-                target_yaw_ = RNG{}.Range(10.0f, 90.0f);
-                if (RNG{}.Range(0, 1) == 0)
-                    target_yaw_ *= -1;
+                    velocity_.y += RNG{}.Range(4.0, 10.0f);
+                    move_velocity_ = 5.0f * glm::vec3{glm::sin(glm::radians(yaw_)), 0, glm::cos(glm::radians(yaw_))};
+
+                    SoundSystem::PlayAt(SoundSystem::Sound::ALIEN_JUMP, position_);
+                }
+                else if (chance < 0.5)
+                {
+                    action_ = GreenMobAction::ROTATE_LEFT;
+                    next_action_time_ += RNG{}.Range(0.0f, 0.5f);
+                }
+                else if (chance < 0.7)
+                {
+                    action_ = GreenMobAction::ROTATE_RIGHT;
+                    next_action_time_ += RNG{}.Range(0.0f, 0.5f);
+                }
+                else if (chance < 0.9)
+                {
+                    action_ = GreenMobAction::MOVE;
+                    next_action_time_ += RNG{}.Range(1.0f, 4.0f);
+
+                    velocity_.y += RNG{}.Range(4.0, 10.0f);
+                    move_velocity_ = 0.5f * glm::vec3{glm::sin(glm::radians(yaw_)), 0, glm::cos(glm::radians(yaw_))};
+
+                    SoundSystem::PlayAt(SoundSystem::Sound::ALIEN_JUMP, position_);
+                }
             }
         }
-        else if (action_ == GreenMobAction::NONE)
+        else
         {
-            next_action_time_ -= delta_time;
+            action_ = GreenMobAction::NONE;
+            next_action_time_ += RNG{}.Range(2.0f, 6.0f);
         }
     }
-}
 
-void GreenMob::FixedUpdate()
-{
     if (IsDead())
     {
         velocity_.x = 0;
         velocity_.z = 0;
 
-        if (!death_animation_done_)
-        {
-            roll_ = glm::clamp(90.0f * time_since_death_, 0.0f, 90.0f); // 90 degrees/sec
-            if (time_since_death_ > 2.0f)
-                death_animation_done_ = true;
-        }
+        roll_ += 50.0 * delta_time;
+        if (roll_ > 90.0)
+            roll_ = 90.0;
 
         if (!dropped_biogel_)
         {
             DroppedItem *biogel = new DroppedItem({
                 .position = position_,
                 .item = ItemID::biogel,
-                .amount = 1
+                .amount = RNG{}.Range(1, 3)
             });
             biogel->SetVelocity({
                 RNG{}.Range(-2.0f, 2.0f),
@@ -147,41 +170,37 @@ void GreenMob::FixedUpdate()
 
             dropped_biogel_ = true;
         }
-    }
-    else if (action_ == GreenMobAction::JUMP)
-    {
-        if (glm::length(jump_vector_) > 0)
-        {
-            velocity_ = jump_vector_;
-            jump_vector_ = glm::vec3{0};
-        }
 
-        if (is_grounded_)
-        {
-            // Ad-hoc friction
-            if (glm::abs(velocity_.y) < 0.01f)
-                velocity_ *= IsOnIce() ? 0.99f : 0.95f;
-
-            // Allow it to slide for a bit before stopping
-            if (glm::length(velocity_) < 0.1f)
-            {
-                velocity_ = glm::vec3{0};
-                action_ = GreenMobAction::NONE;
-            }
-        }
+        if (time_since_death_ > 4.0f)
+            death_animation_done_ = true;
     }
-    else if (action_ == GreenMobAction::ROTATE)
+    else if (action_ == GreenMobAction::ROTATE_LEFT)
     {
-        if (target_yaw_ > 0)
-        {
-            float delta = 180.0f * FIXED_DELTA_TIME;
-            yaw_ += delta;
-            target_yaw_ -= delta;
-        }
-        else
-        {
-            action_ = GreenMobAction::NONE;
-        }
+        yaw_ -= 175.0f * delta_time;
+    }
+    else if (action_ == GreenMobAction::ROTATE_RIGHT)
+    {
+        yaw_ += 175.0f * delta_time;
+    }
+    else if (action_ == GreenMobAction::MOVE)
+    {
+        velocity_.x = move_velocity_.x;
+        velocity_.z = move_velocity_.z;
+    }
+}
+
+void GreenMob::FixedUpdate()
+{
+    // Friction
+    if (action_ == GreenMobAction::NONE && is_grounded_)
+    {
+        velocity_.x *= IsOnIce() ? 0.99f : 0.95f;
+        if (glm::abs(velocity_.x) < 0.05f)
+            velocity_.x = 0;
+
+        velocity_.z *= IsOnIce() ? 0.99f : 0.95f;
+        if (glm::abs(velocity_.z) < 0.05f)
+            velocity_.z = 0;
     }
 }
 

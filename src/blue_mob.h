@@ -9,7 +9,6 @@ struct BlueMobData
     ItemStack stolen_item = {ItemID::none, 0};
     float yaw = 0;
     int health = 30;
-    bool chasing_player = false;
 };
 
 class BlueMob : public Entity
@@ -24,14 +23,15 @@ class BlueMob : public Entity
         void NotifyOfAttacker(size_t id);
 
     private:
-        enum class BlueMobAction {WALK, JUMP_AND_WALK, ROTATE, NONE};
+        enum class BlueMobAction {WALK, ROTATE_LEFT, ROTATE_RIGHT, CHASE, NONE};
 
     private:
         Mesh body_mesh_;
         Mesh leg_mesh_;
         BlueMobAction action_ = BlueMobAction::NONE;
-        glm::vec3 jump_vector_;
+        glm::vec3 walk_velocity_;
         ItemStack stolen_item_;
+        float internal_time_ = 0;
         float next_action_time_ = 0;
         float time_since_death_ = 0;
         float time_walking_ = 0;
@@ -39,5 +39,4 @@ class BlueMob : public Entity
         float target_yaw_;
         float yaw_;
         float roll_;
-        bool chasing_player_ = false;
 };

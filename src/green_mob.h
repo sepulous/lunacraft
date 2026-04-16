@@ -20,16 +20,16 @@ class GreenMob : public Entity
         GreenMobData GetGreenMobData();
 
     private:
-        enum class GreenMobAction {ROTATE, JUMP, NONE};
+        enum class GreenMobAction {NONE, MOVE, ROTATE_LEFT, ROTATE_RIGHT};
 
     private:
         Mesh mesh_;
-        float next_action_time_ = 0;
+        glm::vec3 move_velocity_;
         GreenMobAction action_ = GreenMobAction::NONE;
-        glm::vec3 jump_vector_;
+        float internal_time_ = 0;
+        float next_action_time_ = 0;
         float time_since_death_ = 0;
-        bool dropped_biogel_ = false;
-        float target_yaw_;
         float yaw_;
         float roll_;
+        bool dropped_biogel_ = false;
 };

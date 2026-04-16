@@ -5,6 +5,7 @@
 #include "storage.h"
 #include "rng.h"
 #include "dropped_item.h"
+#include "sound_system.h"
 
 BrownMob::BrownMob(BrownMobData data)
 {
@@ -17,7 +18,6 @@ BrownMob::BrownMob(BrownMobData data)
     aabb_.center = data.position;
     aabb_.extents = {0.5f, 0.25f, 0.5f};
     death_animation_done_ = true;
-    aggressive_ = false;
 
     const float face_bottom = 1.0f / 3.0f;
     const float face_side_height = 1.0f / 6.0f;
@@ -80,6 +80,8 @@ BrownMob::BrownMob(BrownMobData data)
 
 void BrownMob::Update(float delta_time)
 {
+    internal_time_ += delta_time;
+
     if (IsDead())
         time_since_death_ += delta_time;
 
@@ -90,129 +92,163 @@ void BrownMob::Update(float delta_time)
             pain_time_ = 0;
     }
 
-    if (is_grounded_ && !aggressive_)
-    {
-        if (next_action_time_ <= 0)
-        {
-            next_action_time_ = RNG{}.Range(1.0f, 3.0f);
-            if (RNG{}.Range(0, 1) == 0)
-            {
-                action_ = BrownMobAction::JUMP;
+    yaw_ = glm::mod(yaw_, 360.0f);
+    if (yaw_ < 0.0f)
+        yaw_ += 360.0f;
 
-                if (RNG{}.Range(0, 2) == 0) // Hop
-                {
-                    jump_vector_ = RNG{}.Range(1.0f, 4.0f) * glm::vec3{0, 1, 0};
-                }
-                else // Jump forward
-                {
-                    auto yaw_rotation = glm::mat3{glm::rotate(glm::mat4{1.0f}, glm::radians(yaw_), {0, 1, 0})};
-                    glm::vec3 forward = yaw_rotation * glm::vec3{0.0f, 0.0f, 1.0f};
-                    jump_vector_ = RNG{}.Range(2.0f, 8.0f) * forward
-                                 + RNG{}.Range(6.0f, 16.0f) * glm::vec3{0, 1, 0};
-                }
+    if (internal_time_ > next_action_time_ && !IsDead())
+    {
+        move_velocity_ = glm::vec3{0};
+        if (action_ == BrownMobAction::NONE)
+        {
+            if (!is_grounded_)
+            {
+                next_action_time_ += 1.0f;
             }
             else
             {
-                action_ = BrownMobAction::ROTATE;
+                float chance = RNG{}.Range(0.0f, 1.0f);
+                if (chance < 0.3f)
+                {
+                    action_ = BrownMobAction::MOVE;
+                    next_action_time_ += RNG{}.Range(1.0f, 4.0f);
 
-                target_yaw_ = RNG{}.Range(10.0f, 90.0f);
-                if (RNG{}.Range(0, 1) == 0)
-                    target_yaw_ *= -1;
+                    velocity_.y += RNG{}.Range(4.0f, 8.0f);
+                    move_velocity_ = 6.0f * glm::vec3{glm::sin(glm::radians(yaw_)), 0, glm::cos(glm::radians(yaw_))};
+
+                    SoundSystem::PlayAt(SoundSystem::Sound::ALIEN_JUMP, position_);
+                }
+                else if (chance < 0.5f)
+                {
+                    action_ = BrownMobAction::ROTATE_LEFT;
+                    next_action_time_ += RNG{}.Range(0.0f, 0.5f);
+                }
+                else if (chance < 0.7f)
+                {
+                    action_ = BrownMobAction::ROTATE_RIGHT;
+                    next_action_time_ += RNG{}.Range(0.0f, 0.5f);
+                }
+                else if (chance < 0.9f)
+                {
+                    // TODO: Aggro on astronauts
+
+                    // nearest_player = World::GetNearestPlayerWithinDistance((this->level + 1) * 30.0); // level is never set; probably defaults to 0
+                    //if (!nearest_player)
+                    if (true)
+                    {
+                        action_ = BrownMobAction::MOVE;
+                        next_action_time_ += RNG{}.Range(1.0f, 4.0f);
+
+                        velocity_.y += RNG{}.Range(4.0f, 8.0f);
+                        move_velocity_ = 0.6f * glm::vec3{glm::sin(glm::radians(yaw_)), 0, glm::cos(glm::radians(yaw_))};
+
+                        SoundSystem::PlayAt(SoundSystem::Sound::ALIEN_JUMP, position_);
+                    }
+                    else
+                    {
+                        // _objc_msgSend(param_1, "setNoticedEntity:", nearest_player);
+
+                        // action_ = BrownMobAction::CHASE;
+                        // next_action_time_ += RNG{}.Range(0.0f, 0.5f);
+                    }
+                }
             }
         }
-        else if (action_ == BrownMobAction::NONE)
+        else if (action_ == BrownMobAction::CHASE)
         {
-            next_action_time_ -= delta_time;
+            Entity *target = Moon::GetCurrentMoon()->GetEntityManager().GetEntityByID(target_entity_id_);
+            if (!target || target->IsDead())
+            {
+                action_ = BrownMobAction::NONE;
+                next_action_time_ += 1.0f;
+                return;
+            }
+
+            float distance = glm::length(target->GetPosition() - position_);
+
+            if (distance > 50.0f)
+            {
+                action_ = BrownMobAction::NONE;
+                next_action_time_ += 1.0f;
+                return;
+            }
+
+            if (distance < 5.0)
+            {
+                SoundSystem::PlayAt(SoundSystem::Sound::BLOCK_BREAK, position_);
+                target->SetHealth(target->GetHealth() - 25);
+                Moon::GetCurrentMoon()->BrownMobExplode(position_);
+                action_ = BrownMobAction::NONE;
+                SetIsDead(true);
+                return;
+            }
+
+            move_velocity_ = 10.0f * glm::vec3{glm::sin(glm::radians(yaw_)), 0, glm::cos(glm::radians(yaw_))};
+
+            next_action_time_ += RNG{}.Range(1.0f, 1.5f);
+        }
+        else
+        {
+            action_ = BrownMobAction::NONE;
+            next_action_time_ += RNG{}.Range(2.0f, 6.0f);
+        }
+    }
+
+    if (!IsDead())
+    {
+        if (action_ == BrownMobAction::ROTATE_LEFT)
+        {
+            yaw_ -= 150.0f * delta_time;
+        }
+        else if (action_ == BrownMobAction::ROTATE_RIGHT)
+        {
+            yaw_ += 150.0f * delta_time;
+        }
+        else if (action_ == BrownMobAction::MOVE)
+        {
+            velocity_.x = move_velocity_.x;
+            velocity_.z = move_velocity_.z;
+        }
+        else if (action_ == BrownMobAction::CHASE)
+        {
+            velocity_.x = move_velocity_.x;
+            velocity_.z = move_velocity_.z;
+
+            Entity *target = Moon::GetCurrentMoon()->GetEntityManager().GetEntityByID(target_entity_id_);
+            if (target)
+            {
+                auto target_displacement = target->GetPosition() - position_;
+                float target_yaw = glm::atan(target_displacement.z, target_displacement.x);
+                float angle_deg = -glm::degrees(target_yaw) - 90.0f;
+                float delta_angle = std::fmod((angle_deg + 720.0f - yaw_), 360.0f) - 180.0f;
+
+                if (delta_angle < 0.0f)
+                    yaw_ += std::max(-200.0f * delta_time, delta_angle);
+                else
+                    yaw_ += std::min(200.0f * delta_time, delta_angle);
+            }
+            else
+            {
+                action_ = BrownMobAction::NONE;
+                next_action_time_ += 1.0f;
+                return;
+            }
         }
     }
 }
 
 void BrownMob::FixedUpdate()
 {
-    if (IsDead())
+    // Friction
+    if (action_ == BrownMobAction::NONE && is_grounded_)
     {
-        velocity_.x = 0;
-        velocity_.z = 0;
-    }
-    else if (aggressive_)
-    {
-        Entity *target = Moon::GetCurrentMoon()->GetEntityManager().GetEntityByID(target_id_);
-        if (target)
-        {
-            time_chasing_ += FIXED_DELTA_TIME;
+        velocity_.x *= IsOnIce() ? 0.99f : 0.95f;
+        if (glm::abs(velocity_.x) < 0.05f)
+            velocity_.x = 0;
 
-            auto displacement = target->GetPosition() - position_;
-            auto horizontal_displacement = glm::vec3{displacement.x, 0, displacement.z};
-            float horizontal_distance = glm::length(horizontal_displacement);
-
-            if (glm::length(displacement) < 0.8f)
-            {
-                target->SetHealth(target->GetHealth() - 25);
-                Moon::GetCurrentMoon()->BrownMobExplode(position_);
-                SetIsDead(true);
-                return;
-            }
-
-            yaw_ = glm::degrees(glm::acos(glm::normalize(horizontal_displacement).z));
-            if (horizontal_displacement.x < 0)
-                yaw_ *= -1;
-
-            if (time_chasing_ < 1.0f)
-            {
-                auto right = glm::normalize(glm::cross(horizontal_displacement, {0, 1, 0}));
-                velocity_ -= (8.0f * glm::normalize(horizontal_displacement) + 6.0f * glm::sin(1.0f * time_chasing_) * right) * FIXED_DELTA_TIME;
-            }
-            else if (horizontal_distance > 1.0f)
-            {
-                velocity_ += 8.0f * glm::normalize(horizontal_displacement) * FIXED_DELTA_TIME;
-                
-                float y = velocity_.y;
-                velocity_ = glm::dot(glm::vec3{velocity_.x, 0, velocity_.z}, glm::normalize(horizontal_displacement)) * glm::normalize(horizontal_displacement);
-                velocity_.y = y;
-            }
-
-            velocity_.x = glm::clamp(velocity_.x, -8.0f, 8.0f);
-            velocity_.z = glm::clamp(velocity_.z, -8.0f, 8.0f);
-        }
-        else
-        {
-            aggressive_ = false;
-        }
-    }
-    else if (action_ == BrownMobAction::JUMP)
-    {
-        if (glm::length(jump_vector_) > 0)
-        {
-            velocity_ = jump_vector_;
-            jump_vector_ = glm::vec3{0};
-        }
-
-        if (is_grounded_)
-        {
-            // Ad-hoc friction
-            if (glm::abs(velocity_.y) < 0.01f)
-                velocity_ *= IsOnIce() ? 0.99f : 0.95f;
-
-            // Allow it to slide for a bit before stopping
-            if (glm::length(velocity_) < 0.1f)
-            {
-                velocity_ = glm::vec3{0};
-                action_ = BrownMobAction::NONE;
-            }
-        }
-    }
-    else if (action_ == BrownMobAction::ROTATE)
-    {
-        if (target_yaw_ > 0)
-        {
-            float delta = 103.0f * FIXED_DELTA_TIME;
-            yaw_ += delta;
-            target_yaw_ -= delta;
-        }
-        else
-        {
-            action_ = BrownMobAction::NONE;
-        }
+        velocity_.z *= IsOnIce() ? 0.99f : 0.95f;
+        if (glm::abs(velocity_.z) < 0.05f)
+            velocity_.z = 0;
     }
 }
 
@@ -248,9 +284,18 @@ BrownMobData BrownMob::GetBrownMobData()
 
 void BrownMob::NotifyOfAttacker(size_t id)
 {
-    if (!aggressive_)
+    if (!IsDead() && action_ != BrownMobAction::CHASE)
     {
-        target_id_ = id;
-        aggressive_ = true;
+        target_entity_id_ = id;
+        action_ = BrownMobAction::CHASE;
+        next_action_time_ += 1.0f;
+
+        Entity *target = Moon::GetCurrentMoon()->GetEntityManager().GetEntityByID(target_entity_id_);
+        if (target)
+        {
+            auto recoil_dir = position_ - target->GetPosition();
+            recoil_dir.y = 0;
+            move_velocity_ = 5.0f * glm::normalize(recoil_dir);
+        }
     }
 }

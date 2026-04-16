@@ -211,6 +211,8 @@ Giraffe::Giraffe(GiraffeData data)
 
 void Giraffe::Update(float delta_time)
 {
+    internal_time_ += delta_time;
+
     if (pain_time_ != 0)
     {
         pain_time_ -= delta_time;
@@ -224,65 +226,49 @@ void Giraffe::Update(float delta_time)
     }
     else
     {
-        if (next_action_time_ <= 0 && is_grounded_)
+        if (internal_time_ > next_action_time_)
         {
             if (action_ == GiraffeAction::NONE)
             {
                 float chance = RNG{}.Range(0.0f, 1.0f);
                 if (chance < 0.3f) // Walk
                 {
-                    // Update action and decide next action time
                     action_ = GiraffeAction::WALK;
-                    next_action_time_ = RNG{}.Range(5.0f, 10.0f);
+                    next_action_time_ += RNG{}.Range(5.0f, 10.0f);
 
-                    // Move forward
-                    auto yaw_rotation = glm::mat3{glm::rotate(glm::mat4{1.0f}, yaw_, {0, 1, 0})};
-                    auto forward = yaw_rotation * glm::vec3{0.0f, 0.0f, 1.0f};
-                    velocity_ = 1.0f * forward;
+                    walk_velocity_ = glm::vec3{glm::sin(yaw_), 0, glm::cos(yaw_)};
                 }
-                else if (chance < 0.7f) // Rotate
+                else if (chance < 0.5f)
                 {
-                    // Update action and decide next action time
-                    action_ = GiraffeAction::ROTATE;
-                    next_action_time_ = RNG{}.Range(0.0f, 3.0f);
-                    
-                    // Set target rotation
-                    target_yaw_ = glm::radians(75.0f);
-                    if (RNG{}.Range(0, 1) == 0)
-                        target_yaw_ *= -1;
+                    action_ = GiraffeAction::ROTATE_LEFT;
+                    next_action_time_ += RNG{}.Range(0.0f, 3.0f);
                 }
-                else if (chance < 0.9f) // Jump and walk
+                else if (chance < 0.7f)
                 {
-                    // Update action and decide next action time
-                    action_ = GiraffeAction::JUMP_AND_WALK;
-                    next_action_time_ = RNG{}.Range(1.0f, 6.0f);
+                    action_ = GiraffeAction::ROTATE_RIGHT;
+                    next_action_time_ += RNG{}.Range(0.0f, 3.0f);
+                }
+                else if (chance < 0.9f)
+                {
+                    action_ = GiraffeAction::WALK;
+                    next_action_time_ += RNG{}.Range(1.0f, 6.0f);
 
-                    // Jump and walk
-                    auto yaw_rotation = glm::mat3{glm::rotate(glm::mat4{1.0f}, yaw_, {0, 1, 0})};
-                    auto forward = yaw_rotation * glm::vec3{0.0f, 0.0f, 1.0f};
-                    velocity_ = 1.0f * forward
-                              + 4.0f * glm::vec3{0, 1, 0};
+                    walk_velocity_ = glm::vec3{glm::sin(yaw_), 0, glm::cos(yaw_)};
+                    velocity_.y += 4.0f;
                 }
                 else
                 {
-                    next_action_time_ = RNG{}.Range(0.0f, 3.0f);
+                    next_action_time_ += RNG{}.Range(0.0f, 3.0f);
                 }
             }
             else
             {
                 action_ = GiraffeAction::NONE;
-                next_action_time_ = RNG{}.Range(2.0f, 13.0f);
+                next_action_time_ += RNG{}.Range(2.0f, 13.0f);
                 time_walking_ = 0;
                 velocity_.x = 0;
                 velocity_.z = 0;
             }
-        }
-        else
-        {
-            next_action_time_ -= delta_time;
-
-            if (action_ == GiraffeAction::WALK || action_ == GiraffeAction::JUMP_AND_WALK)
-                time_walking_ += delta_time;
         }
     }
 }
@@ -301,14 +287,19 @@ void Giraffe::FixedUpdate()
                 death_animation_done_ = true;
         }
     }
-    else if (action_ == GiraffeAction::ROTATE)
+    else if (action_ == GiraffeAction::ROTATE_LEFT)
     {
-        if (target_yaw_ > 0)
-        {
-            float delta = glm::radians(26.0f) * FIXED_DELTA_TIME;
-            yaw_ += delta;
-            target_yaw_ -= delta;
-        }
+        yaw_ -= glm::radians(25.0f) * FIXED_DELTA_TIME;
+    }
+    else if (action_ == GiraffeAction::ROTATE_RIGHT)
+    {
+        yaw_ += glm::radians(25.0f) * FIXED_DELTA_TIME;
+    }
+    else if (action_ == GiraffeAction::WALK)
+    {
+        time_walking_ += FIXED_DELTA_TIME;
+        velocity_.x = walk_velocity_.x;
+        velocity_.z = walk_velocity_.z;
     }
 }
 
@@ -333,9 +324,9 @@ void Giraffe::Render(const glm::mat4 &view, const glm::mat4 &proj)
     shader.SetFloat("u_fog_end", (float)render_distance * 0.85f * 32.0f);
     shader.SetVec4("u_color", {1.0f, 0.0f, 0.0f, pain_time_});
 
-    if (action_ == GiraffeAction::JUMP_AND_WALK || action_ == GiraffeAction::WALK || glm::abs(neck_bob_) > 0.02f || glm::abs(walk_spread_) > 0.02f)
+    if (action_ == GiraffeAction::WALK || glm::abs(neck_bob_) > 0.02f || glm::abs(walk_spread_) > 0.02f)
     {
-        if (action_ == GiraffeAction::JUMP_AND_WALK || action_ == GiraffeAction::WALK)
+        if (action_ == GiraffeAction::WALK)
         {
             neck_bob_ = glm::radians(2.0f * glm::sin(2.0f * time_walking_));
             walk_spread_ = glm::radians(22.5f * glm::sin(3.0f * time_walking_));
