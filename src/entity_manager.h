@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <optional>
 #include <unordered_map>
 
 #include "chunk_manager.h"
@@ -25,6 +26,7 @@ class EntityManager
 
         void AddEntity(Entity *entity);
         Entity *GetEntityByID(size_t id);
+        std::optional<size_t> GetNearestEntityID(size_t ref_entity_id, EntityType type = EntityType::ANY);
         void SelfUpdate();
         void Update(float delta_time);
         void RunPhysics(double &accumulator);

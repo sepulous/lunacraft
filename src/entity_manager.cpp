@@ -106,6 +106,32 @@ Entity *EntityManager::GetEntityByID(size_t id)
     return entities_.at(id);
 }
 
+std::optional<size_t> EntityManager::GetNearestEntityID(size_t ref_entity_id, EntityType type)
+{
+    auto ref_entity = GetEntityByID(ref_entity_id);
+    if (!ref_entity)
+        return std::nullopt;
+
+    bool success = false;
+    size_t nearest_entity_id;
+    float nearest_distance = 10000.0f;
+
+    auto ref_entity_pos = ref_entity->GetPosition();
+    for (auto [entity_id, entity] : entities_)
+    {
+        auto entity_pos = entity->GetPosition();
+        float distance = glm::length(entity_pos - ref_entity_pos);
+        if (entity_id != ref_entity_id && distance < nearest_distance && (type == EntityType::ANY || entity->GetType() == type))
+        {
+            nearest_entity_id = entity_id;
+            nearest_distance = distance;
+            success = true;
+        }
+    }
+
+    return success ? std::optional<size_t>{nearest_entity_id} : std::nullopt;
+}
+
 void EntityManager::SelfUpdate()
 {
     // Global lighting

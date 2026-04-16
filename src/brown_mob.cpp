@@ -130,11 +130,14 @@ void BrownMob::Update(float delta_time)
                 }
                 else if (chance < 0.9f)
                 {
-                    // TODO: Aggro on astronauts
-
-                    // nearest_player = World::GetNearestPlayerWithinDistance((this->level + 1) * 30.0); // level is never set; probably defaults to 0
-                    //if (!nearest_player)
-                    if (true)
+                    auto nearest_astronaut = Moon::GetCurrentMoon()->GetEntityManager().GetNearestEntityID(GetID(), EntityType::ASTRONAUT);
+                    if (nearest_astronaut)
+                    {
+                        target_entity_id_ = nearest_astronaut.value();
+                        action_ = BrownMobAction::CHASE;
+                        next_action_time_ += RNG{}.Range(0.0f, 0.5f);
+                    }
+                    else
                     {
                         action_ = BrownMobAction::MOVE;
                         next_action_time_ += RNG{}.Range(1.0f, 4.0f);
@@ -143,13 +146,6 @@ void BrownMob::Update(float delta_time)
                         move_velocity_ = 0.6f * glm::vec3{glm::sin(glm::radians(yaw_)), 0, glm::cos(glm::radians(yaw_))};
 
                         SoundSystem::PlayAt(SoundSystem::Sound::ALIEN_JUMP, position_);
-                    }
-                    else
-                    {
-                        // _objc_msgSend(param_1, "setNoticedEntity:", nearest_player);
-
-                        // action_ = BrownMobAction::CHASE;
-                        // next_action_time_ += RNG{}.Range(0.0f, 0.5f);
                     }
                 }
             }
