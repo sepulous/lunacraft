@@ -96,20 +96,26 @@ bool Entity::CanBeDamaged() noexcept
     return can_be_damaged_;
 }
 
+void Entity::Damage(int amount) noexcept
+{
+    health_ -= amount;
+    pain_time_ = 0.5f;
+    if (health_ <= 0)
+    {
+        health_ = 0;
+        SetIsDead(true);
+    }
+}
+
+void Entity::Heal(int amount) noexcept
+{
+    health_ += amount;
+    if (health_ > 100)
+        health_ = 100;
+}
+
 void Entity::SetHealth(int health) noexcept
 {
-    health = glm::max(health, 0);
-
-    if (health == 0)
-        SetIsDead(true);
-
-    if (health < health_ || health == 0)
-    {
-        pain_time_ = 0.5f;
-        if (!IsDead())
-            velocity_.y += 2.5f;
-    }
-
     health_ = health;
 }
 

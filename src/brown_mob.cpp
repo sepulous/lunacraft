@@ -172,7 +172,7 @@ void BrownMob::Update(float delta_time)
             if (distance < 5.0)
             {
                 SoundSystem::PlayAt(SoundSystem::Sound::BLOCK_BREAK, position_);
-                target->SetHealth(target->GetHealth() - 25);
+                target->Damage(25);
                 Moon::GetCurrentMoon()->BrownMobExplode(position_);
                 action_ = BrownMobAction::NONE;
                 SetIsDead(true);

@@ -251,9 +251,7 @@ void EntityManager::Integrate(Entity *entity)
 
             if (hit_entity != nullptr)
             {
-                int new_health = hit_entity->GetHealth() - slug_data.damage;
-                hit_entity->SetHealth(new_health);
-
+                hit_entity->Damage(slug_data.damage);
                 slug->SetIsDead(true);
 
                 auto entity_type = hit_entity->GetType();

@@ -620,30 +620,23 @@ glm::vec3 Player::GetRight()
     return glm::cross(GetForward(), glm::vec3{0, 1, 0});
 }
 
-void Player::SetHealth(int health) noexcept
+void Player::Damage(int amount) noexcept
 {
-    if (health < health_)
+    pain_time_ = 0.5f;
+
+    int damage = health_ - amount;
+    int divided_damage = damage / 2;
+
+    int suit_damage = glm::min(suit_status_, divided_damage);
+    suit_status_ -= suit_damage;
+
+    int health_damage = divided_damage + (divided_damage - suit_damage);
+    health_ -= health_damage;
+
+    if (health_ <= 0)
     {
-        pain_time_ = 0.5f;
-
-        int damage = health_ - health;
-        int divided_damage = damage / 2;
-
-        int suit_damage = glm::min(suit_status_, divided_damage);
-        suit_status_ -= suit_damage;
-
-        int health_damage = divided_damage + (divided_damage - suit_damage);
-        health_ -= health_damage;
-
-        if (health_ <= 0)
-        {
-            health_ = 0;
-            SetIsDead(true);
-        }
-    }
-    else
-    {
-        health_ = health;
+        health_ = 0;
+        SetIsDead(true);
     }
 }
 

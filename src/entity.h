@@ -57,7 +57,9 @@ class Entity
 
         bool CanBeDamaged() noexcept;
 
-        virtual void SetHealth(int health) noexcept;
+        virtual void Damage(int amount) noexcept;
+        virtual void Heal(int amount) noexcept;
+        void SetHealth(int health) noexcept;
         int GetHealth() noexcept;
 
         bool IsDeathAnimationDone() noexcept;
@@ -70,7 +72,7 @@ class Entity
         glm::vec3 next_position_;
         glm::vec3 position_;
         glm::vec3 velocity_;
-        int health_ = 100;
+        int health_ = 0;
         float pain_time_ = 0;
         bool can_be_damaged_ = true;
         bool death_animation_done_ = false;
