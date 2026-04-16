@@ -262,8 +262,12 @@ void ChunkManager::HandleBrownMobExplosion(glm::ivec3 explosion_center)
 
     // Break and convert (alchemy) blocks, and record which chunks need to be updated
     std::vector<glm::ivec3> chunks_affected;
-    for (auto &voxel : to_destroy)
+    BlockID batch_block = BlockID::air;
+    int batch_count = 0;
+    for (auto it = to_destroy.begin(); it != to_destroy.end(); ++it)
     {
+        auto &voxel = *it;
+
         glm::ivec3 affected_coords[] = {
             VoxelToChunk(voxel),
             VoxelToChunk(voxel + glm::ivec3{ 1, 0,  0}),
@@ -308,10 +312,40 @@ void ChunkManager::HandleBrownMobExplosion(glm::ivec3 explosion_center)
 
             block = BlockID::air;
 
+            if (batch_block == BlockID::air)
+            {
+                batch_block = block_to_drop;
+                batch_count = 1;
+            }
+            else if (block_to_drop == batch_block)
+            {
+                batch_count++;
+            }
+
+            if (block_to_drop != batch_block || it == to_destroy.end() - 1)
+            {
+                DroppedItem *item = new DroppedItem({
+                    .position = glm::vec3{voxel},
+                    .item = BlockIDToItemID(batch_block),
+                    .amount = batch_count
+                });
+                item->SetVelocity({
+                    RNG{}.Range(-1.0f, 1.0f),
+                    RNG{}.Range(0.5f, 1.0f),
+                    RNG{}.Range(-1.0f, 1.0f)
+                });
+                Moon::GetCurrentMoon()->GetEntityManager().AddEntity(item);
+
+                batch_block = block_to_drop;
+                batch_count = 1;
+            }
+        }
+        else if (it == to_destroy.end() - 1)
+        {
             DroppedItem *item = new DroppedItem({
                 .position = glm::vec3{voxel},
-                .item = BlockIDToItemID(block_to_drop),
-                .amount = 1
+                .item = BlockIDToItemID(batch_block),
+                .amount = batch_count
             });
             item->SetVelocity({
                 RNG{}.Range(-1.0f, 1.0f),
