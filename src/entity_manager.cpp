@@ -14,6 +14,7 @@
 #include "brown_mob.h"
 #include "blue_mob.h"
 #include "giraffe.h"
+#include "turret.h"
 #include "dropped_item.h"
 
 EntityManager::~EntityManager()
@@ -85,6 +86,12 @@ void EntityManager::LoadInitialEntities()
                         entity_file.read(reinterpret_cast<char *>(&data), sizeof(BlueMobData));
                         AddEntity(new BlueMob(data));
                     }
+                    else if (type == EntityType::TURRET)
+                    {
+                        TurretData data;
+                        entity_file.read(reinterpret_cast<char *>(&data), sizeof(TurretData));
+                        AddEntity(new Turret(data));
+                    }
                 }
 
                 entity_file.close();
@@ -106,14 +113,13 @@ Entity *EntityManager::GetEntityByID(size_t id)
     return entities_.at(id);
 }
 
-std::optional<size_t> EntityManager::GetNearestEntityID(size_t ref_entity_id, EntityType type, float max_distance)
+Entity *EntityManager::GetNearestAstronaut(size_t ref_entity_id, float max_distance)
 {
     auto ref_entity = GetEntityByID(ref_entity_id);
     if (!ref_entity)
-        return std::nullopt;
+        return nullptr;
 
-    bool success = false;
-    size_t nearest_entity_id;
+    Entity *nearest_astronaut = nullptr;
     float nearest_distance = 10000.0f;
 
     auto ref_entity_pos = ref_entity->GetPosition();
@@ -121,15 +127,44 @@ std::optional<size_t> EntityManager::GetNearestEntityID(size_t ref_entity_id, En
     {
         auto entity_pos = entity->GetPosition();
         float distance = glm::length(entity_pos - ref_entity_pos);
-        if (entity_id != ref_entity_id && distance < nearest_distance && distance < max_distance && (type == EntityType::ANY || entity->GetType() == type))
+        if (entity_id != ref_entity_id && distance < nearest_distance && distance < max_distance && entity->GetType() == EntityType::ASTRONAUT)
         {
-            nearest_entity_id = entity_id;
+            nearest_astronaut = entity;
             nearest_distance = distance;
-            success = true;
         }
     }
 
-    return success ? std::optional<size_t>{nearest_entity_id} : std::nullopt;
+    return nearest_astronaut;
+}
+
+Entity *EntityManager::GetNearestMob(size_t ref_entity_id, float max_distance)
+{
+    auto ref_entity = GetEntityByID(ref_entity_id);
+    if (!ref_entity)
+        return nullptr;
+
+    Entity *nearest_mob = nullptr;
+    float nearest_distance = 10000.0f;
+
+    auto ref_entity_pos = ref_entity->GetPosition();
+    for (auto [entity_id, entity] : entities_)
+    {
+        auto entity_pos = entity->GetPosition();
+        auto entity_type = entity->GetType();
+        float distance = glm::length(entity_pos - ref_entity_pos);
+        bool is_mob = entity_type == EntityType::GREEN_MOB 
+                   || entity_type == EntityType::BROWN_MOB
+                   || entity_type == EntityType::BLUE_MOB
+                   || entity_type == EntityType::GIRAFFE
+                   || entity_type == EntityType::ASTRONAUT;
+        if (entity_id != ref_entity_id && is_mob && distance < nearest_distance && distance < max_distance)
+        {
+            nearest_mob = entity;
+            nearest_distance = distance;
+        }
+    }
+
+    return nearest_mob;
 }
 
 void EntityManager::SelfUpdate()
@@ -259,6 +294,8 @@ void EntityManager::Integrate(Entity *entity)
                     dynamic_cast<BrownMob *>(hit_entity)->NotifyOfAttacker(slug_data.source_id);
                 else if (entity_type == EntityType::BLUE_MOB)
                     dynamic_cast<BlueMob *>(hit_entity)->NotifyOfAttacker(slug_data.source_id);
+                else if (entity_type == EntityType::TURRET)
+                    dynamic_cast<Turret *>(hit_entity)->NotifyOfAttacker(slug_data.source_id);
             }
             else
             {
@@ -456,6 +493,12 @@ void EntityManager::LoadChunkEntities(glm::ivec3 chunk_coords)
                     entity_file.read(reinterpret_cast<char *>(&data), sizeof(BlueMobData));
                     AddEntity(new BlueMob(data));
                 }
+                else if (type == EntityType::TURRET)
+                {
+                    TurretData data;
+                    entity_file.read(reinterpret_cast<char *>(&data), sizeof(TurretData));
+                    AddEntity(new Turret(data));
+                }
             }
 
             entity_file.close();
@@ -537,6 +580,11 @@ void EntityManager::UnloadChunkEntities(glm::ivec3 chunk_coords)
                 {
                     BlueMobData data = dynamic_cast<BlueMob *>(entity)->GetBlueMobData();
                     entity_file.write(reinterpret_cast<const char *>(&data), sizeof(BlueMobData));
+                }
+                else if (type == EntityType::TURRET)
+                {
+                    TurretData data = dynamic_cast<Turret *>(entity)->GetTurretData();
+                    entity_file.write(reinterpret_cast<const char *>(&data), sizeof(TurretData));
                 }
 
                 delete entity;
@@ -624,6 +672,11 @@ void EntityManager::SaveAllEntities()
                 {
                     BlueMobData data = dynamic_cast<BlueMob *>(entity)->GetBlueMobData();
                     entity_file.write(reinterpret_cast<const char *>(&data), sizeof(BlueMobData));
+                }
+                else if (type == EntityType::TURRET)
+                {
+                    TurretData data = dynamic_cast<Turret *>(entity)->GetTurretData();
+                    entity_file.write(reinterpret_cast<const char *>(&data), sizeof(TurretData));
                 }
             }
 

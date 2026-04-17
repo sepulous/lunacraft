@@ -19,11 +19,9 @@
 #include "dropped_item.h"
 #include "sound_system.h"
 #include "minilight.h"
+#include "turret.h"
 #include "input.h"
 #include "fxaa.h"
-
-#include "blue_mob.h"
-#include "brown_mob.h"
 
 Moon *Moon::current_moon_;
 
@@ -242,13 +240,6 @@ void Moon::Update(double delta_time)
     // Per-frame updates
     //
 
-    if (Input::IsKeyPressed(GLFW_KEY_U))
-    {
-        entity_manager_.AddEntity(new BlueMob({
-            .position = glm::vec3{selection_block_.GetAdjacentPosition()} + glm::vec3{0.0f, 1.5f, 0.0f}
-        }));
-    }
-
     // Non-physics updates
     entity_manager_.Update(delta_time);
 
@@ -302,7 +293,25 @@ void Moon::Update(double delta_time)
 
             auto &inventory = player_->GetInventory();
             auto &selected = inventory.inventory[0][inventory.selected_hotbar_slot];
-            if (ItemIsBlock(selected.item))
+            if (selected.item == ItemID::turret_t1 || selected.item == ItemID::turret_t2 || selected.item == ItemID::turret_t3)
+            {
+                int level = selected.item == ItemID::turret_t1 ? 0
+                          : selected.item == ItemID::turret_t2 ? 2
+                          :                                      4;
+
+                entity_manager_.AddEntity(new Turret({
+                    .position = selection_adjacent_position,
+                    .level = level
+                }));
+
+                if (!settings_.is_creative)
+                {
+                    selected.amount--;
+                    if (selected.amount < 1)
+                        selected = {ItemID::none, 0};
+                }
+            }
+            else if (ItemIsBlock(selected.item))
             {
                 BlockID block = ItemIDToBlockID(selected.item);
                 if (block != BlockID::air)

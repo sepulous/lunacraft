@@ -651,7 +651,7 @@ void Player::Render(const glm::mat4 &view, const glm::mat4 &proj)
     shader.Use();
     shader.SetMat4("u_view", glm::mat4{1.0f});
     shader.SetMat4("u_proj", proj);
-    shader.SetVec4("u_color", {1.0f, 0.0f, 0.0f, pain_time_});
+    shader.SetVec4("u_color", {1.0f, 1.0f - pain_time_, 1.0f - pain_time_, 1.0f});
     shader.SetVec4("u_fog_color", glm::vec4{0.0f});
 
     // Arm

@@ -73,6 +73,7 @@ add_executable(Lunacraft
     src/brown_mob.cpp
     src/blue_mob.cpp
     src/giraffe.cpp
+    src/turret.cpp
     src/fxaa.cpp
 
     third_party/stb_image/stb_image/stb_image.cpp

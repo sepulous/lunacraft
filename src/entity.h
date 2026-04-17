@@ -4,7 +4,6 @@
 
 enum class EntityType : uint8_t
 {
-    ANY,
     PLAYER,
     SLUG,
     MINILIGHT,
@@ -13,7 +12,8 @@ enum class EntityType : uint8_t
     BROWN_MOB,
     BLUE_MOB,
     GIRAFFE,
-    ASTRONAUT
+    ASTRONAUT,
+    TURRET
 };
 
 class Entity
