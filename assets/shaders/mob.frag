@@ -21,5 +21,5 @@ void main()
     tex_color = vec4(max(u_lighting, 0.8) * tex_color.rgb, tex_color.a);
     vec4 tex_with_fog = mix(tex_color, u_fog_color, fog_factor * u_fog_color.a);
 
-    out_color = vec4(mix(tex_with_fog.rgb, u_color.rgb, u_color.a), tex_with_fog.a);
+    out_color = u_color * tex_with_fog;
 }

@@ -320,7 +320,7 @@ void BlueMob::Render(const glm::mat4 &view, const glm::mat4 &proj)
     shader.SetVec4("u_fog_color", fog_color);
     shader.SetFloat("u_fog_start", (float)render_distance * 0.33f * 32.0f);
     shader.SetFloat("u_fog_end", (float)render_distance * 0.85f * 32.0f);
-    shader.SetVec4("u_color", {1.0f, 0.0f, 0.0f, pain_time_});
+    shader.SetVec4("u_color", {1.0f, 1.0f - pain_time_, 1.0f - pain_time_, 1.0f});
 
     if (action_ == BlueMobAction::CHASE || action_ == BlueMobAction::WALK || glm::abs(walk_spread_) > 0.02f)
     {
