@@ -113,30 +113,6 @@ Entity *EntityManager::GetEntityByID(size_t id)
     return entities_.at(id);
 }
 
-Entity *EntityManager::GetNearestAstronaut(size_t ref_entity_id, float max_distance)
-{
-    auto ref_entity = GetEntityByID(ref_entity_id);
-    if (!ref_entity)
-        return nullptr;
-
-    Entity *nearest_astronaut = nullptr;
-    float nearest_distance = 10000.0f;
-
-    auto ref_entity_pos = ref_entity->GetPosition();
-    for (auto [entity_id, entity] : entities_)
-    {
-        auto entity_pos = entity->GetPosition();
-        float distance = glm::length(entity_pos - ref_entity_pos);
-        if (entity_id != ref_entity_id && distance < nearest_distance && distance < max_distance && entity->GetType() == EntityType::ASTRONAUT)
-        {
-            nearest_astronaut = entity;
-            nearest_distance = distance;
-        }
-    }
-
-    return nearest_astronaut;
-}
-
 Entity *EntityManager::GetNearestMob(size_t ref_entity_id, float max_distance)
 {
     auto ref_entity = GetEntityByID(ref_entity_id);

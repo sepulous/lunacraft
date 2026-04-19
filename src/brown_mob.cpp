@@ -130,10 +130,12 @@ void BrownMob::Update(float delta_time)
                 }
                 else if (chance < 0.9f)
                 {
-                    auto nearest_astronaut = Moon::GetCurrentMoon()->GetEntityManager().GetNearestAstronaut(GetID(), 15.0f);
-                    if (nearest_astronaut)
+                    auto moon = Moon::GetCurrentMoon();
+                    auto player = moon->GetPlayer();
+                    auto player_distance = glm::length(player->GetPosition() - position_);
+                    if (!moon->GetSettings().is_creative && player_distance < 15.0f)
                     {
-                        target_entity_id_ = nearest_astronaut->GetID();
+                        target_entity_id_ = player->GetID();
                         action_ = BrownMobAction::CHASE;
                         next_action_time_ += RNG{}.Range(0.0f, 0.5f);
                     }
