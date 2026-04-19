@@ -329,7 +329,7 @@ void Giraffe::Render(const glm::mat4 &view, const glm::mat4 &proj)
         if (action_ == GiraffeAction::WALK)
         {
             neck_bob_ = glm::radians(2.0f * glm::sin(2.0f * time_walking_));
-            walk_spread_ = glm::radians(22.5f * glm::sin(3.0f * time_walking_));
+            walk_spread_ = glm::radians(12.0f * glm::sin(3.0f * time_walking_));
         }
         else
         {
