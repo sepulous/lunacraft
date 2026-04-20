@@ -353,13 +353,14 @@ void Player::Update(float delta_time)
                 time_charging_gun_ += scale * delta_time;
 
                 pistol_base_disp_ = 0.01f * glm::sin(50.0f * (time_charging_gun_ / scale));
-                pistol_slide_disp_ = 0.4f * (1 - glm::exp(-0.5f * time_charging_gun_));
+                pistol_slide_disp_ = 0.4f * (1.0f - 1.0f / glm::sqrt(glm::min(10.0f * time_charging_gun_, 40.0f) * 0.5f + 1.0f));
             }
             else if (time_charging_gun_ != 0)
             {
-                float speed = glm::mix(1.0f, 50.0f, glm::clamp(time_charging_gun_, 0.0f, 4.0f) / 4.0f);
-                int damage_param = selected_item == ItemID::slug_pistol_t3 ? 4  // This is how slug damage was calculated in the latest
-                                 : selected_item == ItemID::slug_pistol_t2 ? 2  // version (v2.01) of the original game
+                // This is how slug speed and damage was calculated in v2.01 of the original game
+                float speed = glm::min(10.0f * time_charging_gun_, 40.0f) + 1.0f;
+                int damage_param = selected_item == ItemID::slug_pistol_t3 ? 4
+                                 : selected_item == ItemID::slug_pistol_t2 ? 2
                                  :                                           0;
 
                 Slug *slug = new Slug({
