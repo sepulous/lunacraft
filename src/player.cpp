@@ -423,32 +423,11 @@ void Player::Update(float delta_time)
         }
     }
 
-    // Walking (bob animations)
-    const float bob_delay = 0.2f;
+    // Camera/arm bob
     if (glm::length(input_direction_) > 0 && is_grounded_)
     {
-        time_walking_ += delta_time;
-
-        if (time_walking_ > bob_delay) // Shouldn't bob for small movements (looks weird)
-        {
-            arm_bob_ = 0.01f * glm::pow(glm::sin(5.0f * (time_walking_ - bob_delay)), 2);
-            camera_bob_ = 0.04f * glm::sin(10.0f * (time_walking_ - bob_delay) + 3.1415f);
-        }
-    }
-    else if (time_walking_ != 0)
-    {
-        if (glm::abs(arm_bob_) < 0.001f && glm::abs(camera_bob_) < 0.01f)
-        {
-            time_walking_ = 0;
-            arm_bob_ = 0;
-            camera_bob_ = 0;
-        }
-        else
-        {
-            time_walking_ += delta_time;
-            arm_bob_ = 0.01f * glm::pow(glm::sin(5.0f * (time_walking_ - bob_delay)), 2);
-            camera_bob_ = 0.04f * glm::sin(10.0f * (time_walking_ - bob_delay) + 3.1415f);
-        }
+        camera_bob_phase_ += 0.95f * 5.0f * delta_time;
+        arm_bob_ = 0.01f * glm::sin(2.0f * camera_bob_phase_);
     }
 
     // Camera shake when flying
@@ -456,9 +435,10 @@ void Player::Update(float delta_time)
         time_flying_ += delta_time;
     else
         time_flying_ = 0;
-    camera_.pitch += 0.005f * glm::sin(80.0f * time_flying_);
+    camera_.pitch += 0.286f * glm::sin(80.0f * time_flying_);
 
-    camera_.position = position_ + glm::vec3(0, 0.9f + camera_bob_, 0);
+    camera_.position = position_ + glm::vec3(0, 0.9f, 0);
+    camera_.position.y += 0.02f * glm::sin(camera_bob_phase_);
 }
 
 void Player::FixedUpdate()
@@ -632,6 +612,8 @@ void Player::Damage(int amount) noexcept
 
     int health_damage = divided_damage + (divided_damage - suit_damage);
     health_ -= health_damage;
+
+    SoundSystem::Play(SoundSystem::Sound::HURT);
 
     if (health_ <= 0)
     {

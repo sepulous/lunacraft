@@ -48,11 +48,10 @@ class Player : public Entity
 
         // Animation variables
         float time_punching_ = 0;
-        float time_walking_ = 0;
         float time_flying_ = 0;
         float time_drilling_ = 0;
         float time_charging_gun_ = 0;
-        float camera_bob_ = 0;
+        float camera_bob_phase_ = 0;
         float arm_extent_ = 0;
         float arm_bob_ = 0;
         float arm_shake_ = 0;
