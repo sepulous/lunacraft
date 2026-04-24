@@ -11,6 +11,7 @@ struct Camera
     glm::vec3 forward;
     glm::vec3 right;
     float pitch = 0;
+    float shake = 0;
     float yaw = -90;
     float sensitivity = 0.05f;
 

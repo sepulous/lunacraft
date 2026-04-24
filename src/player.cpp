@@ -427,8 +427,8 @@ void Player::Update(float delta_time)
     // Camera/arm bob
     if (glm::length(input_direction_) > 0 && is_grounded_)
     {
-        camera_bob_phase_ += 0.95f * 5.0f * delta_time;
-        arm_bob_ = 0.01f * glm::sin(2.0f * camera_bob_phase_);
+        camera_bob_phase_ += 9.5f * delta_time;
+        arm_bob_ = 0.01f * glm::sin(camera_bob_phase_);
     }
 
     // Camera shake when flying
@@ -436,10 +436,10 @@ void Player::Update(float delta_time)
         time_flying_ += delta_time;
     else
         time_flying_ = 0;
-    camera_.pitch += 0.286f * glm::sin(80.0f * time_flying_);
+    camera_.shake = 0.5f * glm::sin(80.0f * time_flying_);
 
     camera_.position = position_ + glm::vec3(0, 0.9f, 0);
-    camera_.position.y += 0.02f * glm::sin(camera_bob_phase_);
+    camera_.position.y += 0.04f * glm::sin(camera_bob_phase_);
 }
 
 void Player::FixedUpdate()
@@ -526,9 +526,9 @@ void Player::UpdateCamera()
         camera_.pitch = glm::clamp(camera_.pitch, -89.8f, 89.8f);
 
         glm::vec3 direction;
-        direction.x = cos(glm::radians(camera_.yaw)) * cos(glm::radians(camera_.pitch));
-        direction.y = sin(glm::radians(camera_.pitch));
-        direction.z = sin(glm::radians(camera_.yaw)) * cos(glm::radians(camera_.pitch));
+        direction.x = cos(glm::radians(camera_.yaw)) * cos(glm::radians(camera_.pitch + camera_.shake));
+        direction.y = sin(glm::radians(camera_.pitch + camera_.shake));
+        direction.z = sin(glm::radians(camera_.yaw)) * cos(glm::radians(camera_.pitch + camera_.shake));
         camera_.forward = glm::normalize(direction);
         camera_.right = glm::normalize(glm::cross(camera_.forward, camera_.up));
     }
