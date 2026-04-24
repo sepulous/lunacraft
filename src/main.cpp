@@ -264,6 +264,7 @@ int main()
                 ui_inventory.SetActive(!ui_inventory.IsActive());
                 if (ui_inventory.IsActive())
                 {
+                    SoundSystem::Play(SoundSystem::Sound::LOW_BEEP);
                     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
                 }
                 else

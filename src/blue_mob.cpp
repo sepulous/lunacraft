@@ -283,6 +283,7 @@ void BlueMob::FixedUpdate()
             next_position_ = position_;
 
             Moon::GetCurrentMoon()->DisplayMessage("An item was stolen!");
+            SoundSystem::Play(SoundSystem::Sound::TELEPORT);
 
             return;
         }

@@ -458,6 +458,8 @@ void Moon::Render(const glm::mat4 &projection)
         stbi_write_png_compression_level = 4; // default is 8
         stbi_write_png(path.c_str(), dimensions.x, dimensions.y, 3, pixels, dimensions.x * 3);
         DisplayMessage("Screenshot saved!");
+
+        SoundSystem::Play(SoundSystem::Sound::REWARD);
     }
 }
 

@@ -37,6 +37,9 @@ void SoundSystem::Init()
     sound_map_[Sound::LASER].LoadSound((Storage::SOUNDS / "lasergun.wav").string());
     sound_map_[Sound::MEDKIT].LoadSound((Storage::SOUNDS / "medkit.wav").string());
     sound_map_[Sound::PICKUP].LoadSound((Storage::SOUNDS / "pickup.wav").string());
+    sound_map_[Sound::LOW_BEEP].LoadSound((Storage::SOUNDS / "lowbeep.wav").string());
+    sound_map_[Sound::REWARD].LoadSound((Storage::SOUNDS / "reward.wav").string());
+    sound_map_[Sound::TELEPORT].LoadSound((Storage::SOUNDS / "teleport.wav").string());
 
     active_sounds_.reserve(ACTIVE_SOUND_LIMIT);
 }

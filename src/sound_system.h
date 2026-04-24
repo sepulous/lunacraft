@@ -39,7 +39,10 @@ class SoundSystem
             LAND,
             LASER,
             MEDKIT,
-            PICKUP
+            PICKUP,
+            LOW_BEEP,
+            REWARD,
+            TELEPORT
         };
         
     public:
