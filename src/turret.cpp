@@ -183,7 +183,7 @@ void Turret::Update(float delta_time)
                 .damage = level_ * 8 + 20
             });
             Moon::GetCurrentMoon()->GetEntityManager().AddEntity(slug);
-            SoundSystem::Play(SoundSystem::Sound::LASER);
+            SoundSystem::PlayAt(SoundSystem::Sound::LASER, position_);
 
             next_action_time_ += 3.0f / (level_ * 0.3f + 1.0f) + RNG{}.Range(0.0f, 0.8f);
         }
@@ -218,9 +218,9 @@ void Turret::Update(float delta_time)
             float delta_angle = std::fmod((angle_deg + 720.0f - yaw_), 360.0f) - 180.0f;
 
             if (delta_angle < 0.0f)
-                yaw_ += std::max(-200.0f * delta_time, delta_angle);
+                yaw_ += glm::max(-200.0f * delta_time, delta_angle);
             else
-                yaw_ += std::min(200.0f * delta_time, delta_angle);
+                yaw_ += glm::min(200.0f * delta_time, delta_angle);
         }
         else
         {
