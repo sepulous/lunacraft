@@ -8,6 +8,7 @@
 #include "rng.h"
 #include "slug.h"
 #include "moon.h"
+#include "dropped_item.h"
 
 Player::Player()
 {
@@ -376,6 +377,29 @@ void Player::Update(float delta_time)
                 time_charging_gun_ = 0;
                 pistol_base_disp_ = 0;
                 pistol_slide_disp_ = 0;
+            }
+        }
+
+        // Throw item out (with 'Q')
+        if (Input::IsKeyPressed(GLFW_KEY_Q))
+        {
+            auto &selected_item = inventory_.inventory[0][inventory_.selected_hotbar_slot];
+            if (selected_item.amount > 0)
+            {
+                DroppedItem *item = new DroppedItem({
+                    .position = camera_.position + 1.0f * camera_.forward,
+                    .item = selected_item.item,
+                    .amount = 1
+                });
+                item->SetVelocity(4.0f * camera_.forward);
+                Moon::GetCurrentMoon()->GetEntityManager().AddEntity(item);
+            }
+
+            if (!inventory_.IsCreative())
+            {
+                selected_item.amount--;
+                if (selected_item.amount < 1)
+                    selected_item = {ItemID::none, 0};
             }
         }
     }
