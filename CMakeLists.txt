@@ -74,6 +74,7 @@ add_executable(Lunacraft
     src/blue_mob.cpp
     src/giraffe.cpp
     src/turret.cpp
+    src/astronaut.cpp
     src/fxaa.cpp
 
     third_party/stb_image/stb_image/stb_image.cpp
@@ -98,7 +99,7 @@ target_link_libraries(Lunacraft PRIVATE
     Soundlib
 )
 
-target_compile_options(Lunacraft PRIVATE -Wno-volatile)
+target_compile_options(Lunacraft PRIVATE -Wno-volatile) # Make GLM less annoying
 
 target_compile_definitions(Lunacraft PRIVATE
     LUNACRAFT_ROOT_DIR="${CMAKE_INSTALL_FULL_DATADIR}/lunacraft"

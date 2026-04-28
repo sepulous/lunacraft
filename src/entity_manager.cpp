@@ -16,6 +16,7 @@
 #include "giraffe.h"
 #include "turret.h"
 #include "dropped_item.h"
+#include "astronaut.h"
 
 EntityManager::~EntityManager()
 {
@@ -48,7 +49,7 @@ void EntityManager::LoadInitialEntities()
                     {
                         MinilightData data;
                         entity_file.read(reinterpret_cast<char *>(&data), sizeof(MinilightData));
-                        AddEntity(new Minilight(data.voxel, data.normal));
+                        AddEntity(new Minilight(data));
                     }
                     else if (type == EntityType::DROPPED_ITEM)
                     {
@@ -72,6 +73,7 @@ void EntityManager::LoadInitialEntities()
                     {
                         BrownMobData data;
                         entity_file.read(reinterpret_cast<char *>(&data), sizeof(BrownMobData));
+                        printf("Loading Brown Mob with ID=%i\n", data.id);
                         AddEntity(new BrownMob(data));
                     }
                     else if (type == EntityType::GIRAFFE)
@@ -91,6 +93,13 @@ void EntityManager::LoadInitialEntities()
                         TurretData data;
                         entity_file.read(reinterpret_cast<char *>(&data), sizeof(TurretData));
                         AddEntity(new Turret(data));
+                    }
+                    else if (type == EntityType::ASTRONAUT)
+                    {
+                        AstronautData data;
+                        entity_file.read(reinterpret_cast<char *>(&data), sizeof(AstronautData));
+                        printf("Loading Astronaut with ID=%i\n", data.id);
+                        AddEntity(new Astronaut(data));
                     }
                 }
 
@@ -161,9 +170,16 @@ void EntityManager::SelfUpdate()
     // Add new entities
     for (Entity *entity : entities_to_spawn_)
     {
-        entity->SetID(next_entity_id_);
-        entities_.emplace(next_entity_id_, entity);
-        next_entity_id_++;
+        if (entity->GetID() == 0 && entity->GetType() != EntityType::PLAYER) // New entity, new ID
+        {
+            entity->SetID(entity_count_);
+            entities_.emplace(entity_count_, entity);
+            entity_count_++;
+        }
+        else // Old entity, use old ID
+        {
+            entities_.emplace(entity->GetID(), entity);
+        }
     }
     entities_to_spawn_.clear();
 }
@@ -272,6 +288,8 @@ void EntityManager::Integrate(Entity *entity)
                     dynamic_cast<BlueMob *>(hit_entity)->NotifyOfAttacker(slug_data.source_id);
                 else if (entity_type == EntityType::TURRET)
                     dynamic_cast<Turret *>(hit_entity)->NotifyOfAttacker(slug_data.source_id);
+                else if (entity_type == EntityType::ASTRONAUT)
+                    dynamic_cast<Astronaut *>(hit_entity)->NotifyOfAttacker(slug_data.source_id);
             }
             else
             {
@@ -354,7 +372,12 @@ void EntityManager::Integrate(Entity *entity)
             if (entity_voxel_g.y > 0 && entity_voxel_g.y < WORLD_HEIGHT_LIMIT)
             {
                 auto entity_voxel_l = GlobalToLocalVoxel(entity_voxel_g);
+                auto chunk_c = VoxelToChunk(entity_voxel_g);
                 auto entity_chunk = chunk_manager.GetChunk(VoxelToChunk(entity_voxel_g));
+                if (!entity_chunk)
+                {
+                    printf("problem at chunk (%i, %i), entity type: %i\n", chunk_c.x, chunk_c.z, entity->GetType());
+                }
                 BlockID foot_block = entity_chunk->GetBlocks()[GetChunkIndex(entity_voxel_l - glm::ivec3{0, 1, 0})];
 
                 // Decide whether on ice
@@ -412,6 +435,26 @@ void EntityManager::DestroyMinilightAt(glm::ivec3 voxel)
     }
 }
 
+bool EntityManager::DestroyItemNear(ItemID item_id, glm::vec3 position, float max_distance)
+{
+    for (auto it = entities_.begin(); it != entities_.end(); ++it)
+    {
+        Entity *entity = it->second;
+        if (entity->GetType() == EntityType::DROPPED_ITEM)
+        {
+            DroppedItem *item = dynamic_cast<DroppedItem *>(entity);
+            float distance = glm::length(item->GetPosition() - position);
+            if (item->GetItem() == item_id && distance < max_distance)
+            {
+                entities_.erase(it);
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 void EntityManager::LoadChunkEntities(glm::ivec3 chunk_coords)
 {
     int moon_id = Moon::GetCurrentMoon()->GetID();
@@ -431,7 +474,7 @@ void EntityManager::LoadChunkEntities(glm::ivec3 chunk_coords)
                 {
                     MinilightData data;
                     entity_file.read(reinterpret_cast<char *>(&data), sizeof(MinilightData));
-                    AddEntity(new Minilight(data.voxel, data.normal));
+                    AddEntity(new Minilight(data));
                 }
                 else if (type == EntityType::DROPPED_ITEM)
                 {
@@ -474,6 +517,12 @@ void EntityManager::LoadChunkEntities(glm::ivec3 chunk_coords)
                     TurretData data;
                     entity_file.read(reinterpret_cast<char *>(&data), sizeof(TurretData));
                     AddEntity(new Turret(data));
+                }
+                else if (type == EntityType::ASTRONAUT)
+                {
+                    AstronautData data;
+                    entity_file.read(reinterpret_cast<char *>(&data), sizeof(AstronautData));
+                    AddEntity(new Astronaut(data));
                 }
             }
 
@@ -561,6 +610,11 @@ void EntityManager::UnloadChunkEntities(glm::ivec3 chunk_coords)
                 {
                     TurretData data = dynamic_cast<Turret *>(entity)->GetTurretData();
                     entity_file.write(reinterpret_cast<const char *>(&data), sizeof(TurretData));
+                }
+                else if (type == EntityType::ASTRONAUT)
+                {
+                    AstronautData data = dynamic_cast<Astronaut *>(entity)->GetAstronautData();
+                    entity_file.write(reinterpret_cast<const char *>(&data), sizeof(AstronautData));
                 }
 
                 delete entity;
@@ -654,6 +708,11 @@ void EntityManager::SaveAllEntities()
                     TurretData data = dynamic_cast<Turret *>(entity)->GetTurretData();
                     entity_file.write(reinterpret_cast<const char *>(&data), sizeof(TurretData));
                 }
+                else if (type == EntityType::ASTRONAUT)
+                {
+                    AstronautData data = dynamic_cast<Astronaut *>(entity)->GetAstronautData();
+                    entity_file.write(reinterpret_cast<const char *>(&data), sizeof(AstronautData));
+                }
             }
 
             entity_file.close();
@@ -663,4 +722,14 @@ void EntityManager::SaveAllEntities()
             std::filesystem::remove(entity_file_path);
         }
     }
+}
+
+void EntityManager::SetEntityCount(size_t count)
+{
+    entity_count_ = count;
+}
+
+size_t EntityManager::GetEntityCount()
+{
+    return entity_count_;
 }

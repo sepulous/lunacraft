@@ -12,7 +12,7 @@ class EntityManager
     private:
         std::unordered_map<size_t, Entity *> entities_;
         std::vector<Entity *> entities_to_spawn_;
-        size_t next_entity_id_ = 0;
+        size_t entity_count_ = 0;
 
     public:
         EntityManager() = default;
@@ -32,10 +32,13 @@ class EntityManager
         void RunPhysics(double &accumulator);
         void RenderEntities(const glm::mat4 &view, const glm::mat4 &proj);
         void DestroyMinilightAt(glm::ivec3 voxel);
+        bool DestroyItemNear(ItemID item_id, glm::vec3 position, float max_distance);
         void LoadInitialEntities();
         void LoadChunkEntities(glm::ivec3 chunk_coords);
         void UnloadChunkEntities(glm::ivec3 chunk_coords);
         void SaveAllEntities();
+        void SetEntityCount(size_t count);
+        size_t GetEntityCount();
 
     private:
         void Integrate(Entity *entity);

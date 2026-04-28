@@ -20,6 +20,7 @@
 #include "sound_system.h"
 #include "minilight.h"
 #include "turret.h"
+#include "astronaut.h"
 #include "input.h"
 #include "fxaa.h"
 
@@ -90,6 +91,7 @@ Moon::Moon(int moon_id, MoonSettings moon_settings)
     player_ = new Player;
     current_moon_ = this;
     chunk_manager_.Init(moon_id, moon_settings);
+    entity_manager_.SetEntityCount(moon_settings.entity_count);
     entity_manager_.AddEntity(player_);
 }
 
@@ -98,11 +100,11 @@ Moon::~Moon()
     entity_manager_.SaveAllEntities();
     chunk_manager_.WriteAllChunksToDisk();
 
-    // Save world time to file
     settings_.world_time = world_time_;
     settings_.skybox_phase = skybox_phase_;
     settings_.skybox_reversed = skybox_reversed_;
     settings_.base_fog_color = base_fog_color_;
+    settings_.entity_count = entity_manager_.GetEntityCount();
     std::filesystem::path moon_data_path = Storage::MOONS / (std::string("moon") + std::to_string(id_)) / "moon.dat";
     std::ofstream moon_data_file(moon_data_path, std::ios::binary);
     moon_data_file.write(reinterpret_cast<char *>(&settings_), sizeof(MoonSettings));
@@ -328,8 +330,22 @@ void Moon::Update(double delta_time)
                     if (block == BlockID::minilight)
                     {
                         auto normal = selection_adjacent_position - selection_position;
-                        Minilight *minilight = new Minilight(selection_adjacent_position, normal);
+                        Minilight *minilight = new Minilight(MinilightData{
+                            .id = 0,
+                            .voxel = selection_adjacent_position,
+                            .normal = normal
+                        });
                         entity_manager_.AddEntity(minilight);
+                    }
+
+                    if (block == BlockID::beacon)
+                    {
+                        entity_manager_.AddEntity(new Astronaut({
+                            .position = selection_adjacent_position + glm::ivec3{0, 20, 0},
+                            .level = RNG{}.Range(0, 4),
+                            .friendly = true
+                        }));
+                        SoundSystem::Play(SoundSystem::Sound::MEDKIT);
                     }
 
                     SoundSystem::PlayAt(SoundSystem::Sound::BLOCK_PLACE, selection_adjacent_position);
@@ -428,7 +444,7 @@ void Moon::Render(const glm::mat4 &projection)
     {
         // Read screen pixels
         auto dimensions = Viewport::GetDimensions();
-        unsigned char pixels[dimensions.x * dimensions.y * 3];
+        unsigned char *pixels = (unsigned char *)malloc(dimensions.x * dimensions.y * 3);
         glReadPixels(0, 0, dimensions.x, dimensions.y, GL_RGB, GL_UNSIGNED_BYTE, pixels);
 
         // Flip image
@@ -457,6 +473,7 @@ void Moon::Render(const glm::mat4 &projection)
         auto path = Storage::SCREENSHOTS / filename.str();
         stbi_write_png_compression_level = 4; // default is 8
         stbi_write_png(path.c_str(), dimensions.x, dimensions.y, 3, pixels, dimensions.x * 3);
+        free(pixels);
         DisplayMessage("Screenshot saved!");
 
         SoundSystem::Play(SoundSystem::Sound::REWARD);

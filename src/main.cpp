@@ -494,6 +494,8 @@ void SetFullscreen(GLFWwindow *window, bool fullscreen)
             mode->height,
             mode->refreshRate
         );
+        Viewport::SetDimensions({mode->width, mode->height});
+        FXAA::Resize(mode->width, mode->height);
     }
     else
     {
@@ -508,5 +510,7 @@ void SetFullscreen(GLFWwindow *window, bool fullscreen)
             height,
             mode->refreshRate
         );
+        Viewport::SetDimensions({width, height});
+        FXAA::Resize(width, height);
     }
 }
