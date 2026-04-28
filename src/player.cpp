@@ -738,28 +738,28 @@ void Player::Render(const glm::mat4 &view, const glm::mat4 &proj)
                 float tile_size = 1.0f / 14.0f;
                 float block_vertices[] = {
                     // Back
-                    -1.0f, -1.0f, -1.0f, tile_origin_side.x,             tile_origin_side.y,
-                     1.0f, -1.0f, -1.0f, tile_origin_side.x + tile_size, tile_origin_side.y,
-                     1.0f,  1.0f, -1.0f, tile_origin_side.x + tile_size, tile_origin_side.y + tile_size,
-                     1.0f,  1.0f, -1.0f, tile_origin_side.x + tile_size, tile_origin_side.y + tile_size,
-                    -1.0f,  1.0f, -1.0f, tile_origin_side.x + tile_size, tile_origin_side.y,
-                    -1.0f, -1.0f, -1.0f, tile_origin_side.x,             tile_origin_side.y,
+                    -1.0f, -1.0f, -1.0f, tile_origin_side.x + tile_size, tile_origin_side.y,
+                     1.0f, -1.0f, -1.0f, tile_origin_side.x,             tile_origin_side.y,
+                     1.0f,  1.0f, -1.0f, tile_origin_side.x,             tile_origin_side.y + tile_size,
+                     1.0f,  1.0f, -1.0f, tile_origin_side.x,             tile_origin_side.y + tile_size,
+                    -1.0f,  1.0f, -1.0f, tile_origin_side.x + tile_size, tile_origin_side.y + tile_size,
+                    -1.0f, -1.0f, -1.0f, tile_origin_side.x + tile_size, tile_origin_side.y,
 
                     // Side
-                    -1.0f, -1.0f,  1.0f, tile_origin_side.x,             tile_origin_side.y,
+                    -1.0f,  1.0f, +1.0f, tile_origin_side.x,             tile_origin_side.y + tile_size,
+                    -1.0f, -1.0f, +1.0f, tile_origin_side.x,             tile_origin_side.y,
+                    -1.0f, -1.0f, -1.0f, tile_origin_side.x + tile_size, tile_origin_side.y,
                     -1.0f, -1.0f, -1.0f, tile_origin_side.x + tile_size, tile_origin_side.y,
                     -1.0f,  1.0f, -1.0f, tile_origin_side.x + tile_size, tile_origin_side.y + tile_size,
-                    -1.0f,  1.0f, -1.0f, tile_origin_side.x + tile_size, tile_origin_side.y + tile_size,
-                    -1.0f,  1.0f,  1.0f, tile_origin_side.x + tile_size, tile_origin_side.y,
-                    -1.0f, -1.0f,  1.0f, tile_origin_side.x,             tile_origin_side.y,
+                    -1.0f,  1.0f, +1.0f, tile_origin_side.x,             tile_origin_side.y + tile_size,
 
                     // Top
-                    -1.0f, 1.0f, -1.0f, tile_origin_top.x,             tile_origin_top.y,
-                     1.0f, 1.0f, -1.0f, tile_origin_top.x + tile_size, tile_origin_top.y,
-                     1.0f, 1.0f,  1.0f, tile_origin_top.x + tile_size, tile_origin_top.y + tile_size,
-                     1.0f, 1.0f,  1.0f, tile_origin_top.x + tile_size, tile_origin_top.y + tile_size,
-                    -1.0f, 1.0f,  1.0f, tile_origin_top.x + tile_size, tile_origin_top.y,
-                    -1.0f, 1.0f, -1.0f, tile_origin_top.x,             tile_origin_top.y,
+                     1.0f, 1.0f, -1.0f, tile_origin_top.x + tile_size, tile_origin_top.y + tile_size,
+                     1.0f, 1.0f, +1.0f, tile_origin_top.x,             tile_origin_top.y,
+                    -1.0f, 1.0f, +1.0f, tile_origin_top.x,             tile_origin_top.y,
+                    -1.0f, 1.0f, +1.0f, tile_origin_top.x,             tile_origin_top.y,
+                    -1.0f, 1.0f, -1.0f, tile_origin_top.x + tile_size, tile_origin_top.y,
+                     1.0f, 1.0f, -1.0f, tile_origin_top.x + tile_size, tile_origin_top.y + tile_size,
                 };
                 block_mesh_.SetVertexData(block_vertices, sizeof(block_vertices) / (5 * sizeof(float)));
                 last_held_block_ = selected_item;
