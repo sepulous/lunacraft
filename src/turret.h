@@ -1,13 +1,18 @@
 
+#include <cstdint>
+
 #include "entity.h"
 #include "mesh.h"
 
 struct TurretData
 {
+    size_t id = 0;
     glm::vec3 position;
     float yaw;
     int health = 100;
     int level = 0; // 0, 2, 4
+    size_t target_entity_id;
+    uint8_t action;
 };
 
 class Turret : public Entity
@@ -22,7 +27,7 @@ class Turret : public Entity
         void NotifyOfAttacker(size_t id);
 
     private:
-        enum class TurretAction {NONE, ROTATE_LEFT, ROTATE_RIGHT, ATTACK};
+        enum class TurretAction : uint8_t {NONE, ROTATE_LEFT, ROTATE_RIGHT, ATTACK};
 
     private:
         Mesh mesh_;

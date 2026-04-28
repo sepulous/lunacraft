@@ -5,6 +5,7 @@
 
 Slug::Slug(SlugData slug_data)
 {
+    id_ = slug_data.id;
     type_ = EntityType::SLUG;
     position_ = slug_data.initial_position;
     prev_position_ = slug_data.initial_position;
@@ -123,6 +124,7 @@ void Slug::Render(const glm::mat4 &view, const glm::mat4 &proj)
 SlugData Slug::GetSlugData()
 {
     return {
+        .id = id_,
         .initial_position = position_,
         .initial_velocity = velocity_,
         .source_id = source_id_,

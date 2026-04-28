@@ -65,7 +65,7 @@ class Entity
         bool IsDeathAnimationDone() noexcept;
 
     protected:
-        size_t id_;
+        size_t id_ = 0;
         EntityType type_;
         AABB aabb_;
         glm::vec3 prev_position_;

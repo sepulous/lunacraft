@@ -9,12 +9,15 @@
 
 BrownMob::BrownMob(BrownMobData data)
 {
+    id_ = data.id;
     type_ = EntityType::BROWN_MOB;
     position_ = data.position;
     prev_position_ = data.position;
     next_position_ = data.position;
     yaw_ = data.yaw;
     health_ = data.health;
+    target_entity_id_ = data.target_entity_id;
+    action_ = static_cast<BrownMobAction>(data.action);
     aabb_.center = data.position;
     aabb_.extents = {0.5f, 0.25f, 0.5f};
     death_animation_done_ = true;
@@ -274,9 +277,12 @@ void BrownMob::Render(const glm::mat4 &view, const glm::mat4 &proj)
 BrownMobData BrownMob::GetBrownMobData()
 {
     return {
+        .id = id_,
         .position = position_,
         .yaw = yaw_,
-        .health = health_
+        .health = health_,
+        .target_entity_id = target_entity_id_,
+        .action = static_cast<uint8_t>(action_)
     };
 }
 

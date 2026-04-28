@@ -4,6 +4,7 @@
 
 struct SlugData
 {
+    size_t id = 0;
     glm::vec3 initial_position;
     glm::vec3 initial_velocity;
     size_t source_id;

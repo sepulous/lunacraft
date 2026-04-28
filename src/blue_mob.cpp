@@ -8,6 +8,7 @@
 
 BlueMob::BlueMob(BlueMobData data)
 {
+    id_ = data.id;
     type_ = EntityType::BLUE_MOB;
     position_ = data.position;
     prev_position_ = data.position;
@@ -382,6 +383,7 @@ void BlueMob::Render(const glm::mat4 &view, const glm::mat4 &proj)
 BlueMobData BlueMob::GetBlueMobData()
 {
     return {
+        .id = id_,
         .position = position_,
         .stolen_item = stolen_item_,
         .yaw = yaw_,

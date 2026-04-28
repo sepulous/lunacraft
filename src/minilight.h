@@ -5,6 +5,7 @@
 
 struct MinilightData
 {
+    size_t id = 0;
     glm::ivec3 voxel;
     glm::vec3 normal;
 };
@@ -12,7 +13,7 @@ struct MinilightData
 class Minilight : public Entity
 {
     public:
-        Minilight(glm::ivec3 voxel, glm::vec3 normal);
+        Minilight(MinilightData data);
         void Update(float delta_time) override;
         void FixedUpdate() override;
         void Render(const glm::mat4 &view, const glm::mat4 &proj) override;

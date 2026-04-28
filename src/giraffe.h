@@ -4,6 +4,7 @@
 
 struct GiraffeData
 {
+    size_t id = 0;
     glm::vec3 position;
     float yaw = 0;
     int health = 100;

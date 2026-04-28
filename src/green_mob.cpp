@@ -9,6 +9,7 @@
 
 GreenMob::GreenMob(GreenMobData data)
 {
+    id_ = data.id;
     type_ = EntityType::GREEN_MOB;
     position_ = data.position;
     prev_position_ = data.position;
@@ -229,6 +230,7 @@ void GreenMob::Render(const glm::mat4 &view, const glm::mat4 &proj)
 GreenMobData GreenMob::GetGreenMobData()
 {
     return {
+        .id = id_,
         .position = position_,
         .yaw = yaw_,
         .health = health_

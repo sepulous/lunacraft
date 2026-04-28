@@ -6,6 +6,7 @@
 
 struct DroppedItemData
 {
+    size_t id = 0;
     glm::vec3 position;
     ItemID item;
     int amount;

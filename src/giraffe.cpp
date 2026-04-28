@@ -7,6 +7,7 @@
 
 Giraffe::Giraffe(GiraffeData data)
 {
+    id_ = data.id;
     type_ = EntityType::GIRAFFE;
     position_ = data.position;
     prev_position_ = data.position;
@@ -429,6 +430,7 @@ void Giraffe::Render(const glm::mat4 &view, const glm::mat4 &proj)
 GiraffeData Giraffe::GetGiraffeData()
 {
     return {
+        .id = id_,
         .position = position_,
         .yaw = yaw_,
         .health = health_

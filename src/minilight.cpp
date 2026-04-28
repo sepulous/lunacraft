@@ -3,19 +3,20 @@
 #include "block.h"
 #include "storage.h"
 
-Minilight::Minilight(glm::ivec3 voxel, glm::vec3 normal)
+Minilight::Minilight(MinilightData data)
 {
+    id_ = data.id;
     type_ = EntityType::MINILIGHT;
-    voxel_ = voxel;
-    position_ = glm::vec3{voxel};
-    normal_ = normal;
+    voxel_ = data.voxel;
+    position_ = glm::vec3{data.voxel};
+    normal_ = data.normal;
     can_be_damaged_ = false;
 
     // These are extents, not total lengths
     const float width = 1.0f / 6.0f;
     const float thickness = 1.0f / 64.0f;
 
-    glm::vec3 voxel_center = glm::vec3{voxel};
+    glm::vec3 voxel_center = glm::vec3{data.voxel};
 
     glm::vec3 v_local_positions[] = {
         // Front
@@ -71,7 +72,7 @@ Minilight::Minilight(glm::ivec3 voxel, glm::vec3 normal)
     };
 
     glm::mat4 model{1.0f};
-    model = glm::translate(model, voxel_center - (0.5f - thickness) * normal);
+    model = glm::translate(model, voxel_center - (0.5f - thickness) * data.normal);
     if (normal_.x > 0)
         model = glm::rotate(model, glm::radians(90.0f), {0, 1, 0});
     else if (normal_.x < 0)
@@ -120,6 +121,7 @@ glm::ivec3 Minilight::GetVoxel()
 MinilightData Minilight::GetMinilightData()
 {
     return {
+        .id = id_,
         .voxel = voxel_,
         .normal = normal_
     };

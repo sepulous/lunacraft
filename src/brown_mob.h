@@ -1,12 +1,17 @@
 
+#include <cstdint>
+
 #include "entity.h"
 #include "mesh.h"
 
 struct BrownMobData
 {
+    size_t id = 0;
     glm::vec3 position;
     float yaw = 0;
     int health = 280;
+    size_t target_entity_id;
+    uint8_t action;
 };
 
 class BrownMob : public Entity
@@ -21,7 +26,7 @@ class BrownMob : public Entity
         void NotifyOfAttacker(size_t id);
 
     private:
-        enum class BrownMobAction {NONE, MOVE, ROTATE_LEFT, ROTATE_RIGHT, CHASE};
+        enum class BrownMobAction : uint8_t {NONE, MOVE, ROTATE_LEFT, ROTATE_RIGHT, CHASE};
 
     private:
         Mesh mesh_;

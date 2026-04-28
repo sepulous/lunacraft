@@ -5,6 +5,7 @@
 
 struct BlueMobData
 {
+    size_t id = 0;
     glm::vec3 position;
     ItemStack stolen_item = {ItemID::none, 0};
     float yaw = 0;

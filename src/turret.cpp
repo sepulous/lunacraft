@@ -9,6 +9,7 @@
 
 Turret::Turret(TurretData data)
 {
+    id_ = data.id;
     type_ = EntityType::TURRET;
     position_ = data.position;
     prev_position_ = data.position;
@@ -16,6 +17,8 @@ Turret::Turret(TurretData data)
     yaw_ = data.yaw;
     health_ = data.health;
     level_ = data.level;
+    target_entity_id_ = data.target_entity_id;
+    action_ = static_cast<TurretAction>(data.action);
     aabb_.center = data.position;
     aabb_.extents = {0.5f, 0.5f, 0.5f};
     death_animation_done_ = true;
@@ -267,10 +270,13 @@ void Turret::Render(const glm::mat4 &view, const glm::mat4 &proj)
 TurretData Turret::GetTurretData()
 {
     return {
+        .id = id_,
         .position = position_,
         .yaw = yaw_,
         .health = health_,
-        .level = level_
+        .level = level_,
+        .target_entity_id = target_entity_id_,
+        .action = static_cast<uint8_t>(action_)
     };
 }
 

@@ -4,6 +4,7 @@
 
 struct GreenMobData
 {
+    size_t id = 0;
     glm::vec3 position;
     float yaw;
     int health;

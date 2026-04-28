@@ -8,6 +8,7 @@
 
 DroppedItem::DroppedItem(DroppedItemData data)
 {
+    id_ = data.id;
     type_ = EntityType::DROPPED_ITEM;
     position_ = data.position;
     prev_position_ = data.position;
@@ -123,14 +124,14 @@ void DroppedItem::FixedUpdate()
 
     float distance = glm::distance(camera_pos, position_);
 
-    moving_toward_player_ = distance < 3.0f && player_inventory.HasSpaceForItem(item_);
+    moving_toward_player_ = lifetime_ > 1.0f && distance < 3.0f && player_inventory.HasSpaceForItem(item_);
 
     if (moving_toward_player_)
         velocity_ = 5.0f * glm::normalize((camera_pos - glm::vec3{0.0f, 0.3f, 0.0f}) - position_);
     else if (is_grounded_)
         velocity_ = glm::vec3{0, velocity_.y, 0};
 
-    if (distance < 1.0f)
+    if (moving_toward_player_ && distance < 1.0f)
     {
         SetIsDead(true);
         player_inventory.Add({item_, amount_});
@@ -180,6 +181,7 @@ void DroppedItem::Render(const glm::mat4 &view, const glm::mat4 &proj)
 DroppedItemData DroppedItem::GetDroppedItemData()
 {
     return {
+        .id = id_,
         .position = position_,
         .item = item_,
         .amount = amount_,
