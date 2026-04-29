@@ -25,6 +25,8 @@
 #include "sound_system.h"
 #include "player.h"
 #include "item.h"
+#include "moon.h"
+#include "dropped_item.h"
 
 #include <stb_image/stb_image.h>
 #include <stb_truetype/stb_truetype.h>
@@ -2083,6 +2085,23 @@ bool UIInventory::IsActive()
 void UIInventory::SetActive(bool active)
 {
     active_ = active;
+
+    auto &held_stack = Moon::GetCurrentMoon()->GetPlayer()->GetInventory().held_stack;
+    if (!active && !held_stack.IsEmpty())
+    {
+        auto &camera = Moon::GetCurrentMoon()->GetPlayer()->GetCamera();
+        DroppedItem *dropped_item = new DroppedItem({
+            .position = camera.position + 1.0f * camera.forward,
+            .item = held_stack.item,
+            .amount = held_stack.amount
+        });
+        dropped_item->SetVelocity(4.0f * camera.forward);
+        Moon::GetCurrentMoon()->GetEntityManager().AddEntity(dropped_item);
+        held_stack = {ItemID::none, 0};
+        auto held_item_icon = GetItemIcon(ItemID::none);
+        held_item_.LoadImage(held_item_icon.bytes, held_item_icon.width, held_item_icon.height, held_item_icon.num_channels, GL_NEAREST);
+        held_amount_.SetText("");
+    }
 }
 
 ItemStack *UIInventory::GetSlotUnderMouse(glm::dvec2 mouse_pos, Inventory &inventory, std::pair<UIImage, UIText> **out_slot)
