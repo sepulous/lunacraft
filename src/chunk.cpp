@@ -1422,105 +1422,104 @@ std::vector<MeshQuad> Chunk::GreedyMesh(std::array<Chunk *, 4> neighbors)
 
 Lightmap::Lightmap()
 {
-    _sky_light = (uint8_t *)calloc(BLOCKS_IN_CHUNK, sizeof(uint8_t));
-    _block_light = (uint8_t *)calloc(BLOCKS_IN_CHUNK, sizeof(uint8_t));
+    levels_ = (uint8_t *)calloc(BLOCKS_IN_CHUNK, sizeof(uint8_t));
 }
 
 Lightmap::~Lightmap()
 {
-    free(_sky_light);
-    free(_block_light);
+    free(levels_);
 }
 
 uint8_t Lightmap::GetSkyLevel(glm::ivec3 coords) const
 {
-    uint8_t entry = _sky_light[GetChunkIndex(coords)];
+    uint8_t entry = levels_[GetChunkIndex(coords)];
     return (entry >> 4);
 }
 
 uint8_t Lightmap::GetSkyLevel(int x, int y, int z) const
 {
-    uint8_t entry = _sky_light[GetChunkIndex(x, y, z)];
+    uint8_t entry = levels_[GetChunkIndex(x, y, z)];
     return (entry >> 4);
 }
 
 uint8_t Lightmap::GetSkyLevel(uint32_t idx) const
 {
-    uint8_t entry = _sky_light[idx];
+    uint8_t entry = levels_[idx];
     return (entry >> 4);
 }
 
 // Level must be in the range [0, 15]
 void Lightmap::SetSkyLevel(uint8_t sky_level, glm::ivec3 coords)
 {
-    uint8_t entry = _sky_light[GetChunkIndex(coords.x, coords.y, coords.z)];
-    _sky_light[GetChunkIndex(coords.x, coords.y, coords.z)] = (entry & 0x0F) | (sky_level << 4);
+    uint8_t &entry = levels_[GetChunkIndex(coords.x, coords.y, coords.z)];
+    entry = (entry & 0x0F) | (sky_level << 4);
 }
 
 // Level must be in the range [0, 15]
 void Lightmap::SetSkyLevel(uint8_t sky_level, int x, int y, int z)
 {
-    uint8_t entry = _sky_light[GetChunkIndex(x, y, z)];
-    _sky_light[GetChunkIndex(x, y, z)] = (entry & 0x0F) | (sky_level << 4);
+    uint8_t &entry = levels_[GetChunkIndex(x, y, z)];
+    entry = (entry & 0x0F) | (sky_level << 4);
 }
 
 // Level must be in the range [0, 15]
 void Lightmap::SetSkyLevel(uint8_t sky_level, uint32_t idx)
 {
-    uint8_t entry = _sky_light[idx];
-    _sky_light[idx] = (entry & 0x0F) | (sky_level << 4);
+    uint8_t &entry = levels_[idx];
+    entry = (entry & 0x0F) | (sky_level << 4);
 }
 
 uint8_t Lightmap::GetBlockLevel(glm::ivec3 coords) const
 {
-    uint8_t entry = _block_light[GetChunkIndex(coords.x, coords.y, coords.z)];
-    return (entry & 0x0f);
+    uint8_t entry = levels_[GetChunkIndex(coords.x, coords.y, coords.z)];
+    return (entry & 0x0F);
 }
 
 uint8_t Lightmap::GetBlockLevel(int x, int y, int z) const
 {
-    uint8_t entry = _block_light[GetChunkIndex(x, y, z)];
-    return (entry & 0x0f);
+    uint8_t entry = levels_[GetChunkIndex(x, y, z)];
+    return (entry & 0x0F);
 }
 
 uint8_t Lightmap::GetBlockLevel(uint32_t idx) const
 {
-    uint8_t entry = _block_light[idx];
-    return (entry & 0x0f);
+    uint8_t entry = levels_[idx];
+    return (entry & 0x0F);
 }
 
 // Level must be in the range [0, 15]
 void Lightmap::SetBlockLevel(uint8_t block_level, glm::ivec3 coords)
 {
-    uint8_t entry = _block_light[GetChunkIndex(coords.x, coords.y, coords.z)];
-    _block_light[GetChunkIndex(coords.x, coords.y, coords.z)] = (entry & 0xF0) | block_level;
+    uint8_t &entry = levels_[GetChunkIndex(coords.x, coords.y, coords.z)];
+    entry = (entry & 0xF0) | block_level;
 }
 
 // Level must be in the range [0, 15]
 void Lightmap::SetBlockLevel(uint8_t block_level, int x, int y, int z)
 {
-    uint8_t entry = _block_light[GetChunkIndex(x, y, z)];
-    _block_light[GetChunkIndex(x, y, z)] = (entry & 0xF0) | block_level;
+    uint8_t &entry = levels_[GetChunkIndex(x, y, z)];
+    entry = (entry & 0xF0) | block_level;
 }
 
 // Level must be in the range [0, 15]
 void Lightmap::SetBlockLevel(uint8_t block_level, uint32_t idx)
 {
-    uint8_t entry = _block_light[idx];
-    _block_light[idx] = (entry & 0xF0) | block_level;
+    uint8_t &entry = levels_[idx];
+    entry = (entry & 0xF0) | block_level;
 }
 
 uint8_t Lightmap::GetCombinedLight(glm::ivec3 coords) const
 {
-    return (_sky_light[GetChunkIndex(coords)] << 4) | _block_light[GetChunkIndex(coords)];
+    return levels_[GetChunkIndex(coords)];
 }
 
 uint8_t Lightmap::GetCombinedLight(int x, int y, int z) const
 {
-    return (_sky_light[GetChunkIndex(x, y, z)] << 4) | _block_light[GetChunkIndex(x, y, z)];
+    return levels_[GetChunkIndex(x, y, z)];
 }
 
 void Lightmap::ClearBlockLight()
 {
-    std::memset(_block_light, 0, BLOCKS_IN_CHUNK * sizeof(uint8_t));
+    for (int i = 0; i < BLOCKS_IN_CHUNK; i++)
+        levels_[i] &= 0xF0;
 }

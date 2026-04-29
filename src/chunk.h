@@ -27,8 +27,7 @@ struct MeshQuad
 class Lightmap
 {
     private:
-        uint8_t *_block_light;
-        uint8_t *_sky_light;
+        uint8_t *levels_;
 
     public:
         Lightmap();
