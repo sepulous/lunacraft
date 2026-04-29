@@ -1,6 +1,7 @@
 
 #include <unordered_map>
 #include <thread>
+#include <bit>
 
 using namespace std::chrono_literals;
 
@@ -343,7 +344,7 @@ void Chunk::BuildLightmapInternal()
                 else if (block == BlockID::light)
                 {
                     // Y+1
-                    if (y < H - 1 && !BlockIsOpaque(blocks_[idx + 1]))
+                    if (y+1 < H && !BlockIsOpaque(blocks_[idx + 1]))
                     {
                         lightmap_.SetBlockLevel(9, idx + 1);
                         queue.push_back(idx + 1);
@@ -357,7 +358,7 @@ void Chunk::BuildLightmapInternal()
                     }
 
                     // Z+1
-                    if (z < S - 1 && !BlockIsOpaque(blocks_[idx + SZ]))
+                    if (z+1 < S && !BlockIsOpaque(blocks_[idx + SZ]))
                     {
                         lightmap_.SetBlockLevel(9, idx + SZ);
                         queue.push_back(idx + SZ);
@@ -371,7 +372,7 @@ void Chunk::BuildLightmapInternal()
                     }
 
                     // X+1
-                    if (x < S - 1 && !BlockIsOpaque(blocks_[idx + SX]))
+                    if (x+1 < S && !BlockIsOpaque(blocks_[idx + SX]))
                     {
                         lightmap_.SetBlockLevel(9, idx + SX);
                         queue.push_back(idx + SX);
@@ -398,9 +399,11 @@ void Chunk::BuildLightmapInternal()
         uint8_t block = lightmap_.GetBlockLevel(idx);
         uint8_t block_prop = block == 0 ? 0 : block - 1;
 
-        int y = idx & 127;
-        int z = (idx >> 7) & 31;
-        int x = idx >> 12;
+        constexpr int Y_BITS = std::bit_width(static_cast<unsigned>(WORLD_HEIGHT_LIMIT)) - 1;
+        constexpr int Z_BITS = std::bit_width(static_cast<unsigned>(CHUNK_SIZE)) - 1;
+        int y = idx & (WORLD_HEIGHT_LIMIT - 1);
+        int z = (idx >> Y_BITS) & (CHUNK_SIZE - 1);
+        int x = idx >> (Y_BITS + Z_BITS);
 
         if (y > 0)
         {
@@ -703,9 +706,11 @@ void Chunk::BuildLightmapExternal()
         uint8_t block = lightmap_.GetBlockLevel(idx);
         uint8_t block_prop = block == 0 ? 0 : block - 1;
 
-        int y = idx & 127;
-        int z = (idx >> 7) & 31;
-        int x = idx >> 12;
+        constexpr int Y_BITS = std::bit_width(static_cast<unsigned>(WORLD_HEIGHT_LIMIT)) - 1;
+        constexpr int Z_BITS = std::bit_width(static_cast<unsigned>(CHUNK_SIZE)) - 1;
+        int y = idx & (WORLD_HEIGHT_LIMIT - 1);
+        int z = (idx >> Y_BITS) & (CHUNK_SIZE - 1);
+        int x = idx >> (Y_BITS + Z_BITS);
 
         if (y > 0)
         {
@@ -1079,7 +1084,7 @@ std::vector<MeshQuad> Chunk::GreedyMesh(std::array<Chunk *, 4> neighbors)
     mask.reserve(CHUNK_SIZE * WORLD_HEIGHT_LIMIT);
 
     std::vector<MeshQuad> quads;
-    quads.reserve(1500); // 1500 = empirically determined maximum (with padding). Depends on generation and meshing algorithms.
+    quads.reserve(1600); // Depends on generation and meshing algorithms.
 
     auto front_neighbor = neighbors[0];
     auto right_neighbor = neighbors[1];
