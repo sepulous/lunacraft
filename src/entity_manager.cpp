@@ -172,8 +172,8 @@ void EntityManager::SelfUpdate()
     {
         if (entity->GetID() == 0 && entity->GetType() != EntityType::PLAYER) // New entity, new ID
         {
-            entity->SetID(entity_count_);
-            entities_.emplace(entity_count_, entity);
+            entity->SetID(entity_count_ + 1);
+            entities_.emplace(entity_count_ + 1, entity);
             entity_count_++;
         }
         else // Old entity, use old ID
