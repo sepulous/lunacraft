@@ -425,7 +425,7 @@ void Chunk::BuildLightmapInternal()
             }
         }
 
-        if (y < 127)
+        if (y+1 < WORLD_HEIGHT_LIMIT)
         {
             uint32_t n = idx + 1;
 
@@ -456,7 +456,7 @@ void Chunk::BuildLightmapInternal()
             }
         }
 
-        if (z < 31)
+        if (z+1 < S)
         {
             uint32_t n = idx + SZ;
             bool pushed = false;
@@ -496,7 +496,7 @@ void Chunk::BuildLightmapInternal()
             }
         }
 
-        if (x < 31)
+        if (x+1 < S)
         {
             uint32_t n = idx + SX;
             bool pushed = false;
@@ -732,7 +732,7 @@ void Chunk::BuildLightmapExternal()
             }
         }
 
-        if (y < 127)
+        if (y+1 < WORLD_HEIGHT_LIMIT)
         {
             uint32_t n = idx + 1;
 
@@ -763,7 +763,7 @@ void Chunk::BuildLightmapExternal()
             }
         }
 
-        if (z < 31)
+        if (z+1 < S)
         {
             uint32_t n = idx + SZ;
             bool pushed = false;
@@ -803,7 +803,7 @@ void Chunk::BuildLightmapExternal()
             }
         }
 
-        if (x < 31)
+        if (x+1 < S)
         {
             uint32_t n = idx + SX;
             bool pushed = false;
@@ -972,7 +972,7 @@ void Chunk::BuildVertices()
 
         glm::vec2 v_light;
 
-        if (quad.block == BlockID::light)
+        if (BlockEmitsLight(quad.block))
         {
             v_light = glm::vec2{2.0f};
         }
