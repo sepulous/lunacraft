@@ -10,8 +10,8 @@ struct BrownMobData
     glm::vec3 position;
     float yaw = 0;
     int health = 280;
-    size_t target_entity_id;
-    uint8_t action;
+    size_t target_entity_id = 0;
+    uint8_t action = 0;
 };
 
 class BrownMob : public Entity

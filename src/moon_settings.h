@@ -13,7 +13,7 @@ struct MoonSettings
     float skybox_phase = 0;
     float tree_cover = 0.5f;
     float terrain_roughness = 0.5f;
-    uint8_t wildlife_level = 2;
+    float wildlife_level = 0.5f;
     bool is_creative = false;
     bool skybox_reversed = false;
 };
