@@ -16,6 +16,7 @@ BlueMob::BlueMob(BlueMobData data)
     yaw_ = data.yaw;
     roll_ = 0;
     health_ = data.health;
+    level_ = data.level;
     stolen_item_ = data.stolen_item;
     aabb_.center = data.position;
     aabb_.extents = {0.5f, 1.5f, 0.25f};
@@ -178,7 +179,7 @@ void BlueMob::Update(float delta_time)
                 if (!Moon::GetCurrentMoon()->GetSettings().is_creative && stolen_item_.IsEmpty())
                 {
                     auto player_pos = Moon::GetCurrentMoon()->GetPlayer()->GetPosition();
-                    if (glm::length(player_pos - position_) < 25.0f)
+                    if (glm::length(player_pos - position_) < (level_ * 12.0f + 25.0f))
                         action_ = BlueMobAction::CHASE;
                 }
             }
@@ -387,7 +388,8 @@ BlueMobData BlueMob::GetBlueMobData()
         .position = position_,
         .stolen_item = stolen_item_,
         .yaw = yaw_,
-        .health = health_
+        .health = health_,
+        .level = level_
     };
 }
 

@@ -21,6 +21,9 @@
 #include "minilight.h"
 #include "turret.h"
 #include "astronaut.h"
+#include "brown_mob.h"
+#include "blue_mob.h"
+#include "green_mob.h"
 #include "input.h"
 #include "fxaa.h"
 
@@ -585,6 +588,104 @@ std::string Moon::PopPendingMessage()
     std::string message = pending_message_;
     pending_message_.clear();
     return message;
+}
+
+void Moon::SpawnEventEntities()
+{
+    auto Spawn = [this](EntityType type, int level, int count, float distance)
+    {
+        auto entity_count = entity_manager_.GetEntityCount();
+        if (count > 0 && entity_count < 61)
+        {
+            auto player_pos = player_->GetPosition();
+            float angle = RNG{}.Range(0.0f, 2.0f * glm::pi<float>());
+            int base_x = player_pos.x + 2.0f * distance * glm::cos(angle);
+            int base_z = player_pos.z + 2.0f * distance * glm::sin(angle);
+            for (int i = 0; i < count; i++)
+            {
+                int x = base_x + RNG{}.Range(-5, 5);
+                int z = base_z + RNG{}.Range(-5, 5);
+                int y = 65;
+                
+                auto chunk = chunk_manager_.GetChunk(VoxelToChunk({x, 0, z}));
+                if (!chunk) return;
+
+                while (chunk->GetBlocks()[GetChunkIndex(x, y, z)] != BlockID::air)
+                    y++;
+
+                if (type == EntityType::ASTRONAUT)
+                {
+                    y += 2;
+                    entity_manager_.AddEntity(new Astronaut({
+                        .position = glm::vec3{x, y, z},
+                        .level = level
+                    }));
+                }
+                else if (type == EntityType::BLUE_MOB)
+                {
+                    y += 2;
+                    entity_manager_.AddEntity(new BlueMob({
+                        .position = glm::vec3{x, y, z},
+                        .level = level
+                    }));
+                }
+                else if (type == EntityType::BROWN_MOB)
+                {
+                    entity_manager_.AddEntity(new BrownMob({
+                        .position = glm::vec3{x, y, z}
+                    }));
+                }
+                else if (type == EntityType::GREEN_MOB)
+                {
+                    entity_manager_.AddEntity(new GreenMob({
+                        .position = glm::vec3{x, y, z},
+                        .health = RNG{}.Range(18, 42)
+                    }));
+                }
+            }
+        }
+    };
+
+    float alpha = RNG{}.Range(1.0f, 5.0f);
+    float mob_chance = alpha * 0.1f;
+    int level_limit = (int)alpha;
+
+    // Astronauts
+    if (RNG{}.Range(0.0f, 1.0f) < mob_chance + 0.5)
+    {
+        int level = RNG{}.Range(0, level_limit - 1);
+        int count = RNG{}.Range(2, 4);
+        float distance = RNG{}.Range(0.0f, 1.0f) * 20.0f + 5.0f;
+        Spawn(EntityType::ASTRONAUT, level, count, distance);
+    }
+
+    // Blue Mob
+    if (RNG{}.Range(0.0f, 1.0f) < mob_chance)
+    {
+        int level = RNG{}.Range(0, level_limit - 1);
+        float distance = RNG{}.Range(0.0f, 1.0f) * 10.0f + 2.0f;
+        Spawn(EntityType::BLUE_MOB, level, 1, distance);
+    }
+
+    mob_chance = alpha * 0.05f;
+
+    // Brown Mob
+    if (RNG{}.Range(0.0f, 1.0f) < mob_chance)
+    {
+        int level = RNG{}.Range(0, level_limit - 1);
+        int count = RNG{}.Range(0, 2);
+        float distance = RNG{}.Range(0.0f, 1.0f) * 10.0f + 5.0f;
+        Spawn(EntityType::BROWN_MOB, level, count, distance);
+    }
+
+    // Green Mob
+    if (RNG{}.Range(0.0f, 1.0f) < mob_chance)
+    {
+        int level = RNG{}.Range(0, level_limit - 1);
+        int count = RNG{}.Range(0, 5);
+        float distance = RNG{}.Range(0.0f, 1.0f) * 10.0f + 5.0f;
+        Spawn(EntityType::GREEN_MOB, level, count, distance);
+    }
 }
 
 //

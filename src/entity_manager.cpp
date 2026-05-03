@@ -543,7 +543,6 @@ void EntityManager::LoadChunkEntities(glm::ivec3 chunk_coords)
                 int group_base_x = rng.Range(0, (CHUNK_SIZE - 1) - 9);
                 int group_base_z = rng.Range(0, (CHUNK_SIZE - 1) - 9);
                 int group_size = rng.Range(1, 2);
-                printf("SPAWNING BROWN MOBS\n");
                 for (int j = 0; j < group_size; j++)
                 {
                     int x = group_base_x + rng.Range(0, 9);
@@ -565,7 +564,6 @@ void EntityManager::LoadChunkEntities(glm::ivec3 chunk_coords)
                 int group_base_x = rng.Range(0, (CHUNK_SIZE - 1) - 9);
                 int group_base_z = rng.Range(0, (CHUNK_SIZE - 1) - 9);
                 int group_size = rng.Range(1, 5);
-                printf("SPAWNING GIRAFFES\n");
                 for (int j = 0; j <= group_size; j++)
                 {
                     int x = group_base_x + rng.Range(0, 9);
@@ -587,7 +585,6 @@ void EntityManager::LoadChunkEntities(glm::ivec3 chunk_coords)
                 int group_base_x = rng.Range(0, (CHUNK_SIZE - 1) - 9);
                 int group_base_z = rng.Range(0, (CHUNK_SIZE - 1) - 9);
                 int group_size = rng.Range(2, 4);
-                printf("SPAWNING GREEN MOBS\n");
                 for (int j = 0; j < group_size; j++)
                 {
                     int x = group_base_x + rng.Range(0, 9);
@@ -610,7 +607,6 @@ void EntityManager::LoadChunkEntities(glm::ivec3 chunk_coords)
                 int group_base_x = rng.Range(0, (CHUNK_SIZE - 1) - 9);
                 int group_base_z = rng.Range(0, (CHUNK_SIZE - 1) - 9);
                 int group_size = rng.Range(1, 3);
-                printf("SPAWNING ASTRONAUTS\n");
                 for (int j = 0; j <= group_size; j++)
                 {
                     int x = group_base_x + rng.Range(0, 9);

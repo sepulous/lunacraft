@@ -10,6 +10,7 @@ struct BlueMobData
     ItemStack stolen_item = {ItemID::none, 0};
     float yaw = 0;
     int health = 30;
+    int level = 0;
 };
 
 class BlueMob : public Entity
@@ -32,6 +33,7 @@ class BlueMob : public Entity
         BlueMobAction action_ = BlueMobAction::NONE;
         glm::vec3 walk_velocity_;
         ItemStack stolen_item_;
+        int level_ = 0;
         float internal_time_ = 0;
         float next_action_time_ = 0;
         float time_since_death_ = 0;

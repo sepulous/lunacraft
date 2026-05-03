@@ -105,6 +105,10 @@ void Entity::Damage(int amount) noexcept
         health_ = 0;
         SetIsDead(true);
     }
+    else
+    {
+        velocity_.y += 2.0f;
+    }
 }
 
 void Entity::Heal(int amount) noexcept

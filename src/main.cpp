@@ -129,7 +129,7 @@ int main()
     double last_frame_time = 0;
     float last_debug_update_time = 0;
     float last_sound_update_time = 0;
-    float next_music_time = glfwGetTime() + RNG{}.Range(8 * 60, 12 * 60); // Every 8-12 minutes
+    float next_event_time = glfwGetTime() + RNG{}.Range(8 * 60, 12 * 60); // Every 8-12 minutes
     while (!glfwWindowShouldClose(window))
     {
         double current_time = glfwGetTime();
@@ -140,7 +140,7 @@ int main()
         glfwPollEvents();
 
         // Update sound system
-        if (current_time - last_sound_update_time >= 0.2f)
+        if (current_time - last_sound_update_time >= 0.01f)
         {
             if (moon != nullptr)
             {
@@ -323,12 +323,12 @@ int main()
                 }
             }
 
-            // Play random song periodically
-            if (current_time >= next_music_time)
+            // Periodically play random song and spawn new mobs
+            if (current_time >= next_event_time)
             {
-                RNG rng;
+                next_event_time = current_time + RNG{}.Range(8 * 60, 12 * 60); // Every 8-12 minutes
 
-                int song = rng.Range(1, 4);
+                int song = RNG{}.Range(1, 4);
                 if (song == 1)
                     SoundSystem::Play(SoundSystem::Sound::SONG_2);
                 else if (song == 2)
@@ -338,7 +338,8 @@ int main()
                 else
                     SoundSystem::Play(SoundSystem::Sound::SONG_5);
 
-                next_music_time = current_time + rng.Range(8 * 60, 12 * 60); // Every 8-12 minutes
+                if (RNG{}.Range(0, 1) == 0)
+                    moon->SpawnEventEntities();
             }
 
             // Update debug menu

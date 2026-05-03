@@ -59,6 +59,7 @@ class Moon
         int GetLightPhase();
         void DisplayMessage(std::string message);
         std::string PopPendingMessage();
+        void SpawnEventEntities();
         void Update(double delta_time);
         void Render(const glm::mat4 &projection);
 
