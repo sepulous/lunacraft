@@ -15,6 +15,7 @@ float SoundSystem::music_volume_;
 void SoundSystem::Init()
 {
     Soundlib::Init();
+    Soundlib::SetAttenuationModel(Soundlib::AttenuationModel::INVERSE_DISTANCE_CLAMPED);
 
     sound_map_[Sound::SONG_1].LoadSound((Storage::SOUNDS / "theme1.mp3").string());
     sound_map_[Sound::SONG_2].LoadSound((Storage::SOUNDS / "theme2.mp3").string());
@@ -111,13 +112,15 @@ ActiveSound *SoundSystem::PlayAt(Sound sound, glm::vec3 position, bool loop)
         return nullptr;
 
     auto source = new Soundlib::SoundSource(sound_map_[sound]);
+    source->SetReferenceDistance(2.0f);
+    source->SetRolloffFactor(1.0f);
+    source->SetMaxDistance(32.0f);
     source->SetPosition({position.x, position.y, position.z});
     source->SetLooping(loop);
     source->SetGain(IsMusic(sound) ? music_volume_ : sfx_volume_);
-    source->SetGain(1.0f);
     source->Play();
     
-    auto active_sound = new ActiveSound{source, sound, true};
+    auto active_sound = new ActiveSound{source, sound, false};
     active_sounds_.push_back(active_sound);
     return active_sound;
 }
