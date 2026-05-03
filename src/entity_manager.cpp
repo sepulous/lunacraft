@@ -373,20 +373,19 @@ void EntityManager::Integrate(Entity *entity)
                 auto entity_voxel_l = GlobalToLocalVoxel(entity_voxel_g);
                 auto chunk_c = VoxelToChunk(entity_voxel_g);
                 auto entity_chunk = chunk_manager.GetChunk(VoxelToChunk(entity_voxel_g));
-                if (!entity_chunk)
+                if (entity_chunk)
                 {
-                    printf("problem at chunk (%i, %i), entity type: %i\n", chunk_c.x, chunk_c.z, entity->GetType());
+                    BlockID foot_block = entity_chunk->GetBlocks()[GetChunkIndex(entity_voxel_l - glm::ivec3{0, 1, 0})];
+
+                    // Decide whether on ice
+                    entity->SetIsOnIce(foot_block == BlockID::water);
+
+                    // Decide whether still grounded
+                    float actual_feet = current_next_position.y - aabb.extents.y;
+                    float floor_feet = glm::floor(actual_feet);
+                    if (glm::abs(actual_feet - (floor_feet + 0.5f)) > 0.01f || foot_block == BlockID::air)
+                        entity->SetGrounded(false);
                 }
-                BlockID foot_block = entity_chunk->GetBlocks()[GetChunkIndex(entity_voxel_l - glm::ivec3{0, 1, 0})];
-
-                // Decide whether on ice
-                entity->SetIsOnIce(foot_block == BlockID::water);
-
-                // Decide whether still grounded
-                float actual_feet = current_next_position.y - aabb.extents.y;
-                float floor_feet = glm::floor(actual_feet);
-                if (glm::abs(actual_feet - (floor_feet + 0.5f)) > 0.01f || foot_block == BlockID::air)
-                    entity->SetGrounded(false);
             }
         }
 
@@ -531,93 +530,96 @@ void EntityManager::LoadChunkEntities(glm::ivec3 chunk_coords)
         else
         {
             auto chunk = moon->GetChunkManager().GetChunk(chunk_coords);
-            float wildlife_level = moon->GetSettings().wildlife_level;
-
-            uint64_t rng_seed = moon->GetSettings().seed ^ ((uint64_t)chunk_coords.x * 73856093ull) ^ ((uint64_t)chunk_coords.z * 19349663ull);
-            RNG rng{rng_seed};
-
-            // Brown mobs
-            float brown_mob_chance = wildlife_level * (3.0f / 8.0f) * ((float)(CHUNK_SIZE * CHUNK_SIZE) / (128.0f * 128.0f));
-            if (rng.Range(0.0f, 1.0f) < brown_mob_chance)
+            if (chunk)
             {
-                int group_base_x = rng.Range(0, (CHUNK_SIZE - 1) - 9);
-                int group_base_z = rng.Range(0, (CHUNK_SIZE - 1) - 9);
-                int group_size = rng.Range(1, 2);
-                for (int j = 0; j < group_size; j++)
-                {
-                    int x = group_base_x + rng.Range(0, 9);
-                    int z = group_base_z + rng.Range(0, 9);
-                    int y = 65;
-                    while (chunk->GetBlocks()[GetChunkIndex(x, y, z)] != BlockID::air && y < WORLD_HEIGHT_LIMIT)
-                        y++;
+                float wildlife_level = moon->GetSettings().wildlife_level;
 
-                    AddEntity(new BrownMob({
-                        .position = glm::vec3{x + chunk_coords.x * CHUNK_SIZE, y, z + chunk_coords.z * CHUNK_SIZE}
-                    }));
+                uint64_t rng_seed = moon->GetSettings().seed ^ ((uint64_t)chunk_coords.x * 73856093ull) ^ ((uint64_t)chunk_coords.z * 19349663ull);
+                RNG rng{rng_seed};
+
+                // Brown mobs
+                float brown_mob_chance = wildlife_level * (3.0f / 8.0f) * ((float)(CHUNK_SIZE * CHUNK_SIZE) / (128.0f * 128.0f));
+                if (rng.Range(0.0f, 1.0f) < brown_mob_chance)
+                {
+                    int group_base_x = rng.Range(0, (CHUNK_SIZE - 1) - 9);
+                    int group_base_z = rng.Range(0, (CHUNK_SIZE - 1) - 9);
+                    int group_size = rng.Range(1, 2);
+                    for (int j = 0; j < group_size; j++)
+                    {
+                        int x = group_base_x + rng.Range(0, 9);
+                        int z = group_base_z + rng.Range(0, 9);
+                        int y = 65;
+                        while (chunk->GetBlocks()[GetChunkIndex(x, y, z)] != BlockID::air && y < WORLD_HEIGHT_LIMIT)
+                            y++;
+
+                        AddEntity(new BrownMob({
+                            .position = glm::vec3{x + chunk_coords.x * CHUNK_SIZE, y, z + chunk_coords.z * CHUNK_SIZE}
+                        }));
+                    }
                 }
-            }
 
-            // Giraffes
-            float giraffe_chance = (wildlife_level * 0.2f + 0.05f) * ((float)(CHUNK_SIZE * CHUNK_SIZE) / (128.0f * 128.0f));
-            if (rng.Range(0.0f, 1.0f) < giraffe_chance)
-            {
-                int group_base_x = rng.Range(0, (CHUNK_SIZE - 1) - 9);
-                int group_base_z = rng.Range(0, (CHUNK_SIZE - 1) - 9);
-                int group_size = rng.Range(1, 5);
-                for (int j = 0; j <= group_size; j++)
+                // Giraffes
+                float giraffe_chance = (wildlife_level * 0.2f + 0.05f) * ((float)(CHUNK_SIZE * CHUNK_SIZE) / (128.0f * 128.0f));
+                if (rng.Range(0.0f, 1.0f) < giraffe_chance)
                 {
-                    int x = group_base_x + rng.Range(0, 9);
-                    int z = group_base_z + rng.Range(0, 9);
-                    int y = 65;
-                    while (chunk->GetBlocks()[GetChunkIndex(x, y, z)] != BlockID::air && y < WORLD_HEIGHT_LIMIT)
-                        y++;
+                    int group_base_x = rng.Range(0, (CHUNK_SIZE - 1) - 9);
+                    int group_base_z = rng.Range(0, (CHUNK_SIZE - 1) - 9);
+                    int group_size = rng.Range(1, 5);
+                    for (int j = 0; j <= group_size; j++)
+                    {
+                        int x = group_base_x + rng.Range(0, 9);
+                        int z = group_base_z + rng.Range(0, 9);
+                        int y = 65;
+                        while (chunk->GetBlocks()[GetChunkIndex(x, y, z)] != BlockID::air && y < WORLD_HEIGHT_LIMIT)
+                            y++;
 
-                    AddEntity(new Giraffe({
-                        .position = glm::vec3{x + chunk_coords.x * CHUNK_SIZE, y, z + chunk_coords.z * CHUNK_SIZE}
-                    }));
+                        AddEntity(new Giraffe({
+                            .position = glm::vec3{x + chunk_coords.x * CHUNK_SIZE, y, z + chunk_coords.z * CHUNK_SIZE}
+                        }));
+                    }
                 }
-            }
 
-            // Green mobs
-            float green_mob_chance = (wildlife_level * 0.2f + 0.05f) * ((float)(CHUNK_SIZE * CHUNK_SIZE) / (128.0f * 128.0f));
-            if (rng.Range(0.0f, 1.0f) < green_mob_chance)
-            {
-                int group_base_x = rng.Range(0, (CHUNK_SIZE - 1) - 9);
-                int group_base_z = rng.Range(0, (CHUNK_SIZE - 1) - 9);
-                int group_size = rng.Range(2, 4);
-                for (int j = 0; j < group_size; j++)
+                // Green mobs
+                float green_mob_chance = (wildlife_level * 0.2f + 0.05f) * ((float)(CHUNK_SIZE * CHUNK_SIZE) / (128.0f * 128.0f));
+                if (rng.Range(0.0f, 1.0f) < green_mob_chance)
                 {
-                    int x = group_base_x + rng.Range(0, 9);
-                    int z = group_base_z + rng.Range(0, 9);
-                    int y = 65;
-                    while (chunk->GetBlocks()[GetChunkIndex(x, y, z)] != BlockID::air && y < WORLD_HEIGHT_LIMIT)
-                        y++;
+                    int group_base_x = rng.Range(0, (CHUNK_SIZE - 1) - 9);
+                    int group_base_z = rng.Range(0, (CHUNK_SIZE - 1) - 9);
+                    int group_size = rng.Range(2, 4);
+                    for (int j = 0; j < group_size; j++)
+                    {
+                        int x = group_base_x + rng.Range(0, 9);
+                        int z = group_base_z + rng.Range(0, 9);
+                        int y = 65;
+                        while (chunk->GetBlocks()[GetChunkIndex(x, y, z)] != BlockID::air && y < WORLD_HEIGHT_LIMIT)
+                            y++;
 
-                    AddEntity(new GreenMob({
-                        .position = glm::vec3{x + chunk_coords.x * CHUNK_SIZE, y, z + chunk_coords.z * CHUNK_SIZE},
-                        .health = RNG{}.Range(18, 42)
-                    }));
+                        AddEntity(new GreenMob({
+                            .position = glm::vec3{x + chunk_coords.x * CHUNK_SIZE, y, z + chunk_coords.z * CHUNK_SIZE},
+                            .health = RNG{}.Range(18, 42)
+                        }));
+                    }
                 }
-            }
 
-            // Astronauts
-            float astronaut_chance = (wildlife_level * 0.2f + 0.05f) * ((float)(CHUNK_SIZE * CHUNK_SIZE) / (128.0f * 128.0f));
-            if (rng.Range(0.0f, 1.0f) < astronaut_chance)
-            {
-                int group_base_x = rng.Range(0, (CHUNK_SIZE - 1) - 9);
-                int group_base_z = rng.Range(0, (CHUNK_SIZE - 1) - 9);
-                int group_size = rng.Range(1, 3);
-                for (int j = 0; j <= group_size; j++)
+                // Astronauts
+                float astronaut_chance = (wildlife_level * 0.2f + 0.05f) * ((float)(CHUNK_SIZE * CHUNK_SIZE) / (128.0f * 128.0f));
+                if (rng.Range(0.0f, 1.0f) < astronaut_chance)
                 {
-                    int x = group_base_x + rng.Range(0, 9);
-                    int z = group_base_z + rng.Range(0, 9);
-                    int y = 65;
-                    while (chunk->GetBlocks()[GetChunkIndex(x, y, z)] != BlockID::air && y < WORLD_HEIGHT_LIMIT)
-                        y++;
+                    int group_base_x = rng.Range(0, (CHUNK_SIZE - 1) - 9);
+                    int group_base_z = rng.Range(0, (CHUNK_SIZE - 1) - 9);
+                    int group_size = rng.Range(1, 3);
+                    for (int j = 0; j <= group_size; j++)
+                    {
+                        int x = group_base_x + rng.Range(0, 9);
+                        int z = group_base_z + rng.Range(0, 9);
+                        int y = 65;
+                        while (chunk->GetBlocks()[GetChunkIndex(x, y, z)] != BlockID::air && y < WORLD_HEIGHT_LIMIT)
+                            y++;
 
-                    AddEntity(new Astronaut({
-                        .position = glm::vec3{x + chunk_coords.x * CHUNK_SIZE, y + 2, z + chunk_coords.z * CHUNK_SIZE}
-                    }));
+                        AddEntity(new Astronaut({
+                            .position = glm::vec3{x + chunk_coords.x * CHUNK_SIZE, y + 2, z + chunk_coords.z * CHUNK_SIZE}
+                        }));
+                    }
                 }
             }
         }

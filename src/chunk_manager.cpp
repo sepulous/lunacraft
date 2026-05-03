@@ -723,7 +723,7 @@ Chunk *ChunkManager::GetChunk(glm::ivec3 chunk_coords)
 BlockID ChunkManager::GetBlockAt(glm::ivec3 voxel)
 {
     auto chunk = GetChunk(VoxelToChunk(voxel));
-    if (chunk != nullptr)
+    if (chunk)
         return chunk->GetBlocks()[GetChunkIndex(GlobalToLocalVoxel(voxel))];
     else
         return BlockID::air;
