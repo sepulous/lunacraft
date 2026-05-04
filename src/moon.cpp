@@ -475,7 +475,7 @@ void Moon::Render(const glm::mat4 &projection)
         // Save screenshot
         auto path = Storage::SCREENSHOTS / filename.str();
         stbi_write_png_compression_level = 4; // default is 8
-        stbi_write_png(path.c_str(), dimensions.x, dimensions.y, 3, pixels, dimensions.x * 3);
+        stbi_write_png(reinterpret_cast<const char *>(path.u8string().c_str()), dimensions.x, dimensions.y, 3, pixels, dimensions.x * 3);
         free(pixels);
         DisplayMessage("Screenshot saved!");
 

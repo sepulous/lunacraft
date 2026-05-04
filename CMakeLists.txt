@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.21)
 project(Lunacraft VERSION 1.0.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -28,8 +28,8 @@ target_link_libraries(glad PUBLIC OpenGL::GL)
 
 # Soundlib
 set(STATIC_SOUNDLIB ON CACHE BOOL "" FORCE) # Include Soundlib in binary
-if (NOT USE_SYSTEM_OPENAL)
-    set(USE_SYSTEM_OPENAL OFF CACHE BOOL "" FORCE) # Fetch OpenAL by default
+if (WIN32 AND NOT USE_SYSTEM_OPENAL)
+    set(USE_SYSTEM_OPENAL OFF CACHE BOOL "" FORCE) # Fetch OpenAL on Windows
 endif()
 set(ALSOFT_EXAMPLES OFF CACHE BOOL "" FORCE) # Don't need this
 set(ALSOFT_UTILS OFF CACHE BOOL "" FORCE)    #
@@ -105,6 +105,11 @@ target_compile_definitions(Lunacraft PRIVATE
     LUNACRAFT_VERSION="${PROJECT_VERSION}"
 )
 
+set(LUNACRAFT_ASSET_DIR "${CMAKE_INSTALL_DATADIR}/lunacraft")
+target_compile_definitions(Lunacraft PRIVATE
+    LUNACRAFT_ASSET_DIR="${LUNACRAFT_ASSET_DIR}"
+)
+
 # ---------------- INSTALL ----------------
 
 # rpath handling (Linux and macOS)
@@ -124,29 +129,23 @@ if(APPLE)
 endif()
 
 # Install executable
-if(APPLE)
-    install(TARGETS Lunacraft
-        BUNDLE DESTINATION .
-    )
-else()
-    install(TARGETS Lunacraft
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-    )
-endif()
+install(TARGETS Lunacraft
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    BUNDLE DESTINATION .
+)
 
 # Install assets
 if(APPLE)
     set(MACOS_RES_DIR "Lunacraft.app/Contents/Resources")
     install(DIRECTORY assets DESTINATION ${MACOS_RES_DIR})
 else()
-    set(LUNACRAFT_DATA_DIR "${CMAKE_INSTALL_DATADIR}/lunacraft")
-    install(DIRECTORY assets DESTINATION ${LUNACRAFT_DATA_DIR})
+    install(DIRECTORY assets DESTINATION ${LUNACRAFT_ASSET_DIR})
 endif()
 
-# Copy OpenAL DLL (Windows)
-if(WIN32)
-    install(TARGETS OpenAL::OpenAL
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+# Copy OpenAL DLL next to executable (Windows)
+if (WIN32)
+    install(FILES $<TARGET_FILE:OpenAL::OpenAL>
+        DESTINATION ${CMAKE_INSTALL_BINDIR}
     )
 endif()
 
@@ -176,7 +175,7 @@ if(WIN32)
     set(CPACK_INNOSETUP_PACKAGE_NAME "Lunacraft")
     set(CPACK_INNOSETUP_MENU_LINKS "Lunacraft.exe" "Lunacraft")
 elseif(APPLE)
-    set(CPACK_GENERATOR "DragNDrop")  # produces .dmg
+    set(CPACK_GENERATOR "DragNDrop")  # .dmg
 else()
     set(CPACK_GENERATOR "TGZ")  # .tar.gz fallback for Linux
 endif()

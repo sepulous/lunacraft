@@ -91,7 +91,7 @@ static std::filesystem::path GetAssetPath()
     //
 
     #if defined(_WIN32)
-        return executable_dir;
+        return executable_dir / ".." / LUNACRAFT_ASSET_DIR;
 
     #elif defined(__APPLE__)
         return executable_dir / "../Resources";
