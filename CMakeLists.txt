@@ -42,8 +42,11 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(Soundlib)
 
+#
 # Main executable
-add_executable(Lunacraft
+#
+
+set(LUNACRAFT_SOURCES
     src/main.cpp
     src/shader.cpp
     src/ui.cpp
@@ -81,6 +84,22 @@ add_executable(Lunacraft
     third_party/stb_image_write/stb_image_write/stb_image_write.cpp
     third_party/stb_truetype/stb_truetype/stb_truetype.cpp
 )
+
+if(WIN32)
+    add_executable(Lunacraft WIN32 ${LUNACRAFT_SOURCES})
+    set_target_properties(Lunacraft PROPERTIES
+        WIN32_EXECUTABLE TRUE
+    )
+    target_link_options(Lunacraft PRIVATE -mwindows)
+else()
+    add_executable(Lunacraft ${LUNACRAFT_SOURCES})
+endif()
+
+# Embed icon (Windows)
+if (WIN32)
+    enable_language(RC)
+    target_sources(Lunacraft PRIVATE app_icon.rc)
+endif()
 
 # Include directories
 target_include_directories(Lunacraft PRIVATE
