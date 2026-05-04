@@ -16,7 +16,4 @@ class Storage
     public:
         Storage() = delete;
         static void Init();
-
-    private:
-        static std::filesystem::path GetDataDir();
 };

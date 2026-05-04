@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(Lunacraft LANGUAGES C CXX)
+project(Lunacraft VERSION 1.0.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -102,43 +102,83 @@ target_link_libraries(Lunacraft PRIVATE
 target_compile_options(Lunacraft PRIVATE -Wno-volatile) # Make GLM less annoying
 
 target_compile_definitions(Lunacraft PRIVATE
-    LUNACRAFT_ROOT_DIR="${CMAKE_INSTALL_FULL_DATADIR}/lunacraft"
+    LUNACRAFT_VERSION="${PROJECT_VERSION}"
 )
 
 # ---------------- INSTALL ----------------
 
-# Install executable
-install(TARGETS Lunacraft
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}   # Windows / Linux
-    BUNDLE  DESTINATION .                         # macOS
-)
+# rpath handling (Linux and macOS)
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+if(APPLE)
+    set(CMAKE_INSTALL_RPATH "@executable_path/../Frameworks;@executable_path/../Resources")
+elseif(UNIX)
+    set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib:$ORIGIN")
+endif()
 
-# Install assets
-if (APPLE)
-    install(DIRECTORY ${CMAKE_SOURCE_DIR}/assets/
-        DESTINATION Lunacraft.app/Contents/Resources
-    )
-else()
-    install(DIRECTORY ${CMAKE_SOURCE_DIR}/assets/
-        DESTINATION ${CMAKE_INSTALL_DATADIR}/lunacraft
+# macOS: build as .app bundle
+if(APPLE)
+    set_target_properties(Lunacraft PROPERTIES
+        MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_BUNDLE_NAME "Lunacraft"
     )
 endif()
 
-# Install .desktop file and icon (Linux)
-if (NOT (WIN32 OR APPLE))
+# Install executable
+if(APPLE)
+    install(TARGETS Lunacraft
+        BUNDLE DESTINATION .
+    )
+else()
+    install(TARGETS Lunacraft
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    )
+endif()
+
+# Install assets
+if(APPLE)
+    set(MACOS_RES_DIR "Lunacraft.app/Contents/Resources")
+    install(DIRECTORY assets DESTINATION ${MACOS_RES_DIR})
+else()
+    set(LUNACRAFT_DATA_DIR "${CMAKE_INSTALL_DATADIR}/lunacraft")
+    install(DIRECTORY assets DESTINATION ${LUNACRAFT_DATA_DIR})
+endif()
+
+# Copy OpenAL DLL (Windows)
+if(WIN32)
+    install(TARGETS OpenAL::OpenAL
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    )
+endif()
+
+# Linux .desktop
+if(UNIX AND NOT APPLE)
     install(FILES lunacraft.desktop
         DESTINATION ${CMAKE_INSTALL_DATADIR}/applications
     )
 
-    install(FILES ${CMAKE_SOURCE_DIR}/assets/images/icon.png
-        DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/128x128/apps
+    install(FILES assets/images/icon.png
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/256x256/apps
         RENAME lunacraft.png
     )
 endif()
 
-# Copy OpenAL (Windows)
-if (WIN32)
-    install(FILES $<TARGET_FILE:OpenAL::OpenAL>
-        DESTINATION ${CMAKE_INSTALL_BINDIR}
-    )
+#
+# CPack
+#
+
+set(CPACK_PACKAGE_NAME "Lunacraft")
+set(CPACK_PACKAGE_VENDOR "sepulous")
+set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
+
+if(WIN32)
+    set(CPACK_GENERATOR "INNOSETUP")
+    set(CPACK_INNOSETUP_DISPLAY_NAME "Lunacraft")
+    set(CPACK_INNOSETUP_PACKAGE_NAME "Lunacraft")
+    set(CPACK_INNOSETUP_MENU_LINKS "Lunacraft.exe" "Lunacraft")
+elseif(APPLE)
+    set(CPACK_GENERATOR "DragNDrop")  # produces .dmg
+else()
+    set(CPACK_GENERATOR "TGZ")  # .tar.gz fallback for Linux
 endif()
+
+include(CPack)

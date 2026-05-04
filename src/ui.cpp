@@ -1225,7 +1225,7 @@ bool UIDebugMenu::IsActive()
 void UIDebugMenu::Update(const DebugInfo& debug_info)
 {
     std::stringstream debug_text;
-    debug_text << "Lunacraft (indev)\n";
+    debug_text << "Lunacraft " << LUNACRAFT_VERSION << "\n"; // LUNACRAFT_VERSION is supplied by CMake
     debug_text << "FPS: " << debug_info.fps << "\n";
     debug_text << "Position: (" << std::fixed << std::setprecision(3) << debug_info.player_pos.x << ", " << debug_info.player_pos.y << ", " << debug_info.player_pos.z << ")\n";
     debug_text << "Seed: " << debug_info.seed;
