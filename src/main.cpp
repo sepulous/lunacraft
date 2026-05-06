@@ -24,7 +24,6 @@
 #include "helpers.h"
 #include "moon.h"
 #include "rng.h"
-#include "fxaa.h"
 
 enum class GameState {MAIN_MENU, IN_GAME};
 
@@ -39,6 +38,7 @@ int main()
     Storage::Init();
     OptionsManager::Init();
     bool fullscreen = OptionsManager::GetOptions().fullscreen;
+    bool vsync = OptionsManager::GetOptions().vsync;
 
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -81,8 +81,6 @@ int main()
         return -1;
     }
 
-    bool vsync = false;
-
     glfwMakeContextCurrent(window);
     glfwSwapInterval((int)vsync);
 
@@ -101,8 +99,6 @@ int main()
         glViewport(0, 0, width, height);
         Viewport::SetDimensions({width, height});
         UIRescale();
-        if (FXAA::IsSetup())
-            FXAA::Resize(width, height);
     });
 
     // Input callbacks
@@ -119,8 +115,6 @@ int main()
     UIRescale();
     UIMainMenu ui_main_menu;
     UIGame ui_game;
-
-    FXAA::Setup();
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -158,6 +152,14 @@ int main()
         {
             fullscreen = new_fullscreen_state;
             SetFullscreen(window, new_fullscreen_state);
+        }
+
+        // VSync toggle
+        bool new_vsync_state = OptionsManager::GetOptions().vsync;
+        if (new_vsync_state != vsync)
+        {
+            vsync = new_vsync_state;
+            glfwSwapInterval((int)vsync);
         }
 
         //
@@ -496,7 +498,6 @@ void SetFullscreen(GLFWwindow *window, bool fullscreen)
             mode->refreshRate
         );
         Viewport::SetDimensions({mode->width, mode->height});
-        FXAA::Resize(mode->width, mode->height);
     }
     else
     {
@@ -512,6 +513,5 @@ void SetFullscreen(GLFWwindow *window, bool fullscreen)
             mode->refreshRate
         );
         Viewport::SetDimensions({width, height});
-        FXAA::Resize(width, height);
     }
 }

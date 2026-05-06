@@ -881,17 +881,17 @@ UIOptionsMenu::UIOptionsMenu()
     show_debug_toggle_.SetSize({40, 40});
     show_debug_toggle_.SetToggled(current_options.show_debug_info);
 
-    // FXAA
-    float fxaa_text_width = UIText::GetTextSizeInPixels("FXAA:", option_font_size).x;
-    fxaa_.SetPosition({bg_pos_x + option_text_align_x2 - fxaa_text_width, 440});
-    fxaa_.SetText("FXAA:");
-    fxaa_.SetFontSize(option_font_size);
-    fxaa_.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
+    // VSync
+    float vsync_text_width = UIText::GetTextSizeInPixels("VSync:", option_font_size).x;
+    vsync_.SetPosition({bg_pos_x + option_text_align_x2 - vsync_text_width, 440});
+    vsync_.SetText("VSync:");
+    vsync_.SetFontSize(option_font_size);
+    vsync_.SetColor({0.0f, 0.0f, 0.0f, 1.0f});
 
-    // FXAA toggle
-    fxaa_toggle_.SetPosition({bg_pos_x + option_text_align_x2 + 20, 440 - 10});
-    fxaa_toggle_.SetSize({40, 40});
-    fxaa_toggle_.SetToggled(current_options.fxaa);
+    // VSync
+    vsync_toggle_.SetPosition({bg_pos_x + option_text_align_x2 + 20, 440 - 10});
+    vsync_toggle_.SetSize({40, 40});
+    vsync_toggle_.SetToggled(current_options.vsync);
 
     // Fullscreen
     float fullscreen_text_width = UIText::GetTextSizeInPixels("Fullscreen:", option_font_size).x;
@@ -927,6 +927,7 @@ UIOptionsMenu::UIOptionsMenu()
         new_options.show_debug_info = show_debug_toggle_.IsToggled();
         new_options.show_fog = show_fog_toggle_.IsToggled();
         new_options.show_gui = show_gui_toggle_.IsToggled();
+        new_options.vsync = vsync_toggle_.IsToggled();
         OptionsManager::SetOptions(new_options);
         active_ = false;
     });
@@ -964,7 +965,7 @@ void UIOptionsMenu::Update()
     show_gui_toggle_.Update();
     show_fog_toggle_.Update();
     show_debug_toggle_.Update();
-    fxaa_toggle_.Update();
+    vsync_toggle_.Update();
     fullscreen_toggle_.Update();
 
     Options options = OptionsManager::GetOptions();
@@ -975,7 +976,7 @@ void UIOptionsMenu::Update()
     options.show_gui = show_gui_toggle_.IsToggled();
     options.show_fog = show_fog_toggle_.IsToggled();
     options.show_debug_info = show_debug_toggle_.IsToggled();
-    options.fxaa = fxaa_toggle_.IsToggled();
+    options.vsync = vsync_toggle_.IsToggled();
     options.fullscreen = fullscreen_toggle_.IsToggled();
     OptionsManager::SetOptions(options);
 }
@@ -998,8 +999,8 @@ void UIOptionsMenu::Render()
     show_fog_toggle_.Render();
     show_debug_.Render();
     show_debug_toggle_.Render();
-    fxaa_.Render();
-    fxaa_toggle_.Render();
+    vsync_.Render();
+    vsync_toggle_.Render();
     fullscreen_.Render();
     fullscreen_toggle_.Render();
     back_button_.Render();

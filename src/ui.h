@@ -298,8 +298,8 @@ class UIOptionsMenu
         UIText show_debug_;
         UIToggleButton show_debug_toggle_;
 
-        UIText fxaa_;
-        UIToggleButton fxaa_toggle_;
+        UIText vsync_;
+        UIToggleButton vsync_toggle_;
 
         UIText fullscreen_;
         UIToggleButton fullscreen_toggle_;

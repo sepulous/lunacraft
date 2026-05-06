@@ -22,7 +22,6 @@ Shader ShaderManager::BLOCK_SHADER;
 Shader ShaderManager::SIMPLE_UNLIT_SHADER;
 Shader ShaderManager::MOB_SHADER;
 Shader ShaderManager::SKYBOX_SHADER;
-Shader ShaderManager::FXAA_SHADER;
 
 void ShaderManager::CompileAllShaders()
 {
@@ -76,15 +75,6 @@ void ShaderManager::CompileAllShaders()
         {3, GL_FLOAT},
     });
     SKYBOX_SHADER.Compile();
-
-    ///////////////////
-
-    FXAA_SHADER.SetFragmentShader(Storage::SHADERS / "fxaa.frag");
-    FXAA_SHADER.SetVertexShader(Storage::SHADERS / "fxaa.vert", {
-        {2, GL_FLOAT},
-        {2, GL_FLOAT},
-    });
-    FXAA_SHADER.Compile();
 }
 
 //

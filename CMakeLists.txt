@@ -78,7 +78,6 @@ set(LUNACRAFT_SOURCES
     src/giraffe.cpp
     src/turret.cpp
     src/astronaut.cpp
-    src/fxaa.cpp
 
     third_party/stb_image/stb_image/stb_image.cpp
     third_party/stb_image_write/stb_image_write/stb_image_write.cpp

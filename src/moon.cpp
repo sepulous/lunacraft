@@ -25,7 +25,6 @@
 #include "blue_mob.h"
 #include "green_mob.h"
 #include "input.h"
-#include "fxaa.h"
 
 Moon *Moon::current_moon_;
 
@@ -396,11 +395,6 @@ void Moon::Render(const glm::mat4 &projection)
     // Render world
     //
 
-    bool fxaa = OptionsManager::GetOptions().fxaa;
-
-    if (fxaa)
-        FXAA::Begin();
-
     Options options = OptionsManager::GetOptions();
 
     Camera player_camera = player_->GetCamera();
@@ -439,9 +433,6 @@ void Moon::Render(const glm::mat4 &projection)
     view_projection = projection * view;
     skybox_.Update(view_projection, GetSkyboxAngle());
     skybox_.Render();
-
-    if (fxaa)
-        FXAA::End();
 
     //
     // Handle screenshot (not the best place, just convenient)
