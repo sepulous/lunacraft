@@ -273,17 +273,20 @@ void Moon::Update(double delta_time)
             if (block_to_drop == BlockID::minilight)
                 entity_manager_.DestroyMinilightAt(selection_position);
 
-            DroppedItem *dropped = new DroppedItem({
-                .position = selection_position,
-                .item = BlockIDToItemID(block_to_drop),
-                .amount = 1
-            });
-            dropped->SetVelocity({
-                RNG{}.Range(-1.0f, 1.0f),
-                RNG{}.Range(0.5f, 1.0f),
-                RNG{}.Range(-1.0f, 1.0f)
-            });
-            entity_manager_.AddEntity(dropped);
+            if (block_to_drop != BlockID::beacon)
+            {
+                DroppedItem *dropped = new DroppedItem({
+                    .position = selection_position,
+                    .item = BlockIDToItemID(block_to_drop),
+                    .amount = 1
+                });
+                dropped->SetVelocity({
+                    RNG{}.Range(-1.0f, 1.0f),
+                    RNG{}.Range(0.5f, 1.0f),
+                    RNG{}.Range(-1.0f, 1.0f)
+                });
+                entity_manager_.AddEntity(dropped);
+            }
 
             SoundSystem::PlayAt(SoundSystem::Sound::BLOCK_BREAK, selection_position);
             selection_block_.SetMineProgress(0);
