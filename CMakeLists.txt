@@ -118,8 +118,6 @@ target_link_libraries(Lunacraft PRIVATE
     Soundlib
 )
 
-target_compile_options(Lunacraft PRIVATE -Wno-volatile) # Make GLM less annoying
-
 target_compile_definitions(Lunacraft PRIVATE
     LUNACRAFT_VERSION="${PROJECT_VERSION}"
 )
@@ -161,9 +159,14 @@ else()
     install(DIRECTORY assets DESTINATION ${LUNACRAFT_ASSET_DIR})
 endif()
 
-# Copy OpenAL DLL next to executable (Windows)
+# Copy DLLs next to executable (Windows)
 if (WIN32)
-    install(FILES $<TARGET_FILE:OpenAL::OpenAL>
+    install(
+        FILES
+            $<TARGET_FILE:OpenAL::OpenAL>
+            "${CMAKE_SOURCE_DIR}/lib/libgcc_s_seh-1.dll"
+            "${CMAKE_SOURCE_DIR}/lib/libstdc++-6.dll"
+            "${CMAKE_SOURCE_DIR}/lib/libwinpthread-1.dll"
         DESTINATION ${CMAKE_INSTALL_BINDIR}
     )
 endif()
