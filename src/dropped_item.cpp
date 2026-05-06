@@ -50,7 +50,7 @@ DroppedItem::DroppedItem(DroppedItemData data)
              1.0f, -1.0f, 1.0f, tile_origin_side.x + tile_size, tile_origin_side.y,
              1.0f,  1.0f, 1.0f, tile_origin_side.x + tile_size, tile_origin_side.y + tile_size,
              1.0f,  1.0f, 1.0f, tile_origin_side.x + tile_size, tile_origin_side.y + tile_size,
-            -1.0f,  1.0f, 1.0f, tile_origin_side.x + tile_size, tile_origin_side.y,
+            -1.0f,  1.0f, 1.0f, tile_origin_side.x,             tile_origin_side.y + tile_size,
             -1.0f, -1.0f, 1.0f, tile_origin_side.x,             tile_origin_side.y,
 
             // Back
@@ -58,7 +58,7 @@ DroppedItem::DroppedItem(DroppedItemData data)
              1.0f, -1.0f, -1.0f, tile_origin_side.x + tile_size, tile_origin_side.y,
             -1.0f, -1.0f, -1.0f, tile_origin_side.x,             tile_origin_side.y,
             -1.0f, -1.0f, -1.0f, tile_origin_side.x,             tile_origin_side.y,
-            -1.0f,  1.0f, -1.0f, tile_origin_side.x + tile_size, tile_origin_side.y,
+            -1.0f,  1.0f, -1.0f, tile_origin_side.x,             tile_origin_side.y + tile_size,
              1.0f,  1.0f, -1.0f, tile_origin_side.x + tile_size, tile_origin_side.y + tile_size,
 
             // Left
@@ -66,7 +66,7 @@ DroppedItem::DroppedItem(DroppedItemData data)
             -1.0f, -1.0f, -1.0f, tile_origin_side.x + tile_size, tile_origin_side.y,
             -1.0f, -1.0f,  1.0f, tile_origin_side.x,             tile_origin_side.y,
             -1.0f, -1.0f,  1.0f, tile_origin_side.x,             tile_origin_side.y,
-            -1.0f,  1.0f,  1.0f, tile_origin_side.x + tile_size, tile_origin_side.y,
+            -1.0f,  1.0f,  1.0f, tile_origin_side.x,             tile_origin_side.y + tile_size,
             -1.0f,  1.0f, -1.0f, tile_origin_side.x + tile_size, tile_origin_side.y + tile_size,
 
             // Right
@@ -74,7 +74,7 @@ DroppedItem::DroppedItem(DroppedItemData data)
             1.0f, -1.0f, -1.0f, tile_origin_side.x + tile_size, tile_origin_side.y,
             1.0f,  1.0f, -1.0f, tile_origin_side.x + tile_size, tile_origin_side.y + tile_size,
             1.0f,  1.0f, -1.0f, tile_origin_side.x + tile_size, tile_origin_side.y + tile_size,
-            1.0f,  1.0f,  1.0f, tile_origin_side.x + tile_size, tile_origin_side.y,
+            1.0f,  1.0f,  1.0f, tile_origin_side.x ,            tile_origin_side.y + tile_size,
             1.0f, -1.0f,  1.0f, tile_origin_side.x,             tile_origin_side.y,
 
             // Top
@@ -82,7 +82,7 @@ DroppedItem::DroppedItem(DroppedItemData data)
              1.0f, 1.0f, -1.0f, tile_origin_top.x + tile_size, tile_origin_top.y,
             -1.0f, 1.0f, -1.0f, tile_origin_top.x,             tile_origin_top.y,
             -1.0f, 1.0f, -1.0f, tile_origin_top.x,             tile_origin_top.y,
-            -1.0f, 1.0f,  1.0f, tile_origin_top.x + tile_size, tile_origin_top.y,
+            -1.0f, 1.0f,  1.0f, tile_origin_top.x ,            tile_origin_top.y + tile_size,
              1.0f, 1.0f,  1.0f, tile_origin_top.x + tile_size, tile_origin_top.y + tile_size,
 
             // Bottom
@@ -90,7 +90,7 @@ DroppedItem::DroppedItem(DroppedItemData data)
              1.0f, -1.0f, -1.0f, tile_origin_bottom.x + tile_size, tile_origin_bottom.y,
              1.0f, -1.0f,  1.0f, tile_origin_bottom.x + tile_size, tile_origin_bottom.y + tile_size,
              1.0f, -1.0f,  1.0f, tile_origin_bottom.x + tile_size, tile_origin_bottom.y + tile_size,
-            -1.0f, -1.0f,  1.0f, tile_origin_bottom.x + tile_size, tile_origin_bottom.y,
+            -1.0f, -1.0f,  1.0f, tile_origin_bottom.x ,            tile_origin_bottom.y + tile_size,
             -1.0f, -1.0f, -1.0f, tile_origin_bottom.x,             tile_origin_bottom.y,
         };
 
