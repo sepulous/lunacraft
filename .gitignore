@@ -1,4 +1,6 @@
 build/
+install/
+dist/
 .vscode/
 NOTES.txt
 Lunacraft
