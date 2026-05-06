@@ -124,7 +124,7 @@ void DroppedItem::FixedUpdate()
 
     float distance = glm::distance(camera_pos, position_);
 
-    moving_toward_player_ = lifetime_ > 1.0f && distance < 3.0f && player_inventory.HasSpaceForItem(item_);
+    moving_toward_player_ = lifetime_ > 0.5f && distance < 3.0f && player_inventory.HasSpaceForItem(item_);
 
     if (moving_toward_player_)
         velocity_ = 5.0f * glm::normalize((camera_pos - glm::vec3{0.0f, 0.3f, 0.0f}) - position_);
