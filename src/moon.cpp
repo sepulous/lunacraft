@@ -142,7 +142,10 @@ glm::vec4 Moon::GetFogColor()
     if (factor < 0)
         factor = 0;
     glm::vec3 fog_rgb = factor * glm::vec3(base_fog_color_);
-    return {fog_rgb, base_fog_color_.a};
+    if (OptionsManager::GetOptions().show_fog)
+        return {fog_rgb, base_fog_color_.a};
+    else
+        return {fog_rgb, 0};
 }
 
 int Moon::GetID()
@@ -409,9 +412,7 @@ void Moon::Render(const glm::mat4 &projection)
     block_shader.Use();
 
     glm::vec4 fog_color = GetFogColor();
-    fog_color.a = options.show_fog ? 1 : 0;
     block_shader.SetVec4("u_fog_color", fog_color);
-
     block_shader.SetMat4("u_view", view);
     block_shader.SetMat4("u_proj", projection);
     block_shader.SetFloat("u_fog_start", (float)options.render_distance * 0.33f * 32.0f);
