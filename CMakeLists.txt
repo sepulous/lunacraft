@@ -176,9 +176,8 @@ if(UNIX AND NOT APPLE)
         DESTINATION ${CMAKE_INSTALL_DATADIR}/applications
     )
 
-    install(FILES assets/images/icon.png
+    install(FILES lunacraft.png
         DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/256x256/apps
-        RENAME lunacraft.png
     )
 endif()
 
