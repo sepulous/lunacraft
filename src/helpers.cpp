@@ -254,14 +254,17 @@ void LoadChunkFromDisk(std::filesystem::path chunk_file_path, BlockID *blocks)
     chunk_file.seekg(0, std::ios::beg);
 
     // Pull entries
-    RLEEntry entries[file_size / sizeof(RLEEntry)]; // file_size should be an exact multiple of sizeof(RLEEntry)
-    chunk_file.read(reinterpret_cast<char *>(entries), file_size);
+    //RLEEntry entries[file_size / sizeof(RLEEntry)]; // file_size should be an exact multiple of sizeof(RLEEntry)
+    size_t length = file_size / sizeof(RLEEntry);
+    RLEEntry* entries = new RLEEntry[file_size / sizeof(RLEEntry)];
+    chunk_file.read(reinterpret_cast<char*>(entries), file_size);
     chunk_file.close();
 
     // Write block data
     size_t block_index = 0;
-    for (RLEEntry entry : entries)
+    for(int i = 0; i < length; i++)
     {
+        RLEEntry entry = entries[i];
         while (entry.count > 0)
         {
             blocks[block_index] = entry.block;
@@ -269,6 +272,7 @@ void LoadChunkFromDisk(std::filesystem::path chunk_file_path, BlockID *blocks)
             entry.count--;
         }
     }
+    delete[] entries;
 }
 
 // Run-length encodes the chunk and writes it to disk
