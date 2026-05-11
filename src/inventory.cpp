@@ -173,47 +173,40 @@ int Inventory::Add(ItemStack stack)
 std::vector<std::pair<ItemID, int>> Inventory::GetRecipeMatch()
 {
     auto recipes = GetCraftingRecipes();
-
     // Trim assembler input
     std::vector<ItemStack> trimmed_input;
-    bool reached_input = false;
+
+    // we build a bounding box and include all items in it, basically the same thing does Minecraft
+    int min_row = 2;
+    int max_row = 0;
+    int min_col = 2;
+    int max_col = 0;
+    bool done_box = false;
+
     for (int row = 2; row >= 0; row--)
     {
-        for (int col = 0; col < 3; col++)
+        for (int col = 2; col >= 0; col--)
         {
             ItemStack input = assembler_input[row][col];
 
-            if (!reached_input)
+            if (!input.IsEmpty())
             {
-                if (input.IsEmpty())
-                    continue;
-                else
-                    reached_input = true;
+                done_box = true;
+                min_row = std::min(min_row, row);
+                max_row = std::max(max_row, row);
+                min_col = std::min(min_col, col);
+                max_col = std::max(max_col, col);
             }
+        }
+    }
 
-            if (input.IsEmpty())
+    if (done_box)
+    {
+        for (int row = min_row; row <= max_row; row++)
+        {
+            for (int col = min_col; col <= max_col; col++)
             {
-                bool rest_are_empty = true;
-                for (int _row = row; _row >= 0; _row--)
-                {
-                    for (int _col = col; _col < 3; _col++)
-                    {
-                        if (!assembler_input[_row][_col].IsEmpty())
-                        {
-                            rest_are_empty = false;
-                            break;
-                        }
-                    }
-
-                    if (!rest_are_empty)
-                        break;
-                }
-
-                if (!rest_are_empty)
-                    trimmed_input.push_back(input);
-            }
-            else
-            {
+                ItemStack input = assembler_input[row][col];
                 trimmed_input.push_back(input);
             }
         }
@@ -228,7 +221,7 @@ std::vector<std::pair<ItemID, int>> Inventory::GetRecipeMatch()
         bool match = true;
         for (int i = 0; i < recipe.size() - 1; i++)
         {
-            auto recipe_item = recipe[i+1];
+            auto recipe_item = recipe[i + 1];
             auto input_item = trimmed_input[i];
             if (input_item.item != recipe_item.first || input_item.amount < recipe_item.second)
             {
