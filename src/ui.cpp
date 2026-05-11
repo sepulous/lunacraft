@@ -1891,30 +1891,46 @@ void UIInventory::Update(Player *player)
                     // We shouldn't do anything if the item can't actually be taken in some way
                     if ((inventory.HasSpaceForItem(recipe[0].first) && Input::IsKeyHeld(GLFW_KEY_LEFT_SHIFT)) || inventory.held_stack.IsEmpty() || inventory.held_stack.item == recipe[0].first)
                     {
-                        // Use input items
-                        bool reached_input = false;
                         int recipe_idx = 1;
+                        int min_row = 2;
+                        int max_row = 0;
+                        int min_col = 2;
+                        int max_col = 0;
+                        bool done_box = false;
+
                         for (int row = 2; row >= 0; row--)
                         {
-                            for (int col = 0; col < 3; col++)
+                            for (int col = 2; col >= 0; col--)
                             {
-                                ItemStack &input_stack = inventory.assembler_input[row][col];
+                                ItemStack input = inventory.assembler_input[row][col];
 
-                                if (!reached_input)
+                                if (!input.IsEmpty())
                                 {
-                                    if (input_stack.IsEmpty())
-                                        continue;
-                                    else
-                                        reached_input = true;
+                                    done_box = true;
+                                    min_row = std::min(min_row, row);
+                                    max_row = std::max(max_row, row);
+                                    min_col = std::min(min_col, col);
+                                    max_col = std::max(max_col, col);
                                 }
+                            }
+                        }
 
-                                int amount_to_take = recipe[recipe_idx].second;
-                                input_stack.amount -= amount_to_take;
-                                if (input_stack.amount < 1)
-                                    input_stack.item = ItemID::none;
-                                recipe_idx++;
-                                if (recipe_idx == recipe.size())
-                                    goto done_consuming_input;
+                        if (done_box)
+                        {
+                            for (int row = min_row; row <= max_row; row++)
+                            {
+                                for (int col = min_col; col <= max_col; col++)
+                                {
+                                    ItemStack& input_stack = inventory.assembler_input[row][col];
+
+                                    int amount_to_take = recipe[recipe_idx].second;
+                                    input_stack.amount -= amount_to_take;
+                                    if (input_stack.amount < 1)
+                                        input_stack.item = ItemID::none;
+                                    recipe_idx++;
+                                    if (recipe_idx == recipe.size())
+                                        goto done_consuming_input;
+                                }
                             }
                         }
 
