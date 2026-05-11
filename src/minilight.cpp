@@ -107,7 +107,10 @@ Minilight::Minilight(MinilightData data)
 
 void Minilight::Render(const glm::mat4 &view, const glm::mat4 &proj)
 {
-    mesh_.Render([&](Shader *shader) {
+    glm::mat4 model{ 1.0f };
+
+    mesh_.Render([&](Shader* shader) {
+        shader->SetMat4("u_model", model);
         shader->SetMat4("u_view", view);
         shader->SetMat4("u_proj", proj);
     });
