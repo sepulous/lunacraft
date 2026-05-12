@@ -522,7 +522,13 @@ void Astronaut::Update(float delta_time)
 
         if (!dropped_disk_)
         {
-            ItemID disk_id = static_cast<ItemID>(RNG{}.Range(static_cast<uint8_t>(ItemID::disk), static_cast<uint8_t>(ItemID::disk18)));
+            constexpr ItemID disks[19] = {
+                ItemID::disk, ItemID::disk1, ItemID::disk2, ItemID::disk3, ItemID::disk4, ItemID::disk5,
+                ItemID::disk6, ItemID::disk7, ItemID::disk8, ItemID::disk9, ItemID::disk10, ItemID::disk11,
+                ItemID::disk12, ItemID::disk13, ItemID::disk14, ItemID::disk15, ItemID::disk16, ItemID::disk17,
+                ItemID::disk18
+            };
+            ItemID disk_id = disks[RNG{}.Range(0, 18)];
             DroppedItem *disk = new DroppedItem({
                 .position = position_,
                 .item = disk_id,
