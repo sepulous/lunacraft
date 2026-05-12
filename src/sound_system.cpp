@@ -4,6 +4,7 @@
 
 #include "sound_system.h"
 #include "storage.h"
+#include "constants.h"
 
 using Sound = SoundSystem::Sound;
 
@@ -15,7 +16,7 @@ float SoundSystem::music_volume_;
 void SoundSystem::Init()
 {
     Soundlib::Init();
-    Soundlib::SetAttenuationModel(Soundlib::AttenuationModel::INVERSE_DISTANCE_CLAMPED);
+    Soundlib::SetAttenuationModel(Soundlib::AttenuationModel::INVERSE_DISTANCE);
 
     sound_map_[Sound::SONG_1].LoadSound((Storage::SOUNDS / "theme1.mp3").string());
     sound_map_[Sound::SONG_2].LoadSound((Storage::SOUNDS / "theme2.mp3").string());
@@ -112,9 +113,9 @@ ActiveSound *SoundSystem::PlayAt(Sound sound, glm::vec3 position, bool loop)
         return nullptr;
 
     auto source = new Soundlib::SoundSource(sound_map_[sound]);
-    source->SetReferenceDistance(2.0f);
-    source->SetRolloffFactor(1.0f);
-    source->SetMaxDistance(32.0f);
+    source->SetReferenceDistance(1.0f);
+    source->SetRolloffFactor(0.8f);
+    source->SetMaxDistance(1.5f * CHUNK_SIZE);
     source->SetPosition({position.x, position.y, position.z});
     source->SetLooping(loop);
     source->SetGain(IsMusic(sound) ? music_volume_ : sfx_volume_);
