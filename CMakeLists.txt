@@ -84,14 +84,11 @@ set(LUNACRAFT_SOURCES
     third_party/stb_truetype/stb_truetype/stb_truetype.cpp
 )
 
+add_executable(Lunacraft ${LUNACRAFT_SOURCES})
 if(WIN32)
-    add_executable(Lunacraft WIN32 ${LUNACRAFT_SOURCES})
     set_target_properties(Lunacraft PROPERTIES
         WIN32_EXECUTABLE TRUE
     )
-    target_link_options(Lunacraft PRIVATE -mwindows)
-else()
-    add_executable(Lunacraft ${LUNACRAFT_SOURCES})
 endif()
 
 # Embed icon (Windows)

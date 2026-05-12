@@ -25,6 +25,17 @@
 #include "moon.h"
 #include "rng.h"
 
+#ifdef _WIN32
+#include <windows.h>
+
+int main();
+
+int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
+{
+    return main();
+}
+#endif
+
 enum class GameState {MAIN_MENU, IN_GAME};
 
 static GameState game_state = GameState::MAIN_MENU;
