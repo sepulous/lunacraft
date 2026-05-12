@@ -443,6 +443,7 @@ void Moon::Render(const glm::mat4 &projection)
         // Read screen pixels
         auto dimensions = Viewport::GetDimensions();
         unsigned char *pixels = (unsigned char *)malloc(dimensions.x * dimensions.y * 3);
+        glPixelStorei(GL_PACK_ALIGNMENT, 1);
         glReadPixels(0, 0, dimensions.x, dimensions.y, GL_RGB, GL_UNSIGNED_BYTE, pixels);
 
         // Flip image
