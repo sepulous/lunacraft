@@ -254,132 +254,6 @@ void Player::Update(float delta_time)
             }
         }
 
-        // Punching
-        bool punch_mining = Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_LEFT) && !ItemIsDrill(selected_item) && !ItemIsPistol(selected_item);
-        bool placing_block = Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_RIGHT) && ItemIsBlock(selected_item);
-        if (punch_mining || placing_block)
-        {
-            time_punching_ += delta_time;
-            arm_extent_ = 0.2f * glm::pow(glm::sin(7.0f * time_punching_), 2);
-        }
-        else if (time_punching_ != 0) // Animation should stop
-        {
-            if (glm::abs(arm_extent_) < 0.01f)
-            {
-                arm_extent_ = 0;
-                time_punching_ = 0;
-            }
-            else
-            {
-                time_punching_ += delta_time;
-                arm_extent_ = 0.2f * glm::pow(glm::sin(7.0f * time_punching_), 2);
-            }
-        }
-
-        // Drilling
-        if (ItemIsDrill(selected_item))
-        {
-            if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT))
-            {
-                if (!drill_sound_)
-                {
-                    if (selected_item == ItemID::drill_t3)
-                        drill_sound_ = SoundSystem::Play(SoundSystem::Sound::DRILL3, true);
-                    else
-                        drill_sound_ = SoundSystem::Play(SoundSystem::Sound::DRILL, true);
-                }
-            }
-            else if (Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_LEFT))
-            {
-                time_drilling_ += delta_time;
-
-                float arm_shake_freq = glm::clamp(15.0f * time_drilling_, 20.0f, 50.0f);
-                arm_shake_ = 0.005f * glm::pow(glm::sin(40.0f * time_drilling_), 2);
-                arm_extent_ = glm::clamp(arm_extent_ + 0.3f * delta_time, 0.0f, 0.2f);
-
-                drill_bit_angular_speed_ = glm::clamp(4.0f * time_drilling_, 0.0f, 40.0f);
-                drill_bit_rotation_ = drill_bit_angular_speed_ * time_drilling_;
-                drill_bit_extent_ = glm::clamp(drill_bit_extent_ + 0.0001f * time_drilling_, 0.0f, 0.2f);
-            }
-            else if (Input::IsMouseButtonReleased(GLFW_MOUSE_BUTTON_LEFT) || time_drilling_ != 0)
-            {
-                if (drill_sound_)
-                {
-                    SoundSystem::Stop(drill_sound_);
-                    drill_sound_ = nullptr;
-                }
-
-                arm_shake_ = 0;
-
-                if (glm::abs(arm_extent_) < 0.01f)
-                {
-                    arm_extent_ = 0;
-                    arm_shake_ = 0;
-                    drill_bit_extent_ = 0;
-                    drill_bit_rotation_ = 0;
-                }
-                else
-                {
-                    // For the sake of simplicity, we now reinterpret time_drilling_ as the time
-                    // elapsed since the animation started ending
-                    if (time_drilling_ != 0)
-                        time_drilling_ = 0;
-                        
-                    time_drilling_ += delta_time;
-
-                    arm_extent_ = glm::clamp(arm_extent_ - 0.2f * delta_time, 0.0f, 2.0f);
-
-                    drill_bit_rotation_ += drill_bit_angular_speed_ * time_drilling_;
-                    drill_bit_extent_ = glm::clamp(drill_bit_extent_ - 0.2f * time_drilling_, 0.0f, 0.2f);
-                }
-            }
-        }
-        else if (drill_sound_)
-        {
-            SoundSystem::Stop(drill_sound_);
-            drill_sound_ = nullptr;
-        }
-
-        // Pistol
-        if (ItemIsPistol(selected_item))
-        {
-            if (Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_LEFT))
-            {
-                float scale = 1.0f;
-                if (selected_item == ItemID::slug_pistol_t2)
-                    scale = 2.0f;
-                else if (selected_item == ItemID::slug_pistol_t3)
-                    scale = 4.0f;
-
-                time_charging_gun_ += scale * delta_time;
-
-                pistol_base_disp_ = 0.01f * glm::sin(50.0f * (time_charging_gun_ / scale));
-                pistol_slide_disp_ = 0.4f * (1.0f - 1.0f / glm::sqrt(glm::min(10.0f * time_charging_gun_, 40.0f) * 0.5f + 1.0f));
-            }
-            else if (time_charging_gun_ != 0)
-            {
-                // This is how slug speed and damage was calculated in v2.01 of the original game
-                float speed = glm::min(10.0f * time_charging_gun_, 40.0f) + 1.0f;
-                int damage_param = selected_item == ItemID::slug_pistol_t3 ? 4
-                                 : selected_item == ItemID::slug_pistol_t2 ? 2
-                                 :                                           0;
-
-                Slug *slug = new Slug({
-                    .initial_position = camera_.position + 1.0f * camera_.forward,
-                    .initial_velocity = speed * camera_.forward,
-                    .source_id = GetID(),
-                    .damage = damage_param * 8 + 20
-                });
-                Moon::GetCurrentMoon()->GetEntityManager().AddEntity(slug);
-
-                SoundSystem::Play(SoundSystem::Sound::LASER);
-
-                time_charging_gun_ = 0;
-                pistol_base_disp_ = 0;
-                pistol_slide_disp_ = 0;
-            }
-        }
-
         // Throw item out (with 'Q')
         if (Input::IsKeyPressed(GLFW_KEY_Q))
         {
@@ -401,6 +275,132 @@ void Player::Update(float delta_time)
                 if (selected_item.amount < 1)
                     selected_item = {ItemID::none, 0};
             }
+        }
+    }
+
+    // Drilling
+    if (ItemIsDrill(selected_item))
+    {
+        if (in_control_ && Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT))
+        {
+            if (!drill_sound_)
+            {
+                if (selected_item == ItemID::drill_t3)
+                    drill_sound_ = SoundSystem::Play(SoundSystem::Sound::DRILL3, true);
+                else
+                    drill_sound_ = SoundSystem::Play(SoundSystem::Sound::DRILL, true);
+            }
+        }
+        else if (in_control_ && Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_LEFT))
+        {
+            time_drilling_ += delta_time;
+
+            float arm_shake_freq = glm::clamp(15.0f * time_drilling_, 20.0f, 50.0f);
+            arm_shake_ = 0.005f * glm::pow(glm::sin(40.0f * time_drilling_), 2);
+            arm_extent_ = glm::clamp(arm_extent_ + 0.3f * delta_time, 0.0f, 0.2f);
+
+            drill_bit_angular_speed_ = glm::clamp(4.0f * time_drilling_, 0.0f, 40.0f);
+            drill_bit_rotation_ = drill_bit_angular_speed_ * time_drilling_;
+            drill_bit_extent_ = glm::clamp(drill_bit_extent_ + 0.0001f * time_drilling_, 0.0f, 0.2f);
+        }
+        else if (Input::IsMouseButtonReleased(GLFW_MOUSE_BUTTON_LEFT) || time_drilling_ != 0)
+        {
+            if (drill_sound_)
+            {
+                SoundSystem::Stop(drill_sound_);
+                drill_sound_ = nullptr;
+            }
+
+            arm_shake_ = 0;
+
+            if (glm::abs(arm_extent_) < 0.01f)
+            {
+                arm_extent_ = 0;
+                arm_shake_ = 0;
+                drill_bit_extent_ = 0;
+                drill_bit_rotation_ = 0;
+            }
+            else
+            {
+                // For the sake of simplicity, we now reinterpret time_drilling_ as the time
+                // elapsed since the animation started ending
+                if (time_drilling_ != 0)
+                    time_drilling_ = 0;
+                    
+                time_drilling_ += delta_time;
+
+                arm_extent_ = glm::clamp(arm_extent_ - 0.2f * delta_time, 0.0f, 2.0f);
+
+                drill_bit_rotation_ += drill_bit_angular_speed_ * time_drilling_;
+                drill_bit_extent_ = glm::clamp(drill_bit_extent_ - 0.2f * time_drilling_, 0.0f, 0.2f);
+            }
+        }
+    }
+    else if (drill_sound_)
+    {
+        SoundSystem::Stop(drill_sound_);
+        drill_sound_ = nullptr;
+    }
+
+    // Punching
+    bool punch_mining = Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_LEFT) && !ItemIsDrill(selected_item) && !ItemIsPistol(selected_item);
+    bool placing_block = Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_RIGHT) && ItemIsBlock(selected_item);
+    if (in_control_ && (punch_mining || placing_block))
+    {
+        time_punching_ += delta_time;
+        arm_extent_ = 0.2f * glm::pow(glm::sin(7.0f * time_punching_), 2);
+    }
+    else if (time_punching_ != 0) // Animation should stop
+    {
+        if (glm::abs(arm_extent_) < 0.01f)
+        {
+            arm_extent_ = 0;
+            time_punching_ = 0;
+        }
+        else
+        {
+            time_punching_ += delta_time;
+            arm_extent_ = 0.2f * glm::pow(glm::sin(7.0f * time_punching_), 2);
+        }
+    }
+
+    // Pistol
+    if (ItemIsPistol(selected_item))
+    {
+        if (in_control_ && Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_LEFT))
+        {
+            float scale = 1.0f;
+            if (selected_item == ItemID::slug_pistol_t2)
+                scale = 2.0f;
+            else if (selected_item == ItemID::slug_pistol_t3)
+                scale = 4.0f;
+
+            time_charging_gun_ += scale * delta_time;
+
+            pistol_base_disp_ = 0.01f * glm::sin(50.0f * (time_charging_gun_ / scale));
+            pistol_slide_disp_ = 0.4f * (1.0f - 1.0f / glm::sqrt(glm::min(10.0f * time_charging_gun_, 40.0f) * 0.5f + 1.0f));
+        }
+        else if (time_charging_gun_ != 0)
+        {
+            // This is how slug speed and damage was calculated in v2.01 of the original game
+            float speed = glm::min(10.0f * time_charging_gun_, 40.0f) + 1.0f;
+            int damage_param = selected_item == ItemID::slug_pistol_t3 ? 4
+                                : selected_item == ItemID::slug_pistol_t2 ? 2
+                                :                                           0;
+
+            Slug *slug = new Slug({
+                .initial_position = camera_.position + 1.0f * camera_.forward,
+                .initial_velocity = speed * camera_.forward,
+                .source_id = GetID(),
+                .damage = damage_param * 8 + 20
+            });
+            Moon::GetCurrentMoon()->GetEntityManager().AddEntity(slug);
+
+            SoundSystem::Play(SoundSystem::Sound::LASER);
+
+            time_charging_gun_ = 0;
+            pistol_base_disp_ = 0;
+            pistol_slide_disp_ = 0;
         }
     }
 
