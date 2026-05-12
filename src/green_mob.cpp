@@ -112,7 +112,7 @@ void GreenMob::Update(float delta_time)
                     action_ = GreenMobAction::MOVE;
                     next_action_time_ += RNG{}.Range(1.0f, 4.0f);
 
-                    velocity_.y += RNG{}.Range(4.0, 10.0f);
+                    velocity_.y += RNG{}.Range(4.0f, 10.0f);
                     move_velocity_ = 5.0f * glm::vec3{glm::sin(glm::radians(yaw_)), 0, glm::cos(glm::radians(yaw_))};
 
                     SoundSystem::PlayAt(SoundSystem::Sound::ALIEN_JUMP, position_);
@@ -132,7 +132,7 @@ void GreenMob::Update(float delta_time)
                     action_ = GreenMobAction::MOVE;
                     next_action_time_ += RNG{}.Range(1.0f, 4.0f);
 
-                    velocity_.y += RNG{}.Range(4.0, 10.0f);
+                    velocity_.y += RNG{}.Range(4.0f, 10.0f);
                     move_velocity_ = 0.5f * glm::vec3{glm::sin(glm::radians(yaw_)), 0, glm::cos(glm::radians(yaw_))};
 
                     SoundSystem::PlayAt(SoundSystem::Sound::ALIEN_JUMP, position_);
