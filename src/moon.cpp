@@ -290,7 +290,7 @@ void Moon::Update(double delta_time)
             SoundSystem::PlayAt(SoundSystem::Sound::BLOCK_BREAK, selection_position);
             selection_block_.SetMineProgress(0);
         }
-        else if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT) && selection_position.y < WORLD_HEIGHT_LIMIT - 1)
+        else if (player_->IsInControl() && Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT) && selection_position.y < WORLD_HEIGHT_LIMIT - 1)
         {
             auto player_aabb = player_->GetAABB();
             auto player_pos = player_->GetPosition();
@@ -555,7 +555,7 @@ void Moon::UpdateSelectionBlock(float delta_time)
     //
 
     auto player_item = player_->GetInventory().GetSelectedItem();
-    bool is_mining = Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_LEFT) && !ItemIsPistol(player_item);
+    bool is_mining = player_->IsInControl() && Input::IsMouseButtonHeld(GLFW_MOUSE_BUTTON_LEFT) && !ItemIsPistol(player_item);
     float mine_progress = selection_block_.GetMineProgress();
     if (is_mining && selection_block_.GetPosition().y > 0)
     {
