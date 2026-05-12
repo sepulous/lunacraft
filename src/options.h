@@ -4,7 +4,7 @@ struct Options
 {
     float sfx_volume = 0.5f;
     float music_volume = 0.5f;
-    float sensitivity = 1.0f;
+    float sensitivity = 0.5f;
     int render_distance = 3;
     bool show_fog = true;
     bool show_gui = true;

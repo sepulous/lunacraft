@@ -414,7 +414,7 @@ int main()
                 else if (!player->IsDead())
                     player->EnableControl();
 
-                player->SetCameraSensitivity(0.05f * OptionsManager::GetOptions().sensitivity);
+                player->SetCameraSensitivity(0.05f * glm::pow(0.25f / 0.05f, OptionsManager::GetOptions().sensitivity));
                 player->UpdateCamera();
 
                 moon->Update(delta_time);

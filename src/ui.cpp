@@ -828,7 +828,7 @@ UIOptionsMenu::UIOptionsMenu()
     // Sensitivity slider
     sensitivity_slider_.SetPosition({bg_pos_x + option_text_align_x1 + 25, 520});
     sensitivity_slider_.SetSize({240, 20});
-    sensitivity_slider_.SetBounds({0.0f, 2.0f});
+    sensitivity_slider_.SetBounds({0.0f, 1.0f});
     sensitivity_slider_.SetValue(current_options.sensitivity);
 
     // Render distance
