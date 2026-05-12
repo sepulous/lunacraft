@@ -145,7 +145,7 @@ void DroppedItem::Render(const glm::mat4 &view, const glm::mat4 &proj)
 
     glm::mat4 model{1.0f};
     model = glm::translate(model, {position_.x, position_.y + 0.1f + bob_offset, position_.z});
-    if (ItemIsSprite(item_))
+    if (ItemIsSprite(item_) || item_ == ItemID::minilight)
     {
         auto player_pos = Moon::GetCurrentMoon()->GetPlayer()->GetPosition();
         auto displacement = player_pos - position_;
