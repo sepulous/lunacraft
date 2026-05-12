@@ -460,7 +460,10 @@ void Player::Update(float delta_time)
         time_flying_ += delta_time;
     else
         time_flying_ = 0;
-    camera_.shake = 0.5f * glm::sin(80.0f * time_flying_);
+    float shake_alpha = glm::abs(camera_.pitch) / 90.0f;
+    float shake_amplitude = (1.0f - shake_alpha) * 0.5f + shake_alpha * 0.25f; // Avoids camera going crazy when looking
+    float shake_offset = shake_alpha * -glm::sign(camera_.pitch) * 0.25f;      // straight up or down while flying
+    camera_.shake = shake_amplitude * glm::sin(80.0f * time_flying_) + shake_offset;
 
     camera_.position = position_ + glm::vec3(0, 0.9f, 0);
     camera_.position.y += 0.04f * glm::sin(camera_bob_phase_);
