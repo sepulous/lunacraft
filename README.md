@@ -19,11 +19,11 @@ Lunacraft can be built and installed from source as follows:
 ```
 $ mkdir build
 $ cmake -S . -B build
-$ cmake --build build --config Release -j
+$ cmake --build build --config Release --parallel <# of jobs>
 $ sudo cmake --install build
 ```
 
-On Windows this should install to `Program Files (x86)/Lunacraft`, and on Linux this should make the binary available in `PATH` and automatically copy the icon and .desktop file.
+On Windows this should install to `Program Files (x86)/Lunacraft`, and on Linux this should make the binary available in `PATH` and automatically copy the icon and .desktop file. The `--parallel` flag is optional, but recommended for the sake of faster building, especially if you build OpenAL locally.
 
 ### macOS
 
