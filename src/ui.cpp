@@ -48,7 +48,14 @@ void UIRescale()
 glm::mat4 UIGetVirtualToWindow()
 {
     auto viewport_dimensions = Viewport::GetDimensions();
-    float scale = std::max((float)viewport_dimensions.x / VIRTUAL_UI_WIDTH, (float)viewport_dimensions.y / VIRTUAL_UI_HEIGHT);
+
+    float aspect_ratio_ratio = ((float)viewport_dimensions.x / (float)viewport_dimensions.y) / (16.0f / 9.0f);
+    float scale;
+    if (aspect_ratio_ratio < 1.0f)
+        scale = std::max((float)viewport_dimensions.x / VIRTUAL_UI_WIDTH, (float)viewport_dimensions.y / VIRTUAL_UI_HEIGHT);
+    else
+        scale = std::min((float)viewport_dimensions.x / VIRTUAL_UI_WIDTH, (float)viewport_dimensions.y / VIRTUAL_UI_HEIGHT);
+
     float scaled_virtual_width = VIRTUAL_UI_WIDTH * scale;
     float scaled_virtual_height = VIRTUAL_UI_HEIGHT * scale;
     float offset_x = ((float)viewport_dimensions.x - scaled_virtual_width)  * 0.5f;
@@ -311,6 +318,10 @@ void UIMainMenu::Update(float delta_time)
 
 void UIMainMenu::Render(float delta_time)
 {
+    auto viewport = Viewport::GetDimensions();
+    float aspect_ratio_ratio = ((float)viewport.x / (float)viewport.y) / (16.0f / 9.0f);
+    float aspect_scale = (aspect_ratio_ratio > 1.0f) ? aspect_ratio_ratio : (1.0f / aspect_ratio_ratio);
+
     Shader &ui_image_shader = ShaderManager::UI_IMAGE_SHADER;
     
     //
@@ -333,8 +344,8 @@ void UIMainMenu::Render(float delta_time)
         ui_image_shader.SetFloat("u_opacity", 1.0f);
 
         current_position = background_images_[current_background_].GetPosition();
-        offset = {(VIRTUAL_UI_WIDTH * (scale - 1.0f)) / 2.0f, (VIRTUAL_UI_HEIGHT * (scale - 1.0f)) / 2.0f};
-        background_images_[current_background_].SetSize(scale * glm::vec2(VIRTUAL_UI_WIDTH, VIRTUAL_UI_HEIGHT));
+        offset = {(VIRTUAL_UI_WIDTH * (aspect_scale * scale - 1.0f)) / 2.0f, (VIRTUAL_UI_HEIGHT * (aspect_scale * scale - 1.0f)) / 2.0f};
+        background_images_[current_background_].SetSize(aspect_scale * scale * glm::vec2(VIRTUAL_UI_WIDTH, VIRTUAL_UI_HEIGHT));
         background_images_[current_background_].SetPosition({-offset.x, -offset.y});
         background_images_[current_background_].Render();
     }
@@ -348,8 +359,8 @@ void UIMainMenu::Render(float delta_time)
         ui_image_shader.SetFloat("u_opacity", opacity);
 
         current_position = background_images_[current_background_].GetPosition();
-        offset = {(VIRTUAL_UI_WIDTH * (scale - 1.0f)) / 2.0f, (VIRTUAL_UI_HEIGHT * (scale - 1.0f)) / 2.0f};
-        background_images_[current_background_].SetSize(scale * glm::vec2(VIRTUAL_UI_WIDTH, VIRTUAL_UI_HEIGHT));
+        offset = {(VIRTUAL_UI_WIDTH * (aspect_scale * scale - 1.0f)) / 2.0f, (VIRTUAL_UI_HEIGHT * (aspect_scale * scale - 1.0f)) / 2.0f};
+        background_images_[current_background_].SetSize(aspect_scale * scale * glm::vec2(VIRTUAL_UI_WIDTH, VIRTUAL_UI_HEIGHT));
         background_images_[current_background_].SetPosition({-offset.x, -offset.y});
         background_images_[current_background_].Render();
 
@@ -359,15 +370,15 @@ void UIMainMenu::Render(float delta_time)
         ui_image_shader.SetFloat("u_opacity", opacity);
 
         current_position = background_images_[(current_background_ + 1) % 5].GetPosition();
-        offset = {(VIRTUAL_UI_WIDTH * (scale - 1.0f)) / 2.0f, (VIRTUAL_UI_HEIGHT * (scale - 1.0f)) / 2.0f};
-        background_images_[(current_background_ + 1) % 5].SetSize(scale * glm::vec2(VIRTUAL_UI_WIDTH, VIRTUAL_UI_HEIGHT));
+        offset = {(VIRTUAL_UI_WIDTH * (aspect_scale * scale - 1.0f)) / 2.0f, (VIRTUAL_UI_HEIGHT * (aspect_scale * scale - 1.0f)) / 2.0f};
+        background_images_[(current_background_ + 1) % 5].SetSize(aspect_scale * scale * glm::vec2(VIRTUAL_UI_WIDTH, VIRTUAL_UI_HEIGHT));
         background_images_[(current_background_ + 1) % 5].SetPosition({-offset.x, -offset.y});
         background_images_[(current_background_ + 1) % 5].Render();
 
         if (current_background_time_ >= opaque_time + fade_time)
         {
             current_background_time_ = fade_time;
-            background_images_[current_background_].SetSize({VIRTUAL_UI_WIDTH, VIRTUAL_UI_HEIGHT});
+            background_images_[current_background_].SetSize(aspect_scale * glm::vec2{VIRTUAL_UI_WIDTH, VIRTUAL_UI_HEIGHT});
             background_images_[current_background_].SetPosition({0, 0});
             current_background_ = (current_background_ + 1) % 5;
         }
@@ -1186,6 +1197,12 @@ void UIPauseMenu::Update()
         resume_clicked_ = resume_button_.IsClicked();
         quit_clicked_ = quit_button_.IsClicked();
     }
+
+    auto viewport = Viewport::GetDimensions();
+    float aspect_ratio_ratio = ((float)viewport.x / (float)viewport.y) / (16.0f / 9.0f);
+    float aspect_scale = (aspect_ratio_ratio > 1.0f) ? aspect_ratio_ratio : (1.0f / aspect_ratio_ratio);
+    background_.SetSize(aspect_scale * glm::vec2{VIRTUAL_UI_WIDTH, VIRTUAL_UI_HEIGHT});
+    background_.SetPosition({(-VIRTUAL_UI_WIDTH * (aspect_scale - 1.0f)) / 2.0f, (-VIRTUAL_UI_HEIGHT * (aspect_scale - 1.0f)) / 2.0f});
 }
 
 void UIPauseMenu::Render()
@@ -1666,6 +1683,22 @@ void UIInventory::Update(Player *player)
     held_item_.SetPosition({mouse_position.x - (85 / 2), mouse_position.y - (85 / 2)});
     held_amount_.SetPosition(held_item_.GetPosition() + glm::vec2{60, 10});
 
+    /////////////////////////////////////
+
+    auto viewport = Viewport::GetDimensions();
+    float aspect_ratio_ratio = ((float)viewport.x / (float)viewport.y) / (16.0f / 9.0f);
+    float aspect_scale = (aspect_ratio_ratio > 1.0f) ? aspect_ratio_ratio : (1.0f / aspect_ratio_ratio);
+    // // background_.SetSize(aspect_scale * glm::vec2{VIRTUAL_UI_WIDTH, VIRTUAL_UI_HEIGHT});
+    // // background_.SetPosition({(-VIRTUAL_UI_WIDTH * (aspect_scale - 1.0f)) / 2.0f, (-VIRTUAL_UI_HEIGHT * (aspect_scale - 1.0f)) / 2.0f});
+
+    // hotbar_base_.SetSize(aspect_scale * glm::vec2{VIRTUAL_UI_WIDTH, VIRTUAL_UI_HEIGHT});
+    // hotbar_base_.SetPosition({((aspect_scale - 1.0f)) / 1.0f, ((aspect_scale - 1.0f)) / 1.0f});
+
+    if (aspect_ratio_ratio < 1.0f)
+    {
+        hotbar_base_.SetPosition({0, 0});
+    }
+
     // Update suit status and health
     suit_status_bar_.SetCrop({0.0f, 0.0f, suit_status, 1.0f});
     suit_status_bar_.SetSize({186 * suit_status, 18});
@@ -1674,6 +1707,8 @@ void UIInventory::Update(Player *player)
 
     // Update jetpack level
     jetpack_bar_.SetSize({24, 100 * jetpack_level});
+
+    /////////////////////////////////////
 
     // Update inventory
     if (!active_)
