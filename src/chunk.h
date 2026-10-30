@@ -142,18 +142,16 @@ private:
     // Opaque data
     std::vector<BlockVertex> opaque_vertices_;
     std::vector<uint16_t> opaque_indices_;
-    GLuint opaque_vaos_[2];
-    GLuint opaque_vbos_[2];
-    GLuint opaque_ebos_[2];
-    size_t opaque_index_counts_[2];
+    GLuint opaque_vao_;
+    GLuint opaque_vbo_;
+    GLuint opaque_ebo_;
+    size_t opaque_index_count_;
 
     // Transparent data
     std::vector<BlockVertex> transparent_vertices_;
     std::vector<uint16_t> transparent_indices_;
-    GLuint transparent_vaos_[2];
-    GLuint transparent_vbos_[2];
-    GLuint transparent_ebos_[2];
-    size_t transparent_index_counts_[2];
-
-    unsigned gl_index_ = 0; // Index for double-buffering
+    GLuint transparent_vao_;
+    GLuint transparent_vbo_;
+    GLuint transparent_ebo_;
+    size_t transparent_index_count_;
 };
