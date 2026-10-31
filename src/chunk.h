@@ -155,3 +155,23 @@ private:
     GLuint transparent_ebo_;
     size_t transparent_index_count_;
 };
+
+using ChunkTaskFn = void (Chunk::*)();
+namespace ChunkTask
+{
+    inline constexpr ChunkTaskFn LoadBlocks = &Chunk::LoadBlocks;
+    inline constexpr ChunkTaskFn BuildLightmapInternal = &Chunk::BuildLightmapInternal;
+    inline constexpr ChunkTaskFn BuildLightmapExternal = &Chunk::BuildLightmapExternal;
+    inline constexpr ChunkTaskFn UpdateVertexLighting = &Chunk::UpdateVertexLighting;
+    inline constexpr ChunkTaskFn BuildVertices = &Chunk::BuildVertices;
+    inline constexpr ChunkTaskFn MarkAsClean = &Chunk::MarkAsClean;
+    inline constexpr ChunkTaskFn UnpinAllNeighbors = &Chunk::UnpinAllNeighbors;
+    inline constexpr ChunkTaskFn UnpinAdjacentNeighbors = &Chunk::UnpinAdjacentNeighbors;
+};
+
+struct ChunkJob
+{
+    std::vector<ChunkTaskFn> tasks;
+    Chunk *chunk;
+    bool requires_neighbors;
+};

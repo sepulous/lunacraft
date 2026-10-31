@@ -28,7 +28,7 @@ ChunkWorkerPool::~ChunkWorkerPool()
         worker.join();
 }
 
-void ChunkWorkerPool::SubmitJob(WorkerJob job)
+void ChunkWorkerPool::SubmitJob(ChunkJob&& job)
 {
     {
         std::lock_guard<std::mutex> lock(jobs_mutex_);
@@ -41,7 +41,7 @@ void ChunkWorkerPool::WorkerLoop()
 {
     while (true)
     {
-        WorkerJob job;
+        ChunkJob job;
 
         {
             std::unique_lock<std::mutex> lock(jobs_mutex_);
@@ -52,7 +52,7 @@ void ChunkWorkerPool::WorkerLoop()
             if (stop_ && jobs_.empty())
                 return;
 
-            job = std::move(jobs_.front());
+            job = jobs_.front();
             jobs_.pop();
         }
 

@@ -102,7 +102,7 @@ void ChunkManager::HandleChunkJobs()
             if (neighbors_ready) // All tasks can be done
             {
                 job.chunk->MarkAsDirty();
-                worker_pool_->SubmitJob({job.chunk, job.tasks});
+                worker_pool_->SubmitJob(std::move(job));
             }
             else // External tasks cannot be done, but there may be internal tasks that can
             {
@@ -121,7 +121,7 @@ void ChunkManager::HandleChunkJobs()
                     // Submit internal tasks
                     std::vector<ChunkTaskFn> internal_tasks{job.tasks.begin(), it};
                     internal_tasks.push_back(ChunkTask::MarkAsClean);
-                    worker_pool_->SubmitJob({job.chunk, internal_tasks});
+                    worker_pool_->SubmitJob({std::move(internal_tasks), job.chunk, job.requires_neighbors});
 
                     // Requeue remaining external tasks
                     job.tasks = std::vector<ChunkTaskFn>{it, job.tasks.end()};
@@ -132,7 +132,7 @@ void ChunkManager::HandleChunkJobs()
         else // Purely internal job; just submit everything
         {
             job.chunk->MarkAsDirty();
-            worker_pool_->SubmitJob({job.chunk, job.tasks});
+            worker_pool_->SubmitJob(std::move(job));
         }
     }
 }

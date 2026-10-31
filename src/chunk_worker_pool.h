@@ -9,25 +9,19 @@
 
 #include "chunk.h"
 
-struct WorkerJob
-{
-    Chunk *chunk;
-    std::vector<void (Chunk::*)()> tasks;
-};
-
 class ChunkWorkerPool
 {
 public:
     ChunkWorkerPool();
     ~ChunkWorkerPool();
 
-    void SubmitJob(WorkerJob job);
+    void SubmitJob(ChunkJob&& job);
 
 private:
     void WorkerLoop();
 
     std::vector<std::thread> workers_;
-    std::queue<WorkerJob> jobs_;
+    std::queue<ChunkJob> jobs_;
 
     std::mutex jobs_mutex_;
     std::condition_variable jobs_cv_;
